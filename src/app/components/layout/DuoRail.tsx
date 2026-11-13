@@ -225,7 +225,8 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
         // below the rail group, so the bottom actions stay reachable; safe
         // centring keeps the top reachable too once it overflows.
         className={cn(
-          'fixed z-[190] flex items-center gap-2 pointer-events-none',
+          // bw-duo-rail: Stage mode full screen hides it (src/styles/stage.css).
+          'bw-duo-rail fixed z-[190] flex items-center gap-2 pointer-events-none',
           onDeck
             ? 'flex-row justify-center-safe overflow-x-auto overflow-y-hidden'
             : 'flex-col justify-center-safe overflow-y-auto overflow-x-hidden',

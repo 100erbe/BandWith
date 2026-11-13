@@ -1,0 +1,37 @@
+/* ── Stage mode full screen (src/lib/stageChrome.ts) ─────────────────────
+   With the side bar hidden, Stage mode covers the whole window: both panes
+   on two-pane layouts (iPhone Duo book, tablets in landscape) and the rail's
+   column on the iPhone Duo. The rail and the tablet nav are not shown; Stage
+   mode's own header holds Exit and the toggle instead.
+   The system column (clock / camera) stays clear: on the Duo the rail's
+   width is that column, elsewhere the status-column clearances apply.
+   The selectors outrank the two-pane and tablet `.bw-pane-detail` rules. */
+:root[data-bw-stage-full] .bw-stage.bw-stage-full.bw-pane-detail {
+  left: 0 !important;
+  right: 0 !important;
+  width: auto !important;
+  padding-left: var(--bw-status-clear-left, 0px) !important;
+  padding-right: var(--bw-status-clear-x, 0px) !important;
+  padding-bottom: calc(var(--safe-bottom, 0px) + 16px) !important;
+}
+:root[data-bw-stage-full][data-bw-rail][data-bw-rail-edge="right"] .bw-stage.bw-stage-full.bw-pane-detail {
+  padding-left: 0 !important;
+  padding-right: var(--bw-rail-w) !important;
+}
+:root[data-bw-stage-full][data-bw-rail][data-bw-rail-edge="left"] .bw-stage.bw-stage-full.bw-pane-detail {
+  padding-left: var(--bw-rail-w) !important;
+  padding-right: 0 !important;
+}
+/* The pane divider would cross the live view. */
+:root[data-bw-stage-full][data-bw-two-pane] body::after {
+  display: none;
+}
+:root[data-bw-stage-full] .bw-duo-rail,
+:root[data-bw-stage-full] .bw-nav-bar {
+  display: none !important;
+}
+/* Laptop pose (FloorWedgeMode): the Deck no longer keeps its last row clear
+   of the rail laid along its bottom edge. */
+:root[data-bw-stage-full][data-bw-rail-host] .bw-fold-split--stage .bw-fold-deck {
+  padding-bottom: calc(var(--safe-bottom, 0px) + 12px);
+}
