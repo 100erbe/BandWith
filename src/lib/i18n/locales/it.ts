@@ -3596,6 +3596,23 @@ const dict: Dictionary = {
   "Added to everyone's calendar": "Aggiunta al calendario di tutti",
   "Schedule · the band gets an RSVP": "Pianifica · la band riceve un RSVP",
   "busy": "occupato",
+  // Gig workspace: readiness, payouts, iPad tabs
+  "Gig workspace": "Area di lavoro del gig",
+  "MONEY": "SOLDI",
+  "SETLIST · {count}": "SCALETTA · {count}",
+  "LYRICS": "TESTI",
+  "PAYOUTS DUE · {count}": "PAGAMENTI DA FARE · {count}",
+  "MUSICIANS · {paid} OF {total} PAID": "MUSICISTI · {paid} SU {total} PAGATI",
+  "{name} paid": "{name} pagato",
+  "Lyrics & charts · every song covered": "Testi e accordi · tutti i brani coperti",
+  "Lyrics & charts · {done} of {total} songs": "Testi e accordi · {done} su {total} brani",
+  "Rider v{version} · seen by the venue": "Rider v{version} · visto dal locale",
+  "Rider v{version} sent · not seen yet": "Rider v{version} inviato · non ancora visto",
+  "Rider v{version} · not sent yet": "Rider v{version} · non ancora inviato",
+  "No rider yet": "Ancora nessun rider",
+  "Contract signed": "Contratto firmato",
+  "Contract not signed yet": "Contratto non ancora firmato",
+  "No contract yet": "Ancora nessun contratto",
 };
 
 export default dict;
