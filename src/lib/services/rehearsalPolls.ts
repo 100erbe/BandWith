@@ -58,7 +58,14 @@ export interface RehearsalPoll {
   location?: string | null;
   room_cost?: number | string | null;
   focus_song_ids?: string[] | null;
+  /** 098: members asked to vote (empty = everyone) and the vote-by time. */
+  invited_user_ids?: string[] | null;
+  vote_by_time?: string | null;
 }
+
+/** The poll's invited members, or null when every member is asked (098). */
+export const pollInvitees = (poll: { invited_user_ids?: string[] | null }): string[] | null =>
+  Array.isArray(poll.invited_user_ids) && poll.invited_user_ids.length > 0 ? poll.invited_user_ids : null;
 
 export interface ProposalEligibility {
   canPropose: boolean;
@@ -247,6 +254,8 @@ export const createOrPublishAdminPoll = async ({
   location,
   roomCost,
   focusSongIds,
+  invitedUserIds,
+  voteByTime,
 }: {
   pollId?: string;
   bandId: string;
@@ -259,6 +268,9 @@ export const createOrPublishAdminPoll = async ({
   location?: string | null;
   roomCost?: number | null;
   focusSongIds?: string[];
+  /** 098: members asked to vote; empty = everyone. The admin is always added. */
+  invitedUserIds?: string[];
+  voteByTime?: string | null;
   timeSlots: Array<{ proposed_date: string; start_time: string; end_time?: string | null }>;
 }): Promise<{ data: RehearsalPoll | null; error: Error | null }> => {
   try {
@@ -267,10 +279,14 @@ export const createOrPublishAdminPoll = async ({
     }
 
     let activePollId = pollId;
+    const invitees =
+      invitedUserIds && invitedUserIds.length > 0 ? Array.from(new Set([...invitedUserIds, adminId])) : [];
     const details = {
       ...(location !== undefined ? { location: location?.trim() || null } : {}),
       ...(roomCost !== undefined ? { room_cost: roomCost != null && roomCost > 0 ? roomCost : null } : {}),
       ...(focusSongIds !== undefined ? { focus_song_ids: focusSongIds } : {}),
+      ...(invitedUserIds !== undefined ? { invited_user_ids: invitees } : {}),
+      ...(voteByTime !== undefined ? { vote_by_time: voteBy && voteByTime ? voteByTime : null } : {}),
     };
 
     if (pollId) {
@@ -341,9 +357,10 @@ export const createOrPublishAdminPoll = async ({
         .eq('is_active', true);
 
       if (members && members.length > 0) {
+        // Only the invited members when the poll has a list (098).
         const uniqueMemberIds = Array.from(
           new Set(members.map((m: { user_id: string }) => m.user_id).filter(Boolean))
-        );
+        ).filter((id) => invitees.length === 0 || invitees.includes(id));
 
         const notifPayload = uniqueMemberIds.map((memberId: string) => ({
           user_id: memberId,
@@ -492,10 +509,13 @@ export const finalizePollIntoRehearsal = async ({
     // Fees from bw_band_member_fees (076): the caller is an admin, so all rows.
     const membersWithFees = await attachMemberFees((bandMembers || []) as any[]);
 
-    // Deduplicate members by user_id
+    // Deduplicate members by user_id; only the invited ones when the poll
+    // has a list (098), plus the admin who locks it in.
+    const invited = pollInvitees(poll);
     const seenUsers = new Set<string>();
     const uniqueBandMembers = membersWithFees.filter((bm: any) => {
       if (!bm.user_id || seenUsers.has(bm.user_id)) return false;
+      if (invited && !invited.includes(bm.user_id) && bm.user_id !== adminId) return false;
       seenUsers.add(bm.user_id);
       return true;
     });
@@ -662,7 +682,7 @@ export const getRehearsalPolls = async (
 ): Promise<{ data: RehearsalPoll[] | null; error: Error | null }> => {
   try {
     // 1. Fetch polls
-    const { data: polls, error: pollsError } = await supabase
+    const { data: allPolls, error: pollsError } = await supabase
       .from('rehearsal_polls')
       .select('*')
       .eq('band_id', bandId)
@@ -670,7 +690,12 @@ export const getRehearsalPolls = async (
       .order('created_at', { ascending: false });
 
     if (pollsError) throw pollsError;
-    if (!polls || polls.length === 0) return { data: [], error: null };
+    // A poll with an invite list (098) is for those members and its creator.
+    const polls = (allPolls || []).filter((p) => {
+      const invited = pollInvitees(p);
+      return !invited || !userId || p.created_by === userId || invited.includes(userId);
+    });
+    if (polls.length === 0) return { data: [], error: null };
 
     const pollIds = polls.map((p) => p.id);
 
@@ -746,7 +771,7 @@ export const getRehearsalPolls = async (
         options: enrichedOptions,
         creator_profile: profilesMap[poll.created_by] || null,
         preferred_days: extractPreferredDays(poll.notes),
-        total_members_count: totalMembers,
+        total_members_count: pollInvitees(poll)?.length || totalMembers,
       };
     });
 

@@ -253,7 +253,10 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
     if (!raw) return null;
     const d = new Date(String(raw).slice(0, 10) + 'T12:00:00');
     if (isNaN(d.getTime())) return null;
-    return d.toLocaleDateString(intlLocale('en-GB'), { weekday: 'short', day: 'numeric', month: 'short' });
+    const day = d.toLocaleDateString(intlLocale('en-GB'), { weekday: 'short', day: 'numeric', month: 'short' });
+    // vote_by_time (098): "Fri 11 Dec, 18:00".
+    const time = String((poll as RehearsalPoll).vote_by_time || '').slice(0, 5);
+    return time ? `${day}, ${time}` : day;
   }, [poll]);
 
   const handleDone = () => {
