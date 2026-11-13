@@ -19,7 +19,7 @@ import { useT } from '@/lib/i18n';
 import { useRailLayout } from '@/lib/deviceRegions';
 import { todayLocal } from '@/lib/dates';
 import { summarizeKit, type EventGearKit, type GearKit, type GearKitItemLink, type KitGig } from '@/lib/gearKits';
-import { createKit, deleteKit, listBandKits, listKitGigs, removeKitFromGig, updateKit, useKitForGig } from '@/lib/services/gearKits';
+import { createKit, deleteKit, listBandKits, listKitGigs, removeKitFromGig, updateKit, addKitToGig } from '@/lib/services/gearKits';
 import { KitCard, KitTile } from '@/app/components/gear/KitParts';
 import { KitDetail } from '@/app/components/gear/KitDetail';
 import { KitEditorSheet, UseKitSheet, type KitEditorValue } from '@/app/components/gear/KitSheets';
@@ -252,7 +252,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId, ca
     const linked = uses.some((u) => u.kit_id === kitId && u.event_id === gig.id);
     setUseBusyId(gig.id);
     setUseError(null);
-    const { error } = linked ? await removeKitFromGig(kitId, gig.id) : await useKitForGig(kitId, gig.id);
+    const { error } = linked ? await removeKitFromGig(kitId, gig.id) : await addKitToGig(kitId, gig.id);
     setUseBusyId(null);
     if (error) {
       setUseError(error.message);

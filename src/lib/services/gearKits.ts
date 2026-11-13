@@ -134,7 +134,7 @@ export async function deleteKit(kitId: string): Promise<{ error: Error | null }>
 }
 
 /** Links a kit to a gig: its items go with the band on that date. */
-export async function useKitForGig(kitId: string, eventId: string): Promise<{ error: Error | null }> {
+export async function addKitToGig(kitId: string, eventId: string): Promise<{ error: Error | null }> {
   const { data, error } = await supabase.from('event_gear_kits').insert({ kit_id: kitId, event_id: eventId }).select('event_id');
   if (error) {
     // Already linked: nothing to do.

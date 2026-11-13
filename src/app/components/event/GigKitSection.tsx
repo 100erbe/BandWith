@@ -11,7 +11,7 @@ import { BwSheet, FormError, PillButton } from '@/app/components/bw';
 import { SectionTitle } from './parts';
 import { KitItemRow, KitReadyMeter, kitCountsLine } from '@/app/components/gear/KitParts';
 import { summarizeKit, type KitSummary } from '@/lib/gearKits';
-import { loadGigKits, removeKitFromGig, useKitForGig, type GigKits } from '@/lib/services/gearKits';
+import { loadGigKits, removeKitFromGig, addKitToGig, type GigKits } from '@/lib/services/gearKits';
 import { useT } from '@/lib/i18n';
 
 const SHOWN = 6;
@@ -52,7 +52,7 @@ export const GigKitSection: React.FC<{ eventId: string; bandId: string; canEdit:
     const linked = linkedIds.has(kitId);
     setBusyId(kitId);
     setPickError(null);
-    const { error } = linked ? await removeKitFromGig(kitId, eventId) : await useKitForGig(kitId, eventId);
+    const { error } = linked ? await removeKitFromGig(kitId, eventId) : await addKitToGig(kitId, eventId);
     setBusyId(null);
     if (error) {
       setPickError(error.message);
