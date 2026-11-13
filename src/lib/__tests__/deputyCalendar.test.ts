@@ -4,7 +4,7 @@ import { calendarFile, gigEvent, gigIcs, gigWindow, googleCalendarUrl, type Depu
 const L = { loadIn: 'Load-in', soundcheck: 'Soundcheck', show: 'Show', role: 'Role' };
 const gig: DeputyGig = {
   title: 'Wedding Rossi', bandName: 'Velvet Static', date: '2026-12-31', loadIn: '17:30:00', start: '21:00:00', end: '01:30:00',
-  venue: 'Villa Clara', city: 'Como', address: 'Via Prova 1', role: 'Bass', url: 'https://bandwith.pages.dev/deputy.html?t=abc',
+  venue: 'Villa Clara', city: 'Como', address: 'Via Prova 1', role: 'Bass', url: 'https://bandwith-beryl.vercel.app/deputy.html?t=abc',
 };
 
 describe('deputy calendar', () => {

@@ -22,9 +22,11 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 // is verified in Resend; the resend.dev test sender only delivers to the Resend
 // account owner.
 const FROM_EMAIL = Deno.env.get("EMAIL_FROM") || "BandWith <onboarding@resend.dev>";
-// The deployed web app (= Supabase Auth site_url). Note: bandwith.app belongs
+// The deployed web app (= Supabase Auth site_url, the APP_URL secret). Note: bandwith.app belongs
 // to an unrelated product; never link to it.
-const DEFAULT_APP_URL = "https://bandwith.pages.dev";
+const DEFAULT_APP_URL = "https://bandwith-beryl.vercel.app"; // = src/lib/appUrl.ts
+// The previous address (Cloudflare Pages): links to it stay allowed.
+const LEGACY_APP_HOSTS = ["bandwith.pages.dev", "band-with.vercel.app"];
 
 type EmailType =
   | "onboarding_invite"
@@ -72,7 +74,7 @@ const appUrl = (): string =>
   (Deno.env.get("APP_URL") || Deno.env.get("SITE_URL") || DEFAULT_APP_URL).replace(/\/+$/, "");
 
 const allowedLinkHosts = (): string[] => {
-  const hosts = new Set<string>([new URL(DEFAULT_APP_URL).host, "band-with.vercel.app"]);
+  const hosts = new Set<string>([new URL(DEFAULT_APP_URL).host, ...LEGACY_APP_HOSTS]);
   for (const raw of [Deno.env.get("APP_URL"), Deno.env.get("SITE_URL")]) {
     try {
       if (raw) hosts.add(new URL(raw).host);

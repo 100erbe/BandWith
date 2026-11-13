@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { t } from '@/lib/i18n';
 import { instrumentKeys } from '@/lib/instruments';
+import { APP_URL } from '../appUrl';
 
 /**
  * Deputies: session musicians the band calls when a member can't play
@@ -83,7 +84,7 @@ export function rankDeputies(deputies: Deputy[], role: string | null | undefined
 // /deputy.html without an account; the admins get a push.
 // ------------------------------------------------------------------
 
-export const DEPUTY_PAGE_URL = 'https://bandwith.pages.dev/deputy.html';
+export const DEPUTY_PAGE_URL = `${APP_URL}/deputy.html`;
 export const deputyReplyUrl = (token: string) => `${DEPUTY_PAGE_URL}?t=${token}`;
 
 export type DeputyRequestStatus = 'pending' | 'available' | 'maybe' | 'unavailable' | 'cancelled';

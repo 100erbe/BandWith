@@ -12,7 +12,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { calendarFile, gigEvent, GIG_LABELS } from "../_shared/deputy-calendar.ts";
 
-const SITE = "https://bandwith.pages.dev";
+const SITE = "https://bandwith-beryl.vercel.app"; // = src/lib/appUrl.ts
 
 function publishableKey(): string {
   try {

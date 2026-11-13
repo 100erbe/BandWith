@@ -13,7 +13,7 @@ LOGO_URL = {
 LOGO_FILE = {"black": "../assets/logo-mono-black.png", "white": "../assets/logo-white-lime.png"}
 
 # The deployed web app. bandwith.app is NOT ours (another product), never link to it.
-PUBLIC_URL = "https://bandwith.pages.dev"  # = Supabase Auth site_url
+PUBLIC_URL = "https://bandwith-beryl.vercel.app"  # = Supabase Auth site_url
 
 LIME = "#D5FB46"
 INK = "#050505"
