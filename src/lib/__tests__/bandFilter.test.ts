@@ -84,10 +84,13 @@ describe('normalizeBandFilter', () => {
 
 describe('bandFilterShowsFees', () => {
   const adminOf = (id: string) => id === A;
-  it('follows the active band on all and personal', () => {
+  it('follows the active band on all', () => {
     expect(bandFilterShowsFees('all', adminOf, true)).toBe(true);
     expect(bandFilterShowsFees('all', adminOf, false)).toBe(false);
-    expect(bandFilterShowsFees('personal', adminOf, true)).toBe(true);
+  });
+  it('never shows fees on personal', () => {
+    expect(bandFilterShowsFees('personal', adminOf, true)).toBe(false);
+    expect(bandFilterShowsFees('personal', adminOf, false)).toBe(false);
   });
   it('shows fees for a band only to its admins', () => {
     expect(bandFilterShowsFees(A, adminOf, false)).toBe(true);
