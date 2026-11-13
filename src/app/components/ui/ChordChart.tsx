@@ -2,6 +2,14 @@ import React from 'react';
 import { chordLabel, keyLabel, type ChartBar, type SongChart } from '@/lib/ireal';
 import { cn } from '@/app/components/ui/utils';
 import { useT } from '@/lib/i18n';
+import { transposeChart } from '@/lib/transpose';
+import { useTranspose } from './Transpose';
+
+/** Where a chart came from, shown under it: "Source: iReal Pro forum" or the file's name. */
+export const chartSource = (chart: SongChart, tr: (s: string, v?: Record<string, string | number>) => string) =>
+  chart.source === 'musicxml'
+    ? tr('Source: {file}', { file: chart.file || tr('MusicXML file') })
+    : tr('Source: iReal Pro forum');
 
 /** "Eb · Medium Swing · 120 BPM · 4/4" */
 export const chartSummary = (chart: SongChart) =>
@@ -64,8 +72,11 @@ export const ChordChartView: React.FC<{
   line?: string;
   className?: string;
   showSummary?: boolean;
-}> = ({ chart, size, muted = 'text-muted-foreground', line = 'border-border', className, showSummary = true }) => {
+}> = ({ chart: original, size, muted = 'text-muted-foreground', line = 'border-border', className, showSummary = true }) => {
   const tr = useT();
+  // Transposed for this reader (TransposeProvider), otherwise as saved.
+  const { semitones } = useTranspose();
+  const chart = React.useMemo(() => transposeChart(original, semitones), [original, semitones]);
   const summary = chartSummary(chart);
   return (
     <div className={className ?? 'max-w-3xl mx-auto w-full flex flex-col gap-6 pt-4'} style={{ fontSize: size, lineHeight: 1.2 }}>
@@ -80,7 +91,7 @@ export const ChordChartView: React.FC<{
           </div>
         </section>
       ))}
-      <p className={cn('bw-body-sm', muted)}>{tr('Chord chart from iReal Pro')}</p>
+      <p className={cn('bw-body-sm', muted)}>{chartSource(chart, tr)}</p>
     </div>
   );
 };

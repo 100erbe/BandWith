@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Calendar, Clock, Sparkles, Send, ChevronLeft, ChevronRight, MapPin, Plus } from '@/app/components/icons';
+import { X, Calendar, Clock, Sparkles, Send, ChevronLeft, ChevronRight, MapPin, Plus, Check } from '@/app/components/icons';
+import { useBand } from '@/lib/BandContext';
 import { SongPicker, type PickedSong } from '@/app/components/ui/SongPicker';
 import { getActiveSymbol as sym } from '@/lib/currency';
 import { pollShareLabel } from './PollDetails';
@@ -14,7 +15,7 @@ import {
   type RehearsalPoll,
 } from '@/lib/services/rehearsalPolls';
 import { toLocalDateString } from '../../../lib/dates';
-import { personName } from '@/lib/personName';
+import { personName, personInitials } from '@/lib/personName';
 import { useT, intlLocale } from '@/lib/i18n';
 import { useBandFreeDays, useCandidateFreeCounts, slotKey } from '@/lib/bandAvailability';
 import { FreeDots, FreeHeatLegend, FreeLabel, freeTone, heatStyle } from '@/app/components/ui/FreeHeat';
@@ -69,6 +70,25 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
   const [roomCost, setRoomCost] = useState('');
   const [focusSongs, setFocusSongs] = useState<{ id: string; title: string }[]>([]);
   const [songPickerOpen, setSongPickerOpen] = useState(false);
+  // Who votes and the vote-by time (098). Nobody left out = every member.
+  const [excluded, setExcluded] = useState<string[]>([]);
+  const [voteByTime, setVoteByTime] = useState('18:00');
+  const { selectedBand } = useBand();
+  const roster = useMemo(
+    () =>
+      selectedBand?.id === bandId
+        ? (selectedBand.members || [])
+            .filter((m) => !!m.user_id)
+            .map((m) => ({
+              id: m.user_id as string,
+              name: personName(m.profile, t('Band member')),
+              initials: personInitials(m.profile, '?'),
+            }))
+            .filter((m, i, all) => all.findIndex((x) => x.id === m.id) === i)
+        : [],
+    [selectedBand, bandId]
+  );
+  const invitedIds = excluded.length === 0 ? [] : roster.filter((m) => !excluded.includes(m.id)).map((m) => m.id);
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [generatorMode, setGeneratorMode] = useState<'preset' | 'custom'>('preset');
@@ -136,6 +156,8 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
     setRoomCost(initialProposal?.room_cost != null ? String(initialProposal.room_cost) : '');
     // Member proposals carry no songs; the builder never reopens a published poll.
     setFocusSongs([]);
+    setExcluded([]);
+    setVoteByTime('18:00');
     if (initialProposal) {
       setTitle(initialProposal.title || t('Rehearsal Availability Poll'));
       setNotes(cleanNotesWithoutDays(initialProposal.notes));
@@ -278,6 +300,8 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
       location: location.trim() || null,
       roomCost: parseFloat(roomCost) > 0 ? parseFloat(roomCost) : null,
       focusSongIds: focusSongs.map(s => s.id),
+      invitedUserIds: invitedIds,
+      voteByTime: voteBy ? voteByTime || null : null,
       timeSlots: timeSlots.map((s) => ({
         proposed_date: s.proposed_date,
         start_time: s.start_time,
@@ -300,7 +324,56 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
   // Place, cost & songs (097): the same fields in the iPad composer card and
   // in the phone / Duo builder. Members get only their share of the room.
   const memberTotalOf = (): number | undefined =>
-    weekFree?.values().next().value?.total ?? slotFree.values().next().value?.total;
+    excluded.length > 0
+      ? invitedIds.length
+      : weekFree?.values().next().value?.total ?? slotFree.values().next().value?.total ?? (roster.length || undefined);
+
+  /** Who votes: tap a member to leave them out (you always vote). */
+  function renderRoster(chipBg: string) {
+    if (roster.length === 0) return null;
+    const count = roster.length - excluded.length;
+    return (
+      <div className="flex flex-col gap-2" role="group" aria-label={t('Who votes')}>
+        <div className="flex items-center justify-between gap-3">
+          <span className="bw-label-sm text-muted-foreground">{t('Who votes')}</span>
+          <span className="bw-label-xs text-muted-foreground">{t('{count} of {total}', { count, total: roster.length })}</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {roster.map((m) => {
+            const on = !excluded.includes(m.id);
+            const self = m.id === adminId;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                aria-pressed={on}
+                aria-label={self ? t('You') : m.name}
+                title={m.name}
+                disabled={self}
+                onClick={() => setExcluded((prev) => (prev.includes(m.id) ? prev.filter((x) => x !== m.id) : [...prev, m.id]))}
+                className={cn(
+                  'relative w-12 h-12 rounded-full flex items-center justify-center bw-label-md shrink-0 transition-opacity',
+                  chipBg,
+                  on ? 'text-foreground' : 'text-muted-foreground opacity-50',
+                  self ? 'cursor-default' : 'cursor-pointer'
+                )}
+              >
+                {m.initials}
+                {on && (
+                  <span
+                    aria-hidden
+                    className="absolute -right-0.5 -bottom-0.5 w-5 h-5 rounded-full bg-surface-inverse text-surface-inverse-foreground flex items-center justify-center"
+                  >
+                    <Check className="w-3 h-3" />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   function renderPlaceFields(idp: string, members: number | undefined, chipBg: string) {
     return (
@@ -412,17 +485,37 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
         <label htmlFor={`${idp}-poll-vote-by`} className="bw-label-sm text-muted-foreground">
           {t('Vote by')}
         </label>
-        <div className="flex items-center gap-3 h-[52px] px-4 rounded-full bg-field border border-border focus-within:border-2 focus-within:border-foreground">
-          <Calendar className="w-5 h-5 shrink-0" />
-          <input
-            id={`${idp}-poll-vote-by`}
-            type="date"
-            value={voteBy}
-            min={today}
-            max={first}
-            onChange={e => setVoteBy(e.target.value)}
-            className="flex-1 min-w-0 bg-transparent outline-none bw-body-lg text-foreground"
-          />
+        <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-3">
+          <div className="flex items-center gap-3 h-[52px] px-4 rounded-full bg-field border border-border focus-within:border-2 focus-within:border-foreground min-w-0">
+            <Calendar className="w-5 h-5 shrink-0" />
+            <input
+              id={`${idp}-poll-vote-by`}
+              type="date"
+              value={voteBy}
+              min={today}
+              max={first}
+              onChange={e => setVoteBy(e.target.value)}
+              className="flex-1 min-w-0 bg-transparent outline-none bw-body-lg text-foreground"
+            />
+          </div>
+          <div
+            className={cn(
+              'flex items-center gap-3 h-[52px] px-4 rounded-full bg-field border border-border text-foreground focus-within:border-2 focus-within:border-foreground min-w-0',
+              !voteBy && 'opacity-50 pointer-events-none'
+            )}
+            aria-disabled={!voteBy}
+          >
+            <Clock className="w-5 h-5 shrink-0" />
+            <TimePicker
+              id={`${idp}-poll-vote-by-time`}
+              value={voteByTime}
+              onChange={setVoteByTime}
+              align="end"
+              showIcon={false}
+              textSize="bw-body-lg"
+              className="h-full border-0 pb-0 [&_span]:font-medium hover:border-0"
+            />
+          </div>
         </div>
         {voteBy && !ok && <p className="bw-label-xs text-destructive">{t('Pick a day before the first slot')}</p>}
       </div>
@@ -478,7 +571,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
     );
 
     const pollCard = (
-      <ComposerCard n={1} title={t('Poll')} done={title.trim().length > 0}>
+      <ComposerCard n={1} title={t('Session & roster')} done={title.trim().length > 0}>
         {initialProposal && (
           <div className="flex items-start gap-3 p-4 rounded-[20px] bg-background">
             <Sparkles className="w-5 h-5 shrink-0" />
@@ -503,11 +596,13 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
           onChange={e => setTitle(e.target.value)}
           placeholder={t('e.g. Extra rehearsal before the wedding')}
         />
-        <p className="bw-label-xs text-muted-foreground">
-          {memberTotal
-            ? t('Sent to every active member · {n}', { n: memberTotal })
-            : t('Sent to every active member')}
-        </p>
+        {renderRoster('bg-background') ?? (
+          <p className="bw-label-xs text-muted-foreground">
+            {memberTotal
+              ? t('Sent to every active member · {n}', { n: memberTotal })
+              : t('Sent to every active member')}
+          </p>
+        )}
       </ComposerCard>
     );
 
@@ -652,7 +747,11 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
     );
 
     const voteLine = [
-      voteByOk ? t('Vote by {date}', { date: dayLabel(voteBy, { weekday: 'short', day: 'numeric', month: 'short' }) }) : null,
+      voteByOk
+        ? t('Vote by {date}', {
+            date: `${dayLabel(voteBy, { weekday: 'short', day: 'numeric', month: 'short' })}${voteByTime ? `, ${voteByTime}` : ''}`,
+          })
+        : null,
       memberTotal ? t('{voted} of {total} voted', { voted: 0, total: memberTotal }) : null,
     ]
       .filter(Boolean)
@@ -855,6 +954,9 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
               onChange={(e) => setNotes(e.target.value)}
               placeholder={t('e.g. Focus on ending transitions')}
             />
+
+            {/* Who votes (098), as in the iPad composer */}
+            {renderRoster('bg-card')}
 
             {/* Place, cost & songs (097), as in the iPad composer */}
             <section className="flex flex-col gap-4 pt-2" aria-labelledby="poll-builder-place">

@@ -4,6 +4,7 @@ import { useBand } from "@/lib/BandContext";
 import AuthCallback from "./auth/callback";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
+import { isOpenedFileUrl, receiveChartFile } from '@/lib/chartInbox';
 import { inviteTokenFromUrl } from "@/lib/services/invitations";
 import { useOnboarding } from "@/lib/OnboardingContext";
 import {
@@ -123,7 +124,17 @@ export default function App() {
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
+    // A MusicXML chord chart opened with the app (cold start or while running).
+    void CapacitorApp.getLaunchUrl()
+      .then((launch) => {
+        if (launch?.url && isOpenedFileUrl(launch.url)) void receiveChartFile(launch.url);
+      })
+      .catch(() => {});
     const handle = CapacitorApp.addListener('appUrlOpen', ({ url }) => {
+      if (isOpenedFileUrl(url)) {
+        void receiveChartFile(url);
+        return;
+      }
       const token = inviteTokenFromUrl(url);
       if (token) setInviteToken(token);
       const deputyToken = deputyTokenFromUrl(url);

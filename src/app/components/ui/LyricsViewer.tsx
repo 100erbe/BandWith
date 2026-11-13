@@ -2,7 +2,10 @@ import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Minus, Pause, Play, Plus, X } from '@/app/components/icons';
 import { IconButton } from '@/app/components/bw/Screen';
-import { closeLyrics, parseInline, parseLyrics, useLyricsDoc } from '@/lib/lyrics';
+import { closeLyrics, parseInline, parseLyrics, splitChords, useLyricsDoc } from '@/lib/lyrics';
+import { chordLabel, keyLabel } from '@/lib/ireal';
+import { transposeChord } from '@/lib/transpose';
+import { TransposeControl, TransposeProvider, useSongTranspose, useTranspose } from './Transpose';
 import { togglePlay, usePlayer } from '@/lib/audioPlayer';
 import { useSystemBack } from '@/lib/backStack';
 import { useT } from '@/lib/i18n';
@@ -37,6 +40,54 @@ export function useLyricsSize() {
   return { size, step, min: size === SIZES[0], max: size === SIZES[SIZES.length - 1] };
 }
 
+const Inline: React.FC<{ text: string }> = ({ text }) => (
+  <>
+    {parseInline(text).map((part, k) => (
+      <span key={k} className={part.bold ? 'font-bold' : part.italic ? 'italic' : undefined}>
+        {part.text}
+      </span>
+    ))}
+  </>
+);
+
+/**
+ * One line of lyrics. ChordPro-style chords (`[Am]words`) sit above the word
+ * they start on; that word and its chord make one box (never overlapping the
+ * next chord), the rest of the words wrap like text on narrow screens.
+ */
+const LyricsLine: React.FC<{ line: string }> = ({ line }) => {
+  const segments = React.useMemo(() => splitChords(line), [line]);
+  const { semitones, flats } = useTranspose();
+  if (!segments) {
+    return (
+      <p className="font-medium break-words">
+        <Inline text={line} />
+      </p>
+    );
+  }
+  return (
+    <p className="font-medium break-words">
+      {segments.map((seg, k) => {
+        if (!seg.chord) return <Inline key={k} text={seg.text} />;
+        const [, head, tail] = seg.text.match(/^(\S*)([\s\S]*)$/) || ['', '', seg.text];
+        const label = chordLabel(transposeChord(seg.chord, semitones, flats));
+        return (
+          <React.Fragment key={k}>
+            {/* Text first in the DOM: the box's baseline is the lyric's, the chord shows above it. */}
+            {/* An inline-block's baseline is its last line: the word stays on the line, the chord sits above it. */}
+            <span className="inline-block align-baseline">
+              <span className="block text-[0.62em] font-bold leading-[1.3] pr-[0.35em] whitespace-nowrap">{label}</span>
+              <span className="block whitespace-pre">{head ? <Inline text={head} /> : '\u00a0'}</span>
+            </span>
+            {/* A chord on a space already holds one: no double gap. */}
+            {(head ? tail : tail.replace(/^ /, '')) && <Inline text={head ? tail : tail.replace(/^ /, '')} />}
+          </React.Fragment>
+        );
+      })}
+    </p>
+  );
+};
+
 /**
  * Lyrics as sections of lines (Markdown / JSON, see src/lib/lyrics.ts).
  * `muted` is the class for section names and the empty message.
@@ -59,13 +110,7 @@ export const LyricsText: React.FC<{ lyrics?: string | null; size: number; muted?
             {s.name && <h3 className={`bw-label-md ${muted} uppercase mb-1`}>{s.name}</h3>}
             {s.lines.map((line, j) =>
               line.trim() ? (
-                <p key={j} className="font-medium break-words">
-                  {parseInline(line).map((part, k) => (
-                    <span key={k} className={part.bold ? 'font-bold' : part.italic ? 'italic' : undefined}>
-                      {part.text}
-                    </span>
-                  ))}
-                </p>
+                <LyricsLine key={j} line={line} />
               ) : (
                 <span key={j} className="block h-[0.8em]" aria-hidden />
               )
@@ -130,6 +175,10 @@ export const LyricsViewer: React.FC = () => {
   }, [doc]); // eslint-disable-line react-hooks/exhaustive-deps
   const showChords = view === 'chords' && hasChart;
   const kind = showChords ? tr('Chords') : tr('Lyrics');
+  // Transpose on this device: only when there are chords to move.
+  const [semitones, setSemitones] = useSongTranspose(doc?.songId);
+  const songKey = doc?.songKey || keyLabel(doc?.chart?.key) || null;
+  const hasChords = hasChart || /\[[A-G][^\]\s]{0,15}\]/.test(doc?.lyrics || '');
 
   return (
     <AnimatePresence>
@@ -166,9 +215,16 @@ export const LyricsViewer: React.FC = () => {
             <IconButton label={tr('Bigger text')} size="sm" icon={<Plus />} onClick={() => step(1)} disabled={max} />
             <IconButton label={showChords ? tr('Close') : tr('Close lyrics')} size="sm" icon={<X />} onClick={closeLyrics} />
           </div>
-          {hasLyrics && hasChart && <LyricsChordsTabs view={view} onChange={setView} className="shrink-0 px-4 pb-2" />}
+          {((hasLyrics && hasChart) || hasChords) && (
+            <div className="shrink-0 px-4 pb-2 flex flex-wrap items-center justify-between gap-2">
+              {hasLyrics && hasChart ? <LyricsChordsTabs view={view} onChange={setView} /> : <span />}
+              {hasChords && <TransposeControl semitones={semitones} onChange={setSemitones} songKey={songKey} />}
+            </div>
+          )}
           <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-16">
-            {showChords && doc.chart ? <ChordChartView chart={doc.chart} size={size} /> : <LyricsText lyrics={doc.lyrics} size={size} />}
+            <TransposeProvider semitones={semitones} songKey={songKey}>
+              {showChords && doc.chart ? <ChordChartView chart={doc.chart} size={size} /> : <LyricsText lyrics={doc.lyrics} size={size} />}
+            </TransposeProvider>
           </div>
         </motion.div>
       )}

@@ -390,7 +390,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           .from('setlist_songs')
           // songs has duration_seconds, not duration: asking for a missing
           // column makes PostgREST fail the whole query.
-          .select('*, song:songs(title, artist, duration_seconds, key, lyrics, chord_chart)')
+          .select('*, song:songs(title, artist, duration_seconds, key, bpm, lyrics, chord_chart)')
           .eq('setlist_id', event.setlistId)
           .order('set_number', { ascending: true })
           .order('position', { ascending: true });
@@ -418,6 +418,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   ? `${Math.floor(s.song.duration_seconds / 60)}:${String(s.song.duration_seconds % 60).padStart(2, '0')}`
                   : undefined,
               key: s.song?.key || undefined,
+              bpm: typeof s.song?.bpm === 'number' && s.song.bpm > 0 ? s.song.bpm : undefined,
               lyrics: s.song?.lyrics || undefined,
               chart: asSongChart(s.song?.chord_chart) || undefined,
             }));

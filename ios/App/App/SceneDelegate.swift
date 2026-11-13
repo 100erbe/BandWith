@@ -37,7 +37,29 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         var options: [UIApplication.OpenURLOptionsKey: Any] = [:]
         options[.sourceApplication] = context.options.sourceApplication
         options[.annotation] = context.options.annotation
-        _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: context.url, options: options)
+        var url = context.url
+        if url.isFileURL, let copy = Self.copyOpenedFile(url) { url = copy }
+        _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: url, options: options)
+    }
+
+    /// A document opened with the app ("Open in BandWith", e.g. a MusicXML
+    /// chord chart) may sit outside the sandbox, readable only while its
+    /// security scope is open (documents open in place). The web app reads a
+    /// private copy instead (src/lib/chartInbox.ts).
+    private static func copyOpenedFile(_ url: URL) -> URL? {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let fm = FileManager.default
+        let dir = fm.temporaryDirectory.appendingPathComponent("Opened", isDirectory: true)
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        let dest = dir.appendingPathComponent(url.lastPathComponent)
+        try? fm.removeItem(at: dest)
+        do {
+            try fm.copyItem(at: url, to: dest)
+            return dest
+        } catch {
+            return nil
+        }
     }
 
     private func continueActivity(_ activity: NSUserActivity) {

@@ -25,8 +25,11 @@ import {
   LayoutTemplate,
   ListChecks,
   ListMusic,
+  ScrollText,
   Truck,
 } from '@/app/components/icons';
+import { useDraftStage } from '@/app/components/event/rider/useEventStage';
+import { RiderStageContent } from '@/app/components/event/rider/RiderStage';
 import { HeaderAction, IconButton, NavBackButton, Tag } from '@/app/components/bw/Screen';
 import { RailCover, useRailAction } from '@/lib/railActions';
 import { PillButton, PillField, Selector } from '@/app/components/bw/Form';
@@ -73,6 +76,8 @@ export interface BandMember {
   role: string;
   fee: string;
   initials: string;
+  /** "Guitar / Backing vocals" (band_members.instrument), for the stage plot. */
+  instrument?: string | null;
 }
 
 interface TaskTemplate {
@@ -927,6 +932,19 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const [isSaving, setIsSaving] = useState(false);
 
+  // Rider & stage in the iPad composer (Figma iPad · 04 "New gig"): admins of
+  // a band gig. Saved with the gig (AuthenticatedApp → persistComposerStage).
+  const riderLineup = useMemo(
+    () =>
+      selectedMembers
+        .map(id => MEMBERS.find(m => m.id === id || m.user_id === id))
+        .filter((m): m is NonNullable<typeof m> => !!m)
+        .map(m => ({ name: m.name, instrument: m.instrument || null })),
+    [selectedMembers, MEMBERS],
+  );
+  const riderAllowed = isAdmin && !!selectedBand?.id && !isEditing && modalCategory === 'gig';
+  const draftStage = useDraftStage({ lineup: riderLineup, isAdmin: riderAllowed });
+
   const handleCreate = async () => {
     if (isSaving) return;
     const fallbackTitle = getEffectiveTitle();
@@ -967,6 +985,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       feeTbd: modalCategory === 'gig' ? feeTbd : false,
       _wasFeeTbd: wasFeeTbd,
       status: modalCategory === 'quote' ? 'tentative' : 'confirmed',
+      ...(riderAllowed && composerLayout.composer && (draftStage.pending || draftStage.riderWanted)
+        ? { _stage: draftStage.pending, _createRider: draftStage.riderWanted }
+        : {}),
       ...(isEditing && editingEvent
         ? { _editing: true, _editingEventId: editingEvent.eventId, _editingLocalId: editingEvent.id }
         : {}),
@@ -1066,7 +1087,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   // Android Back: the leave sheet first, then the song picker, then close.
   // Tablet composer: the sheet open over it (setlist, tasks, logistics).
-  const [composerSheet, setComposerSheet] = useState<null | 'setlist' | 'tasks' | 'logistics'>(null);
+  const [composerSheet, setComposerSheet] = useState<null | 'setlist' | 'rider' | 'tasks' | 'logistics'>(null);
   useSystemBack(!isEditing && eventType !== 'rehearsal', () => {
     if (leaveOpen) setLeaveOpen(false);
     else if (songPickerOpen) {
@@ -2562,13 +2583,21 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       </ComposerCard>
     ) : null;
 
-    const extras: { key: 'setlist' | 'tasks' | 'logistics'; label: string; icon: React.ReactNode; count?: number }[] = [
+    const riderSet = draftStage.edited || draftStage.riderWanted;
+    const extras: { key: 'setlist' | 'rider' | 'tasks' | 'logistics'; label: string; icon: React.ReactNode; count?: number }[] = [
       { key: 'setlist', label: t('Setlist'), icon: <ListMusic className="w-4 h-4" />, count: totalSongCount },
+      ...(riderAllowed
+        ? [{
+            key: 'rider' as const,
+            label: t('Rider & stage'),
+            icon: riderSet ? <Check className="w-4 h-4" /> : <ScrollText className="w-4 h-4" />,
+          }]
+        : []),
       { key: 'logistics', label: t('Logistics'), icon: <Truck className="w-4 h-4" /> },
       { key: 'tasks', label: t('Tasks'), icon: <ListChecks className="w-4 h-4" />, count: tasks.length },
     ];
     const extraButtons = (
-      <div className={cn('gap-3', landscape ? 'flex flex-wrap' : 'grid grid-cols-3')}>
+      <div className={cn('gap-3', landscape ? 'flex flex-wrap' : extras.length > 3 ? 'grid grid-cols-4' : 'grid grid-cols-3')}>
         {extras.map(x => (
           <PillButton
             key={x.key}
@@ -2672,7 +2701,13 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     );
 
     const sheetTitle =
-      composerSheet === 'setlist' ? t('Setlist & songs') : composerSheet === 'tasks' ? t('Tasks & band notes') : t('Logistics, guests & setting');
+      composerSheet === 'setlist'
+        ? t('Setlist & songs')
+        : composerSheet === 'rider'
+          ? t('Rider & stage')
+          : composerSheet === 'tasks'
+            ? t('Tasks & band notes')
+            : t('Logistics, guests & setting');
 
     return (
       <>
@@ -2768,6 +2803,17 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         >
           <div className="flex flex-col gap-4">
             {composerSheet === 'setlist' && renderSetlistEditor()}
+            {composerSheet === 'rider' && (
+              <RiderStageContent
+                state={draftStage.state}
+                isAdmin={riderAllowed}
+                eventTitle={getEffectiveTitle()}
+                people={riderLineup.map(p => p.name.trim().split(/\s+/)[0] || p.name)}
+                canEditPlot
+                layout="board"
+                draft={{ riderWanted: draftStage.riderWanted }}
+              />
+            )}
             {composerSheet === 'tasks' && renderTasksEditor()}
             {composerSheet === 'logistics' && (
               <>

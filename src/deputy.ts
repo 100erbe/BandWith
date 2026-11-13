@@ -9,7 +9,8 @@
 import { googleCalendarUrl } from './lib/deputyCalendar';
 import { addressWithoutCity } from './lib/eventAddress';
 import { APP_URL as WEB_APP_URL } from './lib/appUrl';
-import { DEPUTY_STRINGS, fill, pickDeputyLang, type DeputyStrings } from './deputy/strings';
+import { instrumentKeys } from './lib/instruments';
+import { DEPUTY_STRINGS, fill, pickDeputyLang, roleLabel, type DeputyStrings } from './deputy/strings';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
@@ -143,7 +144,8 @@ function detailRows(v: View) {
   if (v.venue_name) rows.push([S.venue, v.venue_name, 'venue']);
   if (v.venue_city) rows.push([S.city, v.venue_city, 'city']);
   if (v.venue_address) rows.push([S.address, v.venue_address, 'address']);
-  if (v.role) rows.push([S.role, v.role, null]);
+  const role = roleLabel(v.role, lang, instrumentKeys);
+  if (role) rows.push([S.role, role, null]);
   if (v.fee != null) rows.push([S.fee, money(v.fee, v.currency), null]);
   return rows;
 }
@@ -250,7 +252,7 @@ function calendarCard(v: View) {
   const gig = {
     title: v.event_title || 'Gig', bandName: v.band_name, date: v.event_date as string, loadIn: v.load_in_time,
     soundcheck: v.soundcheck_time, start: v.start_time, end: v.end_time, venue: v.venue_name, city: v.venue_city,
-    address: v.venue_address, role: v.role, url: window.location.href,
+    address: v.venue_address, role: roleLabel(v.role, lang, instrumentKeys), url: window.location.href,
   };
   return h(
     'section',
