@@ -3660,6 +3660,7 @@ const dict: Dictionary = {
   "Split": "Aufteilung",
   "e.g. Blackbox Studios · room 2": "z. B. Blackbox Studios · Raum 2",
   "{amount} each": "{amount} pro Person",
+  "Who votes": "Wer abstimmt",
 };
 
 export default dict;
