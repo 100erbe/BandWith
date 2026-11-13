@@ -246,6 +246,35 @@ export const buildSeed = (): DemoDB => {
     { id: id(1801), band_id: IDS.band, name: 'Shure SM58', category: 'microphones', quantity: 4, status: 'available', location: 'Rehearsal room', created_at: created, updated_at: created },
     { id: id(1802), band_id: IDS.band, name: 'In-ear mixer (Behringer P16)', category: 'monitoring', quantity: 1, status: 'in_use', location: 'Alex', created_at: created, updated_at: created },
     { id: id(1803), band_id: IDS.band, name: 'DI boxes', category: 'cables', quantity: 6, status: 'maintenance', location: 'Rehearsal room', created_at: created, updated_at: created },
+    ...([
+      [1804, 'PA tops 12"', 'Other', 2, 'available', 'Case A'],
+      [1805, 'Sub 18"', 'Other', 1, 'available', 'Case B'],
+      [1806, 'XR18 mixer', 'Other', 1, 'available', 'Case C'],
+      [1807, 'Mic stands', 'Stands', 5, 'available', 'Case D'],
+      [1808, 'XLR 10 m', 'Cables', 12, 'available', 'Cable bag'],
+      [1809, 'Power strips', 'Cables', 4, 'available', 'Cable bag'],
+      [1810, 'LED PAR 54×3W', 'Lighting', 4, 'in_use', 'Alex'],
+      [1811, 'Speaker cases', 'Cases', 2, 'available', 'Van'],
+      [1812, 'Mic case', 'Cases', 1, 'available', 'Van'],
+      [1813, 'Cable bag', 'Cases', 1, 'available', 'Van'],
+      [1814, 'Acoustic guitar', 'Instruments', 1, 'available', 'Leo'],
+      [1815, 'Cajón', 'Instruments', 1, 'available', 'Marta'],
+    ] as const).map(([n, name, category, quantity, status, location]) => ({ id: id(n), band_id: IDS.band, name, category, quantity, status, location, created_at: created, updated_at: created })),
+  ];
+  // Gear kits (094): a full PA for clubs and weddings, a small acoustic set.
+  const gear_kits: Row[] = [
+    { id: id(1850), band_id: IDS.band, name: 'Club · full PA', notes: 'Loads in the van in this order: cases, sub, tops.', created_by: IDS.me, created_at: created, updated_at: created },
+    { id: id(1851), band_id: IDS.band, name: 'Acoustic duo', notes: null, created_by: IDS.me, created_at: created, updated_at: created },
+  ];
+  const kitLinks = (kit: number, items: number[]): Row[] =>
+    items.map((n, position) => ({ kit_id: id(kit), inventory_id: id(n), band_id: IDS.band, position, created_at: created }));
+  const gear_kit_items: Row[] = [
+    ...kitLinks(1850, [1804, 1805, 1806, 1802, 1801, 1803, 1807, 1808, 1809, 1810, 1811, 1812, 1813]),
+    ...kitLinks(1851, [1814, 1815, 1801, 1807, 1808, 1809, 1812]),
+  ];
+  const event_gear_kits: Row[] = [
+    { event_id: id(602), kit_id: id(1850), band_id: IDS.band, assigned_by: IDS.me, created_at: created },
+    { event_id: id(605), kit_id: id(1850), band_id: IDS.band, assigned_by: IDS.me, created_at: created },
   ];
   const onboarding_progress: Row[] = [
     { id: id(1900), user_id: IDS.me, path: 'creator', current_step: 6, completed_steps: ['account', 'profile', 'band', 'members', 'songs', 'done'], skipped_steps: [], checklist_dismissed: true, started_at: created, completed_at: created, duration_seconds: 240 },
@@ -306,7 +335,7 @@ export const buildSeed = (): DemoDB => {
     profiles, bands, band_members, songs, song_folders: [], setlists, setlist_songs, events, event_members,
     rehearsal_setlist, rehearsal_tasks, song_proposals, proposal_votes: [], quotes, quote_musicians: [],
     transactions, chats, chat_participants, messages, notifications, rehearsal_polls, rehearsal_poll_options,
-    rehearsal_poll_votes, task_templates, contracts, inventory, onboarding_progress, member_invites: [],
+    rehearsal_poll_votes, task_templates, contracts, inventory, gear_kits, gear_kit_items, event_gear_kits, onboarding_progress, member_invites: [],
     push_tokens: [], avatars: [],
   };
 };

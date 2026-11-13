@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'motion/react';
-import { Package, Loader2, Plus, Minus, Trash2, Music, Mic, Link, Box, Sun, Briefcase, RefreshCw } from '@/app/components/icons';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { AnimatePresence, motion } from 'motion/react';
+import { Package, Loader2, Plus, Minus, Trash2, Music, Mic, Link, Box, Sun, Briefcase, RefreshCw, Info } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { ScreenHeader, IconButton, SearchField, Card, BwSheet } from '@/app/components/bw/Screen';
 import { PillButton, PillField, Selector, FormError } from '@/app/components/bw/Form';
@@ -15,11 +16,24 @@ import {
   type InventoryItem,
 } from '@/lib/services/inventory';
 import { useT } from '@/lib/i18n';
+import { useRailLayout } from '@/lib/deviceRegions';
+import { todayLocal } from '@/lib/dates';
+import { summarizeKit, type EventGearKit, type GearKit, type GearKitItemLink, type KitGig } from '@/lib/gearKits';
+import { createKit, deleteKit, listBandKits, listKitGigs, removeKitFromGig, updateKit, useKitForGig } from '@/lib/services/gearKits';
+import { KitCard, KitTile } from '@/app/components/gear/KitParts';
+import { KitDetail } from '@/app/components/gear/KitDetail';
+import { KitEditorSheet, UseKitSheet, type KitEditorValue } from '@/app/components/gear/KitSheets';
 
 interface InventoryViewProps {
   onBack: () => void;
   bandId: string;
+  /** Band admin: may create, edit and use kits (RLS has the last word). */
+  canEdit?: boolean;
+  /** Opens a gig from a kit's "Next gig" card. */
+  onOpenEvent?: (eventId: string) => void;
 }
+
+type GearTab = 'items' | 'kits';
 
 /** Figma "Gear / Inventory" tabs: All, Instruments, Cables, Microphones, Stands, Lighting — then Cases, Other. */
 const CATEGORIES = ['All', ...INVENTORY_CATEGORIES];
@@ -82,8 +96,28 @@ const formFromItem = (item: InventoryItem): InventoryInput => ({
   purchasePrice: item.purchase_price != null && item.purchase_price !== '' ? String(item.purchase_price) : '',
 });
 
-export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) => {
+export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId, canEdit = true, onOpenEvent }) => {
   const t = useT();
+  const { wide, rail, twoPane } = useRailLayout();
+  // iPad (Figma "iPad · 08 Gear & kits"): kits sit as a strip above the items, no segment.
+  const tablet = wide && !rail;
+  const [tab, setTab] = useState<GearTab>('items');
+
+  // Kits (migration 094)
+  const [kits, setKits] = useState<GearKit[]>([]);
+  const [links, setLinks] = useState<GearKitItemLink[]>([]);
+  const [uses, setUses] = useState<EventGearKit[]>([]);
+  const [gigs, setGigs] = useState<KitGig[] | null>(null);
+  const [kitsError, setKitsError] = useState<string | null>(null);
+  const [kitsLoading, setKitsLoading] = useState(true);
+  const [openKitId, setOpenKitId] = useState<string | null>(null);
+  const [kitEditor, setKitEditor] = useState<GearKit | 'new' | null>(null);
+  const [kitSaving, setKitSaving] = useState(false);
+  const [kitDeleting, setKitDeleting] = useState(false);
+  const [kitFormError, setKitFormError] = useState<string | null>(null);
+  const [usingKitId, setUsingKitId] = useState<string | null>(null);
+  const [useBusyId, setUseBusyId] = useState<string | null>(null);
+  const [useError, setUseError] = useState<string | null>(null);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -100,6 +134,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const isNew = editing === 'new';
+  const showKits = !tablet && tab === 'kits';
   // Display labels only; category ids and status values stay English (stored in the DB).
   const categoryLabel: Record<string, string> = {
     All: t('All'),
@@ -131,6 +166,100 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
+
+  const fetchKits = useCallback(async () => {
+    setKitsLoading(true);
+    setKitsError(null);
+    const [{ data, error }, gigRes] = await Promise.all([listBandKits(bandId), listKitGigs(bandId)]);
+    if (error) setKitsError(error.message);
+    else if (data) {
+      setKits(data.kits);
+      setLinks(data.links);
+      setUses(data.uses);
+    }
+    setGigs(gigRes.data ?? []);
+    setKitsLoading(false);
+  }, [bandId]);
+
+  useEffect(() => {
+    fetchKits();
+  }, [fetchKits]);
+
+  const today = todayLocal();
+  const inventoryById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
+  const kitSummaries = useMemo(
+    () => new Map(kits.map((k) => [k.id, summarizeKit(k.id, links, inventoryById, uses, gigs ?? [], today)])),
+    [kits, links, inventoryById, uses, gigs, today],
+  );
+  const openKit = kits.find((k) => k.id === openKitId) ?? null;
+  const openSummary = openKit ? kitSummaries.get(openKit.id) : undefined;
+  const kitItemIds = (kitId: string) => links.filter((l) => l.kit_id === kitId).sort((a, b) => a.position - b.position).map((l) => l.inventory_id).filter((id) => inventoryById.has(id));
+
+  // iPhone Duo open (Figma "Duo Next / Gear – kits"): kits on the left, the
+  // first kit's detail on the right.
+  useEffect(() => {
+    if (tab === 'kits' && twoPane && !wide && !openKitId && kits.length > 0) setOpenKitId(kits[0].id);
+  }, [tab, twoPane, wide, openKitId, kits]);
+
+  const openKitEditor = (kit: GearKit | 'new') => {
+    setKitFormError(null);
+    setKitEditor(kit);
+  };
+
+  const saveKit = async ({ name, notes, itemIds }: KitEditorValue) => {
+    if (!kitEditor || kitSaving) return;
+    setKitSaving(true);
+    setKitFormError(null);
+    const res =
+      kitEditor === 'new'
+        ? await createKit(bandId, name, notes, itemIds)
+        : await updateKit(kitEditor, name, notes, kitItemIds(kitEditor.id), itemIds);
+    setKitSaving(false);
+    if (res.data) setKits((prev) => [...prev.filter((k) => k.id !== res.data!.id), res.data!].sort((a, b) => a.name.localeCompare(b.name)));
+    if (res.error) {
+      setKitFormError(res.error.message);
+      if (res.data) fetchKits();
+      return;
+    }
+    const kitId = res.data!.id;
+    setLinks((prev) => [...prev.filter((l) => l.kit_id !== kitId), ...itemIds.map((inventory_id, position) => ({ kit_id: kitId, inventory_id, position }))]);
+    setKitEditor(null);
+    setTab('kits');
+    setOpenKitId(kitId);
+  };
+
+  const removeKit = async () => {
+    if (!kitEditor || kitEditor === 'new' || kitDeleting) return;
+    const kitId = kitEditor.id;
+    setKitDeleting(true);
+    setKitFormError(null);
+    const { error } = await deleteKit(kitId);
+    setKitDeleting(false);
+    if (error) {
+      setKitFormError(error.message);
+      return;
+    }
+    setKits((prev) => prev.filter((k) => k.id !== kitId));
+    setLinks((prev) => prev.filter((l) => l.kit_id !== kitId));
+    setUses((prev) => prev.filter((u) => u.kit_id !== kitId));
+    setKitEditor(null);
+    setOpenKitId(null);
+  };
+
+  const toggleKitGig = async (gig: KitGig) => {
+    if (!usingKitId || useBusyId) return;
+    const kitId = usingKitId;
+    const linked = uses.some((u) => u.kit_id === kitId && u.event_id === gig.id);
+    setUseBusyId(gig.id);
+    setUseError(null);
+    const { error } = linked ? await removeKitFromGig(kitId, gig.id) : await useKitForGig(kitId, gig.id);
+    setUseBusyId(null);
+    if (error) {
+      setUseError(error.message);
+      return;
+    }
+    setUses((prev) => (linked ? prev.filter((u) => !(u.kit_id === kitId && u.event_id === gig.id)) : [...prev, { kit_id: kitId, event_id: gig.id }]));
+  };
 
   const openAdd = () => {
     setForm(EMPTY_FORM);
@@ -226,11 +355,113 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
         onBack={onBack}
         backLabel={t('Go back')}
         overline={t('Equipment & assets')}
-        title={t('Gear & inventory')}
-        actions={<IconButton label={t('Add equipment')} variant="filled" icon={<Plus />} onClick={openAdd} />}
-      />
+        title={tablet ? t('Gear & kits') : t('Gear & inventory')}
+        actions={
+          showKits ? (
+            canEdit ? <IconButton label={t('New kit')} variant="filled" icon={<Plus />} onClick={() => openKitEditor('new')} /> : undefined
+          ) : (
+            <IconButton label={t('Add equipment')} variant="filled" icon={<Plus />} onClick={openAdd} />
+          )
+        }
+      >
+        {!tablet && (
+          // Figma "Items 32 | Kits 3" segment.
+          <div role="tablist" aria-label={t('Gear')} className="flex p-1 gap-1 rounded-full bg-card">
+            {(['items', 'kits'] as const).map((id) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={tab === id}
+                onClick={() => {
+                  setTab(id);
+                  if (id === 'items') setOpenKitId(null);
+                }}
+                className={cn(
+                  'flex-1 h-11 px-3 rounded-full bw-label-sm inline-flex items-center justify-center gap-2 transition-colors',
+                  tab === id ? 'bg-foreground text-background' : 'text-foreground',
+                )}
+              >
+                {id === 'items' ? t('Items') : t('Kits')}
+                <span className="opacity-60">{id === 'items' ? items.length : kits.length}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </ScreenHeader>
 
       <div className="flex-1 flex flex-col gap-4 px-4 pt-4 max-w-2xl mx-auto w-full" style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}>
+        {tablet && (kits.length > 0 || canEdit) && !kitsError && (
+          // iPad: the kits as a strip of tiles above the gear list.
+          <ul className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]" aria-label={t('Kits')}>
+            {kits.map((kit) => {
+              const summary = kitSummaries.get(kit.id);
+              return summary ? <KitTile key={kit.id} name={kit.name} summary={summary} selected={openKitId === kit.id} onOpen={() => setOpenKitId(kit.id)} /> : null;
+            })}
+            {canEdit && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => openKitEditor('new')}
+                  className="w-full h-full min-h-[120px] flex flex-col items-center justify-center gap-2 rounded-[24px] border-[1.5px] border-dashed border-border text-muted-foreground hover:text-foreground"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span className="bw-label-xs">{t('New kit')}</span>
+                </button>
+              </li>
+            )}
+          </ul>
+        )}
+
+        {showKits ? (
+          <>
+            {kitsLoading && kits.length === 0 ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : kitsError ? (
+              <Card className="items-center text-center py-10 gap-4" role="alert">
+                <Box className="w-10 h-10 text-muted-foreground" />
+                <div className="flex flex-col gap-1">
+                  <h2 className="bw-h3">{t("Couldn't load your kits")}</h2>
+                  <p className="bw-body-sm text-muted-foreground max-w-xs [overflow-wrap:anywhere]">{kitsError}</p>
+                </div>
+                <PillButton size="md" fullWidth={false} icon={<RefreshCw className="w-4 h-4" />} onClick={fetchKits}>
+                  {t('Try again')}
+                </PillButton>
+              </Card>
+            ) : kits.length === 0 ? (
+              <Card className="items-center text-center py-10 gap-4">
+                <Box className="w-10 h-10 text-muted-foreground" />
+                <div className="flex flex-col gap-1">
+                  <h2 className="bw-h3">{t('No kits yet')}</h2>
+                  <p className="bw-body-sm text-muted-foreground max-w-xs">{t('Bundle the gear you take to a kind of gig, like Club PA or Acoustic duo.')}</p>
+                </div>
+              </Card>
+            ) : (
+              <ul className="flex flex-col gap-3">
+                {kits.map((kit) => {
+                  const summary = kitSummaries.get(kit.id);
+                  return summary ? (
+                    <KitCard key={kit.id} name={kit.name} summary={summary} selected={twoPane && openKitId === kit.id} onOpen={() => setOpenKitId(kit.id)} />
+                  ) : null;
+                })}
+              </ul>
+            )}
+            {!kitsError && (
+              <p className="flex gap-2 bw-body-sm text-muted-foreground px-1">
+                <Info className="w-4 h-4 shrink-0 mt-0.5" />
+                {t('A kit bundles items from your inventory. Use it on a gig and every item is booked for that date.')}
+              </p>
+            )}
+            {canEdit && !kitsError && (
+              <PillButton icon={<Plus className="w-[18px] h-[18px]" />} onClick={() => openKitEditor('new')}>
+                {t('New kit')}
+              </PillButton>
+            )}
+          </>
+        ) : (
+        <>
         <SearchField value={searchQuery} onChange={setSearchQuery} label={t('Search equipment')} placeholder={t('Search equipment, mics, cables…')} />
 
         {/* Category filter (Figma Selector MD, wrapping) */}
@@ -323,7 +554,57 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
             {t('Add equipment')}
           </PillButton>
         )}
+        </>
+        )}
       </div>
+
+      {/* Kit detail: trailing page (Duo open), beside the list (tablet), full screen (phone).
+          At the top of the document: inside this hub's stacking context it would stay
+          under the trailing page that is already open (the profile editor, an event). */}
+      {createPortal(
+      <AnimatePresence>
+        {openKit && openSummary && (
+          <KitDetail
+            key={openKit.id}
+            kit={openKit}
+            summary={openSummary}
+            canEdit={canEdit}
+            onBack={() => setOpenKitId(null)}
+            onEdit={() => openKitEditor(openKit)}
+            onUseForGig={() => {
+              setUseError(null);
+              setUsingKitId(openKit.id);
+            }}
+            onOpenGig={onOpenEvent}
+          />
+        )}
+      </AnimatePresence>,
+        document.body,
+      )}
+
+      <KitEditorSheet
+        open={!!kitEditor}
+        kit={kitEditor && kitEditor !== 'new' ? kitEditor : null}
+        initialItemIds={kitEditor && kitEditor !== 'new' ? kitItemIds(kitEditor.id) : []}
+        inventory={items}
+        saving={kitSaving}
+        deleting={kitDeleting}
+        error={kitFormError}
+        onClose={() => setKitEditor(null)}
+        onSave={saveKit}
+        onDelete={removeKit}
+      />
+
+      <UseKitSheet
+        open={!!usingKitId}
+        kitName={kits.find((k) => k.id === usingKitId)?.name ?? ''}
+        gigs={gigs}
+        linkedIds={new Set(uses.filter((u) => u.kit_id === usingKitId).map((u) => u.event_id))}
+        busyId={useBusyId}
+        error={useError}
+        onClose={() => setUsingKitId(null)}
+        onToggle={toggleKitGig}
+      />
 
       {/* Add / edit item (Figma Sheet, Style=Dark) */}
       <BwSheet
