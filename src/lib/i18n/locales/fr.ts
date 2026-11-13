@@ -3674,6 +3674,10 @@ const dict: Dictionary = {
   "Paste from clipboard": "Coller depuis le presse-papiers",
   "or paste them here": "ou colle-les ici",
   "Only your band sees the lyrics and charts you import. Import only what you have the right to use.": "Seul ton groupe voit les paroles et les accords que tu importes. N’importe que ce que tu as le droit d’utiliser.",
+  "CREATED WITH THE GIG": "CRÉÉE AVEC LE CONCERT",
+  "RIDER ADDED": "FICHE AJOUTÉE",
+  "Suggested from the lineup. Save it and it is added when you create the gig.": "Proposé d'après la formation. Enregistrez-le, il sera ajouté à la création du concert.",
+  "Event created, but the rider & stage were not saved.": "Événement créé, mais la fiche technique et la scène n'ont pas été enregistrées.",
 };
 
 export default dict;

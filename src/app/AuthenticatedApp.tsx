@@ -138,6 +138,7 @@ import { EventRSVPSheet } from "@/app/components/notifications/EventRSVPSheet";
 import { ProposeRehearsalModal } from "@/app/components/rehearsal/ProposeRehearsalModal";
 import { RehearsalPollModal } from "@/app/components/rehearsal/RehearsalPollModal";
 import { RehearsalPollVoteSheet } from "@/app/components/rehearsal/RehearsalPollVoteSheet";
+import { composerStageOf, persistComposerStage } from "@/lib/services/composerStage";
 import { UrgentNotificationPopup } from "@/app/components/notifications/UrgentNotificationPopup";
 import { useRehearsalPolls } from "@/app/hooks/useData";
 import type { RehearsalPoll } from "@/lib/services/rehearsalPolls";
@@ -1642,6 +1643,7 @@ export default function AuthenticatedApp() {
       role: m.role || m.instrument || "Member",
       fee: String(m.default_fee || 0),
       initials: personInitials(m.profile, "M"),
+      instrument: m.instrument || null,
     }));
   }, [realBand?.members]);
 
@@ -3093,6 +3095,12 @@ export default function AuthenticatedApp() {
           closeWizard();
           const memberResult = await persistMembers(saved.id, false);
           const tasksSaved = await persistTasks(saved.id);
+          // Rider & stage set in the iPad composer (stage, rider document).
+          const composerStage = composerStageOf(data);
+          const stageError = composerStage
+            ? await persistComposerStage(saved.id, realBand.id, composerStage, { title: title || 'Gig', date, venue: location })
+            : null;
+          if (stageError) console.error('Rider & stage persist error:', stageError);
           // Optimistic update
           if (optimisticMembers.length > 0) {
             setEventMembersMap(prev => ({ ...prev, [saved.id]: optimisticMembers }));
@@ -3116,6 +3124,8 @@ export default function AuthenticatedApp() {
             setSaveToast({ message: t('Event created, but the setlist was not saved.'), type: 'error' });
           } else if (!tasksSaved) {
             setSaveToast({ message: t('Event created, but the tasks were not saved.'), type: 'error' });
+          } else if (stageError) {
+            setSaveToast({ message: t('Event created, but the rider & stage were not saved.'), type: 'error' });
           } else {
             setSaveToast({ message: t('Event created!'), type: 'success' });
           }
