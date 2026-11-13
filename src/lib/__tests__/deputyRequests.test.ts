@@ -31,7 +31,7 @@ describe('deputy requests', () => {
   it('puts the reply link in the request', () => {
     const text = deputyRequestText(gig);
     expect(text).toContain('Hi Leo');
-    expect(text).toContain('https://bandwith.pages.dev/deputy.html?t=' + 'a'.repeat(64));
+    expect(text).toContain('https://bandwith-beryl.vercel.app/deputy.html?t=' + 'a'.repeat(64));
     expect(deputyRequestText({ ...gig, link: null })).toContain('Let us know as soon as you can');
   });
 

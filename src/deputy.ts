@@ -8,11 +8,12 @@
 
 import { googleCalendarUrl } from './lib/deputyCalendar';
 import { addressWithoutCity } from './lib/eventAddress';
+import { APP_URL as WEB_APP_URL } from './lib/appUrl';
 import { DEPUTY_STRINGS, fill, pickDeputyLang, type DeputyStrings } from './deputy/strings';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
-const APP_URL = 'https://bandwith.pages.dev/';
+const APP_URL = `${WEB_APP_URL}/`;
 
 type Answer = 'available' | 'maybe' | 'unavailable';
 type ChangeKey = 'date' | 'load_in' | 'soundcheck' | 'start' | 'end' | 'venue' | 'city' | 'address';

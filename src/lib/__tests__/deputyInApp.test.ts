@@ -33,6 +33,8 @@ describe('deputy link → app', () => {
   });
 
   it('reads the token from the app link (web and native deep link)', () => {
+    expect(deputyTokenFromUrl(`https://bandwith-beryl.vercel.app/?deputy=${TOKEN}`)).toBe(TOKEN);
+    // Links sent before the move to Vercel still work.
     expect(deputyTokenFromUrl(`https://bandwith.pages.dev/?deputy=${TOKEN}`)).toBe(TOKEN);
     expect(deputyTokenFromUrl(`bandwith://open?deputy=${TOKEN.toUpperCase()}`)).toBe(TOKEN);
     expect(deputyTokenFromUrl('https://bandwith.pages.dev/?deputy=abc')).toBeNull();
