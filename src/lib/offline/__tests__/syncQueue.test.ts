@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   createEvent: vi.fn(),
@@ -182,12 +182,12 @@ describe('fix 3: retry cap', () => {
     await q.enqueueMutation('update_event', { eventId: 'real-1', updates: { title: 'x' } });
 
     for (let i = 1; i < q.MAX_RETRIES; i++) {
-      const res = await q.processSyncQueue();
+      const res = await q.processSyncQueue(undefined, { force: true });
       expect(res).toMatchObject({ synced: 0, failed: 1, dropped: 0 });
       expect(stored()[0].retryCount).toBe(i);
     }
 
-    const last = await q.processSyncQueue();
+    const last = await q.processSyncQueue(undefined, { force: true });
     expect(last.failed).toBe(1);
     expect(last.dropped).toBe(1);
     expect(last.droppedMutations[0]).toMatchObject({ reason: 'max_retries' });
@@ -350,5 +350,63 @@ describe('fix 5: user scoping', () => {
     expect(await q.getPendingMutations()).toEqual([]);
     expect(localStorage.getItem('bw_offline_mutation_queue')).toBeNull();
     warn.mockRestore();
+  });
+});
+
+describe('fix 6: retry backoff', () => {
+  const rejectRls = () =>
+    mocks.updateEvent.mockResolvedValue({ data: null, error: pgError('42501', 'new row violates row-level security policy') });
+
+  afterEach(() => vi.useRealTimers());
+
+  it('does not retry a rejected mutation on back-to-back automatic passes', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    rejectRls();
+    await q.enqueueMutation('update_event', { eventId: 'real-1', updates: { title: 'x' } });
+
+    for (let i = 0; i < q.MAX_RETRIES + 3; i++) await q.processSyncQueue();
+
+    expect(mocks.updateEvent).toHaveBeenCalledTimes(1);
+    expect(stored()).toHaveLength(1);
+    expect(stored()[0].retryCount).toBe(1);
+  });
+
+  it('retries once the delay has passed, with a growing delay', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    rejectRls();
+    await q.enqueueMutation('update_event', { eventId: 'real-1', updates: { title: 'x' } });
+
+    await q.processSyncQueue();
+    vi.setSystemTime(Date.now() + q.retryDelayMs(1) - 1);
+    await q.processSyncQueue();
+    expect(mocks.updateEvent).toHaveBeenCalledTimes(1);
+
+    vi.setSystemTime(Date.now() + 1);
+    await q.processSyncQueue();
+    expect(mocks.updateEvent).toHaveBeenCalledTimes(2);
+    expect(q.retryDelayMs(2)).toBeGreaterThan(q.retryDelayMs(1));
+  });
+
+  it('a waiting mutation does not block the others', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    rejectRls();
+    await q.enqueueMutation('update_event', { eventId: 'real-1', updates: { title: 'x' } });
+    await q.processSyncQueue();
+    await q.enqueueMutation('delete_event', { eventId: 'real-2' });
+
+    const res = await q.processSyncQueue();
+
+    expect(mocks.deleteEvent).toHaveBeenCalledTimes(1);
+    expect(res).toMatchObject({ synced: 1, failed: 0, dropped: 0 });
+    expect(stored()).toHaveLength(1);
+  });
+
+  it('a forced pass retries straight away', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    rejectRls();
+    await q.enqueueMutation('update_event', { eventId: 'real-1', updates: { title: 'x' } });
+    await q.processSyncQueue();
+    await q.processSyncQueue(undefined, { force: true });
+    expect(mocks.updateEvent).toHaveBeenCalledTimes(2);
   });
 });

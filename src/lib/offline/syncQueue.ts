@@ -13,6 +13,10 @@ import { t } from '@/lib/i18n';
 export const OFFLINE_QUEUE_PREFIX = 'bw:offline_queue:';
 /** A non-network failure is retried this many times before the mutation is dropped. */
 export const MAX_RETRIES = 5;
+/** Wait before retrying a mutation the server rejected (1st, 2nd, 3rd, 4th+ failure). */
+const RETRY_DELAYS_MS = [30_000, 2 * 60_000, 10 * 60_000, 30 * 60_000];
+export const retryDelayMs = (retryCount: number): number =>
+  RETRY_DELAYS_MS[Math.min(Math.max(retryCount, 1), RETRY_DELAYS_MS.length) - 1];
 /** How long queue operations wait for the auth layer to report the current user. */
 const USER_RESOLVE_TIMEOUT_MS = 2000;
 
@@ -24,6 +28,8 @@ export interface OfflineMutation {
   retryCount: number;
   /** Message of the last non-network failure, if any. */
   lastError?: string;
+  /** Epoch ms before which automatic passes leave this mutation alone (set after a rejection). */
+  nextRetryAt?: number;
 }
 
 export interface DroppedMutation {
@@ -410,11 +416,17 @@ const foldUpdateIntoCreate = (create: OfflineMutation, update: OfflineMutation):
 
 let isProcessing = false;
 
+export interface SyncOptions {
+  /** Retry rejected mutations now, ignoring their backoff (the user asked to sync). */
+  force?: boolean;
+}
+
 /**
  * Replays pending mutations silently to Supabase.
  */
 export const processSyncQueue = async (
-  onSuccessToast?: (msg: string) => void
+  onSuccessToast?: (msg: string) => void,
+  options: SyncOptions = {}
 ): Promise<SyncResult> => {
   if (isProcessing) return emptyResult();
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -470,8 +482,10 @@ export const processSyncQueue = async (
       work.push(m);
     }
 
-    // Pass 2: replay in order.
+    // Pass 2: replay in order. Mutations still in their retry backoff wait for a later pass.
+    const now = Date.now();
     for (const mutation of work) {
+      if (!options.force && mutation.nextRetryAt && mutation.nextRetryAt > now) continue;
       let outcome: ExecOutcome;
       try {
         outcome = await executeMutation(mutation);
@@ -510,6 +524,7 @@ export const processSyncQueue = async (
         retryCount: (mutation.retryCount || 0) + 1,
         lastError: message,
       };
+      retried.nextRetryAt = Date.now() + retryDelayMs(retried.retryCount);
       if (retried.retryCount >= MAX_RETRIES) {
         console.warn(`[SyncQueue] Dropping mutation ${mutation.id} after ${retried.retryCount} failed attempts:`, message);
         processed.add(mutation.id);
