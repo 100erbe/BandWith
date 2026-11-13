@@ -4,6 +4,7 @@ import { initialsOf, type ResolvedMember } from './parts';
 import { personName } from '@/lib/personName';
 import { getEventMemberMoney, markEventPaid } from '@/lib/services/eventMemberMoney';
 import { PAYOUTS_CHANGED } from '@/lib/payoutsDue';
+import { setMemberPaid } from '@/lib/services/eventStage';
 import { useT } from '@/lib/i18n';
 
 interface BandLike {
@@ -157,5 +158,29 @@ export function useEventMembers({
     window.dispatchEvent(new Event(PAYOUTS_CHANGED));
   }, [eventId, paidSupported, markingPaid]);
 
-  return { members, loading, error, paidSupported, markAllPaid, markingPaid, markError, reload };
+  /** Admins: mark one musician paid or not paid (bw_set_member_paid, 093). */
+  const [settingPaid, setSettingPaid] = useState<string | null>(null);
+  const setPaid = useCallback(
+    async (userId: string, paid: boolean) => {
+      if (!eventId || !paidSupported || settingPaid) return;
+      setSettingPaid(userId);
+      setMarkError(null);
+      // Shown at once; put back if the server says no.
+      const before = members?.find((m) => m.userId === userId)?.paidAt ?? null;
+      const optimistic = paid ? before || new Date().toISOString() : null;
+      setMembers((prev) => prev?.map((m) => (m.userId === userId ? { ...m, paidAt: optimistic } : m)) ?? prev);
+      const { data, error: upErr } = await setMemberPaid(eventId, userId, paid);
+      setSettingPaid(null);
+      if (upErr) {
+        setMembers((prev) => prev?.map((m) => (m.userId === userId ? { ...m, paidAt: before } : m)) ?? prev);
+        setMarkError(upErr.message);
+        return;
+      }
+      if (data) setMembers((prev) => prev?.map((m) => (m.userId === data.user_id ? { ...m, paidAt: data.paid_at } : m)) ?? prev);
+      window.dispatchEvent(new Event(PAYOUTS_CHANGED));
+    },
+    [eventId, paidSupported, settingPaid, members],
+  );
+
+  return { members, loading, error, paidSupported, markAllPaid, markingPaid, markError, reload, setPaid, settingPaid };
 }

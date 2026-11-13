@@ -142,6 +142,18 @@ export async function createContract(input: NewContractInput): Promise<Result<Co
 }
 
 /** Updates one row and returns it; 0 rows (RLS) is an error. */
+/**
+ * Admins (contracts are admin-only): the gig's contract for Show readiness.
+ * Null when there is none; signed when any contract linked to it is.
+ */
+export async function eventContractState(eventId: string): Promise<Result<{ signed: boolean } | null>> {
+  const { data, error } = await supabase.from('contracts').select('type, status').eq('event_id', eventId);
+  if (error) return { data: null, error: asError(error, t('Could not load documents.')) };
+  const docs = ((data || []) as { type: string; status: string }[]).filter((c) => c.type !== 'rider');
+  if (docs.length === 0) return { data: null, error: null };
+  return { data: { signed: docs.some((c) => c.status === 'signed') }, error: null };
+}
+
 export async function updateContract(id: string, patch: Partial<Contract>): Promise<Result<Contract>> {
   const { data, error } = await supabase.from('contracts').update(patch).eq('id', id).select();
   if (error) return { data: null, error: asError(error, t('Could not update the document.')) };

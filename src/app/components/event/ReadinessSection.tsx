@@ -26,6 +26,20 @@ export function readinessItemLabel(item: ReadinessItem, t: T): string {
       return t('To-dos · {done} of {total} done', { done: c?.done ?? 0, total: c?.total ?? 0 });
     case 'deposit':
       return item.done ? t('Deposit paid') : t('Deposit not paid yet');
+    case 'lyrics':
+      return item.done
+        ? t('Lyrics & charts · every song covered')
+        : t('Lyrics & charts · {done} of {total} songs', { done: c?.done ?? 0, total: c?.total ?? 0 });
+    case 'rider':
+      return item.state === 'seen'
+        ? t('Rider v{version} · seen by the venue', { version: item.version ?? 1 })
+        : item.state === 'sent'
+          ? t('Rider v{version} sent · not seen yet', { version: item.version ?? 1 })
+          : item.state === 'draft'
+            ? t('Rider v{version} · not sent yet', { version: item.version ?? 1 })
+            : t('No rider yet');
+    case 'contract':
+      return item.state === 'signed' ? t('Contract signed') : item.state === 'unsigned' ? t('Contract not signed yet') : t('No contract yet');
   }
 }
 

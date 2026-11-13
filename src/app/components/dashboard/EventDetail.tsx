@@ -61,7 +61,8 @@ import { FeePayoutsContent } from '@/app/components/event/FeePayoutsContent';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { useEventTasks } from '@/lib/services/eventTasks';
 import { isGigOver, isLiveDay } from '@/lib/gigTiming';
-import { computeReadiness } from '@/lib/readiness';
+import { computeReadiness, hasLyricsOrChart } from '@/lib/readiness';
+import { eventContractState } from '@/lib/services/contracts';
 import { ReadinessSection } from '@/app/components/event/ReadinessSection';
 import { GigKitSection } from '@/app/components/event/GigKitSection';
 import {
@@ -78,7 +79,7 @@ import {
 import { asSongChart, type SongChart } from '@/lib/ireal';
 import { useEventStage } from '@/app/components/event/rider/useEventStage';
 import { RiderStageCard } from '@/app/components/event/rider/RiderParts';
-import { RiderStageScreen } from '@/app/components/event/rider/RiderStage';
+import { RiderStageContent, RiderStageScreen } from '@/app/components/event/rider/RiderStage';
 import { useRailLayout } from '@/lib/deviceRegions';
 
 interface EventDetailProps {
@@ -302,6 +303,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const [isStageOpen, setIsStageOpen] = useState(false);
   /** The Rider & stage screen is open (phone, iPhone Duo). */
   const [riderOpen, setRiderOpen] = useState(false);
+  /** iPad gig workspace tab (Figma "iPad · 03"). */
+  const [gigTab, setGigTab] = useState<'overview' | 'setlist' | 'rider' | 'money'>('overview');
   const { rail, wide } = useRailLayout();
 
   const isPending = userResponse === 'pending';
@@ -336,6 +339,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     markingPaid,
     markError,
     reload: reloadMembers,
+    setPaid,
+    settingPaid,
   } = useEventMembers({
     eventId: event.eventId,
     bandId: event.band_id,
@@ -492,6 +497,21 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     disabled: !hasRiderStage,
   });
   const showRiderStage = hasRiderStage && riderStage.available;
+  // Show readiness: the gig's contract (contracts are admin-only).
+  const [gigContract, setGigContract] = useState<{ signed: boolean } | null | undefined>(undefined);
+  useEffect(() => {
+    if (!isAdmin || !hasRiderStage || !event.eventId) {
+      setGigContract(undefined);
+      return;
+    }
+    let cancelled = false;
+    eventContractState(event.eventId).then((r) => {
+      if (!cancelled) setGigContract(r.error ? undefined : r.data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, hasRiderStage, event.eventId]);
   const lineupFirstNames = useMemo(
     () => [...new Set(activeMembers.map((m) => m.name.split(/\s+/)[0]).filter(Boolean))],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -843,16 +863,30 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const depositPct = bandFeeNum > 0 && depositAmount > 0 ? Math.round((depositAmount / bandFeeNum) * 100) : null;
   const allPaid = activeMembers.length > 0 && activeMembers.every((m) => !!m.paidAt);
 
+  // iPad gig workspace (Figma "iPad · 03"): Overview · Setlist · Rider & stage
+  // · Money (admins). Tablets only; phones and the Duo keep one scroll.
+  const gigTabs = wide && !rail && hasRiderStage && !isQuote;
+  const tab = gigTabs ? (gigTab === 'money' && !isAdmin ? 'overview' : gigTab) : null;
+  const inOverview = !tab || tab === 'overview';
+  const spanAll = tab === 'overview' ? '[column-span:all]' : '';
+
   // Show readiness (upcoming band gigs). Shown once the lineup and setlist
   // are loaded, so it never flashes "no setlist" on the way in.
   const showReadiness = eventType === 'gig' && !isPast && !isPersonalGig;
-  const readinessLoaded = !setlistLoading && !(membersLoading && !dbMembers) && !membersError;
+  const readinessLoaded = !setlistLoading && !(membersLoading && !dbMembers) && !membersError && !riderStage.loading;
   // A plain call: this runs after the early return above, where no hook may be.
   const readiness = computeReadiness({
     timeSet: gigTimes.start != null,
     venueSet: venueName !== 'TBD',
     lineup: resolvedMembers,
     setlistSongs: setlistSongs.length,
+    lyricsCovered: setlistSongs.filter((s) => hasLyricsOrChart(s.lyrics, s.chart)).length,
+    rider: showRiderStage
+      ? riderStage.rider
+        ? { version: riderStage.rider.version, sent: !!riderStage.rider.sentAt, seen: !!riderStage.rider.viewedAt }
+        : null
+      : undefined,
+    contract: isAdmin && hasRiderStage ? gigContract : undefined,
     tasks: eventTasks,
     // The deposit is the band's money: admins only.
     deposit: isAdmin ? { amount: depositAmount, paid: !!event.depositPaid } : undefined,
@@ -1017,11 +1051,11 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           {/* ═══ HERO (event colour, full-bleed) ═══ */}
           <header
             ref={heroRef}
-            className="bw-ed-hero w-full"
+            className="bw-ed-hero @container w-full"
             style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
           >
             <div
-              className="max-w-[640px] mx-auto w-full px-4 pb-14 flex flex-col gap-3"
+              className={cn('mx-auto w-full px-4 pb-14 flex flex-col gap-3', tab ? 'max-w-[1120px] @min-[700px]:px-8' : 'max-w-[640px]')}
               style={{ paddingTop: 'calc(var(--wizard-header-pt, max(var(--safe-top), 44px)) + 4px)' }}
             >
               {/* Top bar: back + stage mode / options */}
@@ -1169,14 +1203,19 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           </header>
 
           {/* ═══ CONTENT SHEET ═══ */}
-          <div className="bw-ed-sheet relative -mt-8 rounded-t-[32px] bg-background">
+          <div className="bw-ed-sheet @container relative -mt-8 rounded-t-[32px] bg-background">
             <div
-              className="max-w-[640px] mx-auto w-full px-4 pt-6 flex flex-col gap-6"
+              className={cn(
+                'mx-auto w-full px-4 pt-6 flex flex-col gap-6',
+                tab ? 'max-w-[1120px] @min-[700px]:px-8' : 'max-w-[640px]',
+                // Overview on a wide window: two columns, like the design's board.
+                tab === 'overview' && '@min-[880px]:block @min-[880px]:columns-2 @min-[880px]:gap-6 @min-[880px]:[&>*]:break-inside-avoid @min-[880px]:[&>*]:mb-6',
+              )}
               style={{ paddingBottom: 'calc(var(--safe-bottom) + 48px)' }}
             >
               {/* ─── RSVP (pending gig invite) ─── */}
               {showRsvpCard && (
-                <section className="dark bg-sheet text-sheet-foreground rounded-[16px] p-5 flex flex-col gap-4">
+                <section className={cn('dark bg-sheet text-sheet-foreground rounded-[16px] p-5 flex flex-col gap-4', spanAll)}>
                   <span className="bw-label-sm">{isQuote ? t('Availability check') : t('Your RSVP')}</span>
                   <h2 className="bw-h1">{isQuote ? t('Are you free?') : t('Are you in?')}</h2>
                   <div className="grid grid-cols-2 gap-2">
@@ -1203,7 +1242,112 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               )}
 
               {/* ─── TIME TILES ─── */}
-              {timeTiles && <div className="bw-ed-times-sheet">{timeTiles}</div>}
+              {timeTiles && <div className={cn('bw-ed-times-sheet', spanAll)}>{timeTiles}</div>}
+
+              {/* ─── iPad: gig workspace tabs ─── */}
+              {tab && (
+                <div role="tablist" aria-label={t('Gig workspace')} className={cn('self-start flex flex-wrap gap-1 p-1 rounded-full bg-card', spanAll, tab === 'overview' && 'w-fit')}>
+                  {(
+                    [
+                      ['overview', t('OVERVIEW')],
+                      ['setlist', t('SETLIST')],
+                      ['rider', t('RIDER & STAGE')],
+                      ...(isAdmin ? [['money', t('MONEY')]] : []),
+                    ] as [typeof gigTab, string][]
+                  ).map(([k, label]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      role="tab"
+                      aria-selected={tab === k}
+                      onClick={() => setGigTab(k)}
+                      className={cn(
+                        'h-10 px-5 rounded-full bw-label-sm cursor-pointer transition-colors',
+                        tab === k ? 'bg-black text-white dark:bg-white dark:text-black' : 'text-foreground hover:bg-foreground/[0.06]',
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {tab === 'setlist' && (
+                <section className="flex flex-col gap-6" aria-label={t('Setlist')}>
+                  <SectionTitle
+                    title={t('SETLIST · {count}', { count: numSongs })}
+                    actionLabel={isAdmin && onEdit ? t('EDIT') : undefined}
+                    onAction={isAdmin && onEdit ? onEdit : undefined}
+                  />
+                  {setlistLoading ? (
+                    <p className="bw-body-sm text-muted-foreground">{t('Loading…')}</p>
+                  ) : numSongs > 0 ? (
+                    <ol className="bg-card rounded-[16px] px-4 py-1 flex flex-col">
+                      {setlistSongs.map((song, i) => (
+                        <li key={song.id || i} className={cn('flex items-center gap-4 py-3', i > 0 && 'border-t border-border')}>
+                          <span className="bw-label-sm text-muted-foreground w-6 shrink-0 tabular-nums">{String(i + 1).padStart(2, '0')}</span>
+                          <span className="flex-1 min-w-0 flex flex-col">
+                            <span className="bw-body-md truncate">{song.title}</span>
+                            {song.artist && <span className="bw-label-xs text-muted-foreground truncate mt-1">{song.artist}</span>}
+                          </span>
+                          {song.key && <span className="bw-label-sm text-muted-foreground shrink-0">{song.key}</span>}
+                          {hasLyricsOrChart(song.lyrics, song.chart) && (
+                            <span className="bw-label-xs text-muted-foreground shrink-0">{t('LYRICS')}</span>
+                          )}
+                          {song.duration && <span className="bw-label-sm tabular-nums shrink-0 w-12 text-right">{song.duration}</span>}
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p className="bw-body-md text-muted-foreground">{t('No setlist yet')}</p>
+                  )}
+                </section>
+              )}
+
+              {tab === 'rider' && (
+                <RiderStageContent
+                  state={riderStage}
+                  isAdmin={isAdmin}
+                  eventTitle={event.title}
+                  dateLabel={hasHeroDate ? formatEventDateShort(event.date) : undefined}
+                  people={lineupFirstNames}
+                  canEditPlot={!isPast}
+                  layout="board"
+                />
+              )}
+
+              {tab === 'money' && (
+                <section className="dark bg-sheet text-sheet-foreground rounded-[24px] p-6 flex flex-col gap-3 max-w-[720px] w-full" aria-label={t('Fee & payouts')}>
+                  <span className="bw-label-xs text-muted-foreground">{t('Admin only')}</span>
+                  <FeePayoutsContent
+                    isAdmin
+                    feeLabel={t('Band fee')}
+                    feeValue={feeShownValue}
+                    members={activeMembers}
+                    bandFund={bandFund}
+                    bandFundPct={bandFundPct}
+                    paidSupported={paidSupported}
+                    formatMoney={formatCurrencyExact}
+                    onEditFee={onEdit}
+                    onSetPaid={setPaid}
+                    settingPaid={settingPaid}
+                    error={markError || membersError}
+                  />
+                  {paidSupported && activeMembers.length > 0 && !allPaid && (
+                    <PillButton
+                      variant="primary"
+                      onClick={() => {
+                        haptic.confirm();
+                        markAllPaid();
+                      }}
+                      loading={markingPaid}
+                      icon={<Check className="w-[18px] h-[18px]" />}
+                    >
+                      {t('MARK ALL AS PAID')}
+                    </PillButton>
+                  )}
+                </section>
+              )}
 
               {/* ─── PERSONAL GIG: conflict + privacy ─── */}
               {isPersonalGig && bandConflict && (
@@ -1212,18 +1356,20 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               {isPersonalGig && <PersonalPrivacyCard />}
 
               {/* ─── SHOW READINESS (upcoming band gig) ─── */}
-              {showReadiness && readinessLoaded && (
+              {inOverview && showReadiness && readinessLoaded && (
                 <ReadinessSection
                   readiness={readiness}
                   onOpen={{
                     lineup: memberCount > 0 ? () => setActiveSheet('lineup') : undefined,
                     setlist: setlistSongs.length > 0 ? () => setActiveSheet('setlist') : undefined,
+                    lyrics: setlistSongs.length > 0 ? () => setActiveSheet('setlist') : undefined,
+                    rider: showRiderStage ? () => setRiderOpen(true) : undefined,
                   }}
                 />
               )}
 
               {/* ─── GEAR KIT (094; self-contained) ─── */}
-              {!isPersonalGig && !isRehearsal && !isQuote && !!event.band_id && !!event.eventId && (
+              {(tab ? tab === 'rider' : true) && !isPersonalGig && !isRehearsal && !isQuote && !!event.band_id && !!event.eventId && (
                 <GigKitSection eventId={event.eventId} bandId={event.band_id} canEdit={isAdmin && !isPast} />
               )}
 
@@ -1298,7 +1444,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               )}
 
               {/* ─── FEE (band gig / draft) ─── */}
-              {!isRehearsal && !isPersonalGig && !isQuote && (
+              {inOverview && !isRehearsal && !isPersonalGig && !isQuote && (
                 <section className="dark bg-sheet text-sheet-foreground rounded-[16px] p-5 flex flex-col gap-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-col gap-1 min-w-0">
@@ -1351,7 +1497,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               )}
 
               {/* ─── LINEUP / ATTENDANCE ─── */}
-              {!isPersonalGig && !isQuote && (
+              {inOverview && !isPersonalGig && !isQuote && (
                 <section className="flex flex-col gap-6">
                   <SectionTitle
                     title={`${isRehearsal ? t('ATTENDANCE') : t('LINEUP')}${
@@ -1404,8 +1550,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 </section>
               )}
 
-              {/* ─── RIDER & STAGE (band gig) ─── */}
-              {showRiderStage && (
+              {/* ─── RIDER & STAGE (band gig; its own tab on tablets) ─── */}
+              {!tab && showRiderStage && (
                 <section className="flex flex-col gap-6">
                   <SectionTitle title={t('RIDER & STAGE')} actionLabel={t('OPEN')} onAction={() => setRiderOpen(true)} />
                   <RiderStageCard
@@ -1443,8 +1589,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 </section>
               )}
 
-              {/* ─── SETLIST (gig / draft) ─── */}
-              {!isPersonalGig && !isQuote && !isRehearsal && (
+              {/* ─── SETLIST (gig / draft; its own tab on tablets) ─── */}
+              {!tab && !isPersonalGig && !isQuote && !isRehearsal && (
                 <section className="flex flex-col gap-6">
                   <SectionTitle
                     title={t('SETLIST')}
@@ -1552,7 +1698,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               )}
 
               {/* ─── TASKS (band events with saved to-dos) ─── */}
-              {!isPersonalGig && eventTasks.length > 0 && (
+              {inOverview && !isPersonalGig && eventTasks.length > 0 && (
                 <section className="flex flex-col gap-6">
                   <div className="flex flex-col gap-1">
                     <SectionTitle title={t('TASKS')} />
@@ -1595,7 +1741,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               )}
 
               {/* ─── CLIENT & NOTES (gig / draft / personal) ─── */}
-              {showNotesSection && (
+              {inOverview && showNotesSection && (
                 <section className="flex flex-col gap-6">
                   <SectionTitle title={notesTitle} actionLabel={t('DETAILS')} onAction={() => setActiveSheet('notes')} />
                   <button
@@ -1622,7 +1768,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               )}
 
               {/* ─── ACTIONS ─── */}
-              <section className="flex flex-col items-center gap-4">
+              <section className={cn('flex flex-col items-center gap-4', spanAll)}>
                 {isPast ? (
                   <>
                     <div
@@ -1879,6 +2025,9 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                       }
                     : undefined
                 }
+                onSetPaid={isAdmin ? setPaid : undefined}
+                settingPaid={settingPaid}
+                ownPaidAt={!isAdmin && currentUserId ? dbMembers?.find((m) => m.userId === currentUserId)?.paidAt : undefined}
                 error={markError || membersError}
               />
             )}
