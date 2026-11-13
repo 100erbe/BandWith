@@ -11,7 +11,9 @@ export type NotificationTarget =
   | { screen: 'finance' }
   | { screen: 'invites' }
   | { screen: 'bandMembers' }
-  | { screen: 'repertoire' };
+  | { screen: 'repertoire' }
+  // The account's requests as a deputy for other bands (migration 086).
+  | { screen: 'deputyGigs'; requestId?: string };
 
 const str = (v: unknown): string | undefined =>
   typeof v === 'string' && v.trim() ? v : typeof v === 'number' ? String(v) : undefined;
@@ -26,6 +28,11 @@ export function notificationTarget(
   const chatId = str(d.chatId) || str(d.chat_id);
   const eventId = str(d.eventId) || str(d.event_id);
 
+  // Pushes to a deputy: not their band, so they open their deputy gigs.
+  if (kind === 'deputy_request' || kind === 'deputy_gig_changed') {
+    const requestId = str(d.deputy_request_id) || str(d.deputyRequestId);
+    return requestId ? { screen: 'deputyGigs', requestId } : { screen: 'deputyGigs' };
+  }
   if (kind === 'chat_message' || kind === 'chat_mention') {
     return chatId ? { screen: 'chat', chatId } : null;
   }
@@ -34,6 +41,7 @@ export function notificationTarget(
     kind.startsWith('gig_') ||
     kind === 'member_dropped_out' ||
     kind === 'deputy_reply' ||
+    kind === 'deputy_joined' ||
     kind === 'setlist_updated' ||
     kind === 'rehearsal_reminder' ||
     kind === 'rehearsal_poll_finalized'
@@ -69,6 +77,8 @@ export function notificationTargetLabel(target: NotificationTarget): string {
       return t('Open members');
     case 'repertoire':
       return t('Open repertoire');
+    case 'deputyGigs':
+      return t('Open deputy gigs');
   }
 }
 

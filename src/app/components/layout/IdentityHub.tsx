@@ -66,6 +66,9 @@ export interface IdentityHubProps {
   onOpenBandSettings?: () => void;
   onOpenSettings?: (section?: string) => void;
   onBandUpdated?: () => void;
+  /** Bands that have this account as a deputy (086): shows "Deputy gigs". */
+  deputyBandCount?: number;
+  onOpenDeputyGigs?: () => void;
 }
 
 /* Figma "Who you are": cards sit on bg/card in light and bg/sheet in dark. */
@@ -95,6 +98,8 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   onOpenPricing,
   onOpenBandSettings,
   onOpenSettings,
+  deputyBandCount = 0,
+  onOpenDeputyGigs,
   onBandUpdated,
 }) => {
   const { signOut, user, profile } = useAuth();
@@ -520,6 +525,17 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                 </button>
               )}
             </section>
+
+            {/* Deputy for other bands (086): their requests, answered in the app */}
+            {deputyBandCount > 0 && onOpenDeputyGigs && (
+              <ListRow
+                className={cn('rounded-[24px] px-5', HUB_CARD)}
+                icon={<Users aria-hidden className="w-5 h-5" />}
+                title={t('Deputy gigs')}
+                subtitle={deputyBandCount === 1 ? t('Requests from 1 band') : t('Requests from {count} bands', { count: deputyBandCount })}
+                onClick={onOpenDeputyGigs}
+              />
+            )}
 
             {/* ═══ 2. CURRENT BAND & LINEUP ═══ */}
             <section

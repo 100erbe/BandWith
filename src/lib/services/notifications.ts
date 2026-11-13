@@ -20,6 +20,11 @@ export type NotificationType =
   | 'member_dropped_out'
   // A deputy answered from the reply link (migration 084)
   | 'deputy_reply'
+  // A deputy opened the app from their link (086): to the band's admins
+  | 'deputy_joined'
+  // To a deputy with the app (086): a band asks them, or their gig changed
+  | 'deputy_request'
+  | 'deputy_gig_changed'
   // Quotes
   | 'quote_received'
   | 'quote_accepted'
@@ -99,7 +104,7 @@ export type NotificationCategory = 'invites' | 'events' | 'finance' | 'members' 
 // Get category from notification type
 export const getNotificationCategory = (type: NotificationType): NotificationCategory => {
   if (type.startsWith('invite_')) return 'invites';
-  if (type.startsWith('event_') || type.startsWith('rehearsal_') || type === 'deputy_reply') return 'events';
+  if (type.startsWith('event_') || type.startsWith('rehearsal_') || type.startsWith('deputy_')) return 'events';
   if (type.startsWith('quote_') || type.startsWith('payment_') || type === 'fee_changed') return 'finance';
   if (type.startsWith('member_')) return 'members';
   if (type.startsWith('song_') || type.startsWith('setlist_') || type.startsWith('task_')) return 'content';

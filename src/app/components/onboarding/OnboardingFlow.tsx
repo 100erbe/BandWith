@@ -28,6 +28,8 @@ import { t } from '@/lib/i18n';
 interface OnboardingFlowProps {
   onComplete: () => void;
   inviteToken?: string;
+  /** Opened from a deputy reply link: the band that asked (shown on the welcome screen). */
+  deputyBand?: string | null;
 }
 
 type JoinerSubStep = 'email-lookup' | 'no-invites' | 'invite-found' | 'select-invite';
@@ -36,6 +38,7 @@ type ScreenMode = 'welcome' | 'sign-in' | 'forgot-password' | 'flow';
 export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   onComplete,
   inviteToken,
+  deputyBand,
 }) => {
   const {
     path,
@@ -433,6 +436,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           inviteCodeLoading={inviteCodeLoading}
           inviteCodeError={inviteCodeError}
           closeInviteInputRef={closeInviteInputRef}
+          deputyBand={deputyBand}
         />
         <AnimatePresence>
           {exitToast && (
@@ -739,6 +743,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         inviteCodeLoading={inviteCodeLoading}
         inviteCodeError={inviteCodeError}
         closeInviteInputRef={closeInviteInputRef}
+        deputyBand={deputyBand}
       />
       <AnimatePresence>
         {exitToast && (

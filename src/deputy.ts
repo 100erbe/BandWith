@@ -277,8 +277,9 @@ function appCard(v: View) {
     'section',
     { class: 'card ink' },
     h('h2', {}, fill(S.appTitle, vars(v))),
-    h('p', {}, S.appBody),
-    h('div', { class: 'stack' }, h('a', { class: 'btn lime', href: APP_URL, target: '_blank', rel: 'noopener' }, S.appCta, arrow())),
+    h('p', {}, fill(S.appBody, vars(v))),
+    // The app links this account to the band's deputy entry (bw_deputy_claim, 086).
+    h('div', { class: 'stack' }, h('a', { class: 'btn lime', href: `${APP_URL}?deputy=${token}`, target: '_blank', rel: 'noopener' }, S.appCta, arrow())),
   );
 }
 
