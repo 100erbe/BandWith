@@ -346,6 +346,8 @@ export default function AuthenticatedApp() {
   const [localEvents, setLocalEvents] = useState<EventItem[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
   const [selectedEventMembership, setSelectedEventMembership] = useState<EventMember | null>(null);
+  // A quote from the wizard is being saved (no second save meanwhile).
+  const quoteSaveRunningRef = useRef(false);
   // RSVP answers arrive late: they only apply if their event is still open.
   const eventKeyOf = (e: EventData) => e.eventId || e.id?.toString() || null;
   const { isCurrent: isOpenEvent, markCurrent: markOpenEvent } = useCurrentKey(
@@ -3644,10 +3646,15 @@ export default function AuthenticatedApp() {
             }}
           />
           <AnimatePresence key="nested-presence-2">{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} initialData={createEventInitialDate ? { eventDate: createEventInitialDate } : undefined} onClose={() => { setIsCreateEventOpen(false); setCreateEventInitialDate(null); setCreateEventInitialTasks(undefined); }} onCreate={async (q, opts) => {
-            setIsCreateEventOpen(false);
-            setCreateEventInitialDate(null);
+            // The wizard stays open until the quote is saved: on an error the
+            // user keeps everything typed and can try again.
+            if (quoteSaveRunningRef.current) return;
+            const closeQuoteWizard = () => {
+              setIsCreateEventOpen(false);
+              setCreateEventInitialDate(null);
+              setCreateEventInitialTasks(undefined);
+            };
             const templateTasks = createEventInitialTasks;
-            setCreateEventInitialTasks(undefined);
             // The share sheet / PDF opens only after the quote is saved, so it
             // carries the number assigned by the database.
             const wantsShare = !!opts?.share;
@@ -3655,9 +3662,15 @@ export default function AuthenticatedApp() {
               setSaveToast({ message: t('Select a band before creating a quote.'), type: 'error' });
               return;
             }
+            quoteSaveRunningRef.current = true;
+            try {
             if (realBand?.id) {
+              // One id for this save: a create that only timed out on the
+              // client and its queued retry are the same row, never two.
+              const clientEventId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : undefined;
               const createdEventId = q.eventId || (await (async () => {
                 const evD: Record<string, any> = {
+                  ...(clientEventId ? { id: clientEventId } : {}),
                   band_id: realBand.id,
                   title: q.eventName || q.clientName || 'Quote Event',
                   event_type: q.eventType || 'other',
@@ -3702,7 +3715,7 @@ export default function AuthenticatedApp() {
                     _isPendingSync: true,
                     _tempId: tempId,
                   };
-                  await enqueueMutation('create_event', { eventData: offlineEv, memberIds: memberRows }, tempId);
+                  await enqueueMutation('create_event', { eventData: offlineEv, memberIds: memberRows, ...(clientEventId ? { clientId: clientEventId } : {}) }, tempId);
                   setSaveToast({ message: t('Saved quote event offline • Will sync when connected'), type: 'info' });
                   return tempId;
                 };
@@ -3742,8 +3755,10 @@ export default function AuthenticatedApp() {
                   if (createdEventId && !q.eventId) {
                     await supabase.from('events').delete().eq('id', createdEventId);
                   }
+                  // The wizard stays open with the quote as typed.
                   setSaveToast({ message: t('Quote not saved: {error}', { error: quoteErr?.message || t('unknown error') }), type: 'error' });
                 } else {
+                  closeQuoteWizard();
                   setSaveToast({ message: t('Quote {number} saved', { number: savedQuote.quote_number }), type: 'success' });
                   // Started from a to-do list: the quote's event gets its tasks.
                   if (templateTasks?.length && createdEventId) {
@@ -3785,11 +3800,19 @@ export default function AuthenticatedApp() {
                 }
               } else if (isOfflineTempId) {
                 // Quotes need a database number, so they can't be queued offline yet.
+                closeQuoteWizard();
                 setSaveToast({ message: t('Offline: the event was saved, but the quote itself needs a connection. Create it again when you are back online.'), type: 'error' });
+              } else {
+                // The connection dropped right after the event was saved: as
+                // before, the wizard closes and the event stays.
+                closeQuoteWizard();
               }
               setMembersRefreshKey(prev => prev + 1);
               refetchEvents().catch(() => {});
               if (refetchDashboard) refetchDashboard().catch(() => {});
+            }
+            } finally {
+              quoteSaveRunningRef.current = false;
             }
           }} />}</AnimatePresence>
 
