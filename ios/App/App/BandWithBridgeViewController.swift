@@ -146,9 +146,15 @@ final class BandWithBridgeViewController: CAPBridgeViewController, WKScriptMessa
             // Union the occlusion regions per edge, then keep the largest:
             // that is the system column. A centred camera cutout matches no
             // edge (the safe area already covers it).
+            // An iPad has no side system column: in landscape iPadOS reports
+            // its status strip as a narrow full-height band on the left,
+            // which must not turn into the Duo rail. Only a top/bottom strip
+            // counts there.
+            let isPad = traitCollection.userInterfaceIdiom == .pad
             var byEdge: [Edge: CGRect] = [:]
             for region in view.reservedRegions(kind: .occlusion) where region.isActive {
                 guard let edge = Self.edge(of: region.frame, in: bounds) else { continue }
+                if isPad && (edge == .left || edge == .right) { continue }
                 byEdge[edge] = byEdge[edge].map { $0.union(region.frame) } ?? region.frame
             }
             if let best = byEdge.max(by: { $0.value.width * $0.value.height < $1.value.width * $1.value.height }) {
