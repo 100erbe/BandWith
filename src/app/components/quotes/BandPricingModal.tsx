@@ -306,19 +306,26 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
     }
   }, [isOpen, initialTab]);
 
-  // Keep the selected section in view: the strip scrolls sideways on narrow
-  // screens, and a deep link (e.g. Band settings → Branding) opens on the last one.
+  // The section the sheet opens on comes first (Band settings opens on
+  // Branding & payment), then the others in their usual order. The order is
+  // set when the sheet opens and stays put while you switch sections.
+  const tabOrder = useMemo<TabType[]>(
+    () => [initialTab, ...TAB_ORDER.filter((id) => id !== initialTab)],
+    [initialTab],
+  );
+
+  // Keep the selected section in view: the strip scrolls sideways on narrow screens.
   const tabStripRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!isOpen) return;
     const strip = tabStripRef.current;
-    const idx = TAB_ORDER.indexOf(activeTab);
+    const idx = tabOrder.indexOf(activeTab);
     const el = strip?.children[idx] as HTMLElement | undefined;
     if (!strip || !el) return;
     const left = el.getBoundingClientRect().left - strip.getBoundingClientRect().left + strip.scrollLeft;
     const target = idx === 0 ? 0 : Math.max(0, left - (strip.clientWidth - el.offsetWidth) / 2);
     strip.scrollTo({ left: target, behavior: 'auto' });
-  }, [isOpen, activeTab]);
+  }, [isOpen, activeTab, tabOrder]);
 
   useEffect(() => {
     if (isOpen && effectiveBandId) {
@@ -753,7 +760,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
         {/* Tabs */}
         <div className="px-4 pt-4">
           <div ref={tabStripRef} role="group" aria-label={t('Pricing sections')} className="max-w-2xl mx-auto w-full flex gap-2 overflow-x-auto scrollbar-hide">
-            {tabs.map((tab) => (
+            {tabOrder.map((id) => tabs.find((x) => x.id === id)!).map((tab) => (
               <Selector key={tab.id} size="md" selected={activeTab === tab.id} onClick={() => setActiveTab(tab.id)} count={tab.count}>
                 {tab.label}
               </Selector>
