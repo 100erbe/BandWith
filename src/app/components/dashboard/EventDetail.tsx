@@ -63,6 +63,7 @@ import { useEventTasks } from '@/lib/services/eventTasks';
 import { isGigOver, isLiveDay } from '@/lib/gigTiming';
 import { computeReadiness } from '@/lib/readiness';
 import { ReadinessSection } from '@/app/components/event/ReadinessSection';
+import { GigKitSection } from '@/app/components/event/GigKitSection';
 import {
   dayBefore,
   daysUntil,
@@ -1188,6 +1189,11 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     setlist: setlistSongs.length > 0 ? () => setActiveSheet('setlist') : undefined,
                   }}
                 />
+              )}
+
+              {/* ─── GEAR KIT (094; self-contained) ─── */}
+              {!isPersonalGig && !isRehearsal && !isQuote && !!event.band_id && !!event.eventId && (
+                <GigKitSection eventId={event.eventId} bandId={event.band_id} canEdit={isAdmin && !isPast} />
               )}
 
               {/* ─── QUOTE (Figma 23:862) ─── */}
