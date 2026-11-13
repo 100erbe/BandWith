@@ -19,6 +19,10 @@ import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { openMaps } from '@/app/components/ui/MapsLink';
 import { BandDeskMode, type DeskActionItem, type DeskGig } from '@/app/components/duo';
 import { NextGigReadiness } from '@/app/components/dashboard/NextGigReadiness';
+import { PayoutsDueCard } from '@/app/components/dashboard/PayoutsDueCard';
+import { usePayoutsDue } from '@/app/hooks/usePayoutsDue';
+import { personName, personInitials } from '@/lib/personName';
+import { money } from '@/lib/currency';
 
 interface DashboardData {
   eventStats: {
@@ -84,6 +88,8 @@ interface HomeViewProps {
   onCreateTask?: () => void;
   /** Reopens an unfinished "New gig" saved as a draft. */
   onOpenEventDraft?: (draft: EventDraft) => void;
+  /** "Review payouts": opens the gig on its Fee & payouts sheet. */
+  onReviewPayouts?: (eventId: string) => void;
 }
 
 const formatEventTime = (timeStr?: string): string => {
@@ -221,6 +227,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onCreateQuote,
   onCreateTask,
   onOpenEventDraft,
+  onReviewPayouts,
 }) => {
   useCurrency(); // re-render money labels when the band currency changes
   const t = useT();
@@ -415,6 +422,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
     });
   }, [rehearsalPolls, isAdmin, currentUserId, isSolo]);
 
+  // Payouts due after a show: admins see every musician, members only their own fee.
+  const payoutsDueRaw = usePayoutsDue(isSolo ? null : contextBand?.id, currentUserId, !!isAdmin);
+  const payoutGigs = useMemo(() => payoutsDueRaw ?? [], [payoutsDueRaw]);
+  const payoutPeople = useMemo(() => {
+    const map: Record<string, { name: string; initials: string }> = {};
+    for (const m of contextBand?.members || []) {
+      if (!m.user_id) continue;
+      map[m.user_id] = { name: personName(m.profile), initials: personInitials(m.profile) };
+    }
+    return map;
+  }, [contextBand?.members]);
+
   // ── iPhone Duo · Laptop pose: Band desk (renders nothing in other postures) ──
   const deskNextGig = useMemo<DeskGig | null>(() => {
     const now = new Date();
@@ -471,6 +490,19 @@ export const HomeView: React.FC<HomeViewProps> = ({
         onSelect: onOpenPoll ? () => onOpenPoll(p) : undefined,
       });
     }
+    // Payouts due after a show (admin: the musicians; member: their own fee).
+    for (const g of payoutGigs) {
+      items.push({
+        id: `payout-${g.eventId}`,
+        title: g.title || t('Untitled Event'),
+        detail: isAdmin
+          ? t('Payouts due · {count} · {amount}', { count: g.payouts.length, amount: money(g.total, 'auto') })
+          : t("You're owed {amount}", { amount: money(g.total, 'auto') }),
+        kind: 'gig',
+        urgent: true,
+        onSelect: onReviewPayouts ? () => onReviewPayouts(g.eventId) : onSelectEvent ? () => onSelectEvent(g.eventId) : undefined,
+      });
+    }
     // Gigs waiting on your RSVP.
     if (currentUserId && eventMembersMap) {
       for (const e of dashboardData?.upcomingEvents || []) {
@@ -493,7 +525,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       }
     }
     return items;
-  }, [activePolls, onOpenPoll, currentUserId, eventMembersMap, dashboardData?.upcomingEvents, onSelectEvent, t]);
+  }, [activePolls, onOpenPoll, payoutGigs, isAdmin, onReviewPayouts, currentUserId, eventMembersMap, dashboardData?.upcomingEvents, onSelectEvent, t]);
 
   // Each create button shows only when the host passes its handler (role rules live there).
   const bandDesk = (
@@ -679,15 +711,29 @@ export const HomeView: React.FC<HomeViewProps> = ({
         )}
       </motion.div>
 
-      {/* ═══ ACTION CENTER (rehearsal polls & proposals) ═══ */}
-      {activePolls.length > 0 && (
+      {/* ═══ ACTION CENTER (payouts due, rehearsal polls & proposals) ═══ */}
+      {(activePolls.length > 0 || payoutGigs.length > 0) && (
         <motion.div variants={dashboardItemVariants} className="flex flex-col gap-8">
           <h2 className="bw-display-lg max-w-[300px]">{t('Action center')}</h2>
-          {isAdmin && (
+          {payoutGigs.length > 0 && (
+            <div className="flex flex-col gap-3">
+              <span className="bw-label-md text-muted-foreground">
+                {isAdmin ? t('Payouts ({count})', { count: payoutGigs.length }) : t('Your payouts ({count})', { count: payoutGigs.length })}
+              </span>
+              <PayoutsDueCard
+                gigs={payoutGigs}
+                isAdmin={!!isAdmin}
+                people={payoutPeople}
+                onReview={onReviewPayouts ?? onSelectEvent}
+              />
+            </div>
+          )}
+          {isAdmin && activePolls.length > 0 && (
             <span className="bw-label-md text-muted-foreground">
               {t('Rehearsal scheduling ({count})', { count: activePolls.length })}
             </span>
           )}
+          {activePolls.length > 0 && (
           <div className="flex flex-col gap-3">
             {activePolls.map((poll: RehearsalPoll) => (
               <RehearsalPollCard
@@ -701,6 +747,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               />
             ))}
           </div>
+          )}
         </motion.div>
       )}
 

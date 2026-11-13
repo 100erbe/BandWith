@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { initialsOf, type ResolvedMember } from './parts';
 import { personName } from '@/lib/personName';
 import { getEventMemberMoney, markEventPaid } from '@/lib/services/eventMemberMoney';
+import { PAYOUTS_CHANGED } from '@/lib/payoutsDue';
 import { useT } from '@/lib/i18n';
 
 interface BandLike {
@@ -145,6 +146,8 @@ export function useEventMembers({
     }
     const stamped = new Map(data.map((r) => [r.user_id, r.paid_at]));
     setMembers((prev) => prev?.map((m) => (m.userId && stamped.has(m.userId) ? { ...m, paidAt: stamped.get(m.userId) } : m)) ?? prev);
+    // Home's "Payouts due" reloads.
+    window.dispatchEvent(new Event(PAYOUTS_CHANGED));
   }, [eventId, paidSupported, markingPaid]);
 
   return { members, loading, error, paidSupported, markAllPaid, markingPaid, markError };

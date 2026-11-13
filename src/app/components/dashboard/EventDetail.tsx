@@ -101,6 +101,8 @@ interface EventDetailProps {
   memberFee?: number;
   /** Opened with "Go live": start in Stage mode. */
   startInStage?: boolean;
+  /** Opened from Home's "Review payouts": start on the Fee & payouts sheet. */
+  startOnFee?: boolean;
   isAdmin?: boolean;
   currentUserId?: string;
 }
@@ -266,6 +268,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   onEventUpdated,
   memberFee,
   startInStage,
+  startOnFee,
   isAdmin = true,
   currentUserId,
 }) => {
@@ -437,6 +440,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   // "Go live" from Home opens the gig straight in Stage mode (once, on open).
   useEffect(() => {
     if (startInStage && canStage) setIsStageOpen(true);
+    // "Review payouts" from Home opens the gig on its Fee & payouts sheet.
+    if (startOnFee && eventType === 'gig' && !isPersonalGig) setActiveSheet('fee');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // iPhone Duo: Stage mode joins the rail's Side Actions; on gig day it is

@@ -138,6 +138,8 @@ export const buildSeed = (): DemoDB => {
         status: pendingForMe ? 'pending' : declined ? 'declined' : 'confirmed',
         fee: e.event_type === 'gig' ? m.fee : null, role: m.instrument, notes: null,
         responded_at: pendingForMe ? null : created, created_at: created,
+        // Lake Como is settled; Summer Fest still shows "Payouts due" on Home.
+        paid_at: e.id === id(607) ? created : null,
       });
     }
   }

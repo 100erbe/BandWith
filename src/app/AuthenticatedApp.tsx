@@ -1003,6 +1003,14 @@ export default function AuthenticatedApp() {
     window.setTimeout(() => setStageOnOpen((cur) => (cur === eventDbId ? null : cur)), 5000);
   }, [navigateToEvent]);
 
+  // "Review payouts" (Home's payouts due): open the gig on its Fee & payouts sheet.
+  const [feeOnOpen, setFeeOnOpen] = useState<string | null>(null);
+  const handleReviewPayouts = useCallback((eventDbId: string) => {
+    setFeeOnOpen(eventDbId);
+    void navigateToEvent(eventDbId);
+    window.setTimeout(() => setFeeOnOpen((cur) => (cur === eventDbId ? null : cur)), 5000);
+  }, [navigateToEvent]);
+
   // ═══ Several bands: act in the band an item belongs to ═══
   // Viewing works from any band; changing something of another band asks to
   // switch to it first, so an edit never lands in the wrong band.
@@ -2423,7 +2431,8 @@ export default function AuthenticatedApp() {
   // The gig opened in Stage mode: later visits open it normally.
   useEffect(() => {
     if (stageOnOpen && selectedEvent?.eventId === stageOnOpen) setStageOnOpen(null);
-  }, [stageOnOpen, selectedEvent]);
+    if (feeOnOpen && selectedEvent?.eventId === feeOnOpen) setFeeOnOpen(null);
+  }, [stageOnOpen, feeOnOpen, selectedEvent]);
 
   // Figma "Duo · Home" (open): the next gig / commitment is already shown on
   // the trailing page, next to the dashboard. Once per visit to Home (see
@@ -3325,7 +3334,7 @@ export default function AuthenticatedApp() {
 
         <AnimatePresence mode="wait">
           {(activeTab === "Home" || activeTab === "More") && (
-            <HomeView key={`dashboard-${isSolo ? 'solo' : selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={computedDashboardData} dashboardLoading={dashboardLoading && !masterEventsList?.length} isAdmin={isAdmin} onViewChange={(tab) => setActiveTab(tab as TabName)} onSelectEvent={navigateToEvent} onGoLive={handleGoLive} onFilterEvents={(filter) => {
+            <HomeView key={`dashboard-${isSolo ? 'solo' : selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={computedDashboardData} dashboardLoading={dashboardLoading && !masterEventsList?.length} isAdmin={isAdmin} onViewChange={(tab) => setActiveTab(tab as TabName)} onSelectEvent={navigateToEvent} onGoLive={handleGoLive} onReviewPayouts={handleReviewPayouts} onFilterEvents={(filter) => {
               setEventFilter(filter);
               setActiveTab("Events");
             }} onQuickAction={(action) => {
@@ -4048,6 +4057,7 @@ export default function AuthenticatedApp() {
             key={`event-detail-${selectedEvent.eventId ?? selectedEvent.id}`}
             event={selectedEvent}
             startInStage={!!stageOnOpen && stageOnOpen === selectedEvent.eventId}
+            startOnFee={!!feeOnOpen && feeOnOpen === selectedEvent.eventId}
             currentUserId={user?.id}
             onClose={() => { setSelectedEvent(null); setSelectedEventMembership(null); }}
             onOpenBandSettings={isAdmin ? () => { setPricingModalInitialTab('branding'); setPricingReturnTo(null); setShowPricingModal(true); } : undefined}
