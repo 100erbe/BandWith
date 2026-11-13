@@ -127,7 +127,7 @@ function readFields() {
   if (box) draft.checked = box.checked;
 }
 
-function useView(next: QuoteLinkView | null) {
+function applyView(next: QuoteLinkView | null) {
   if (!next) return;
   view = next;
   stale = !!next.stale;
@@ -146,7 +146,7 @@ async function act(run: () => Promise<QuoteLinkView | null>, focus?: string) {
   failure = null;
   render();
   try {
-    useView(await run());
+    applyView(await run());
     if (focus === 'sent') draft.message = '';
   } catch (e) {
     failure = e instanceof RpcError && e.code === '54000' ? S.tooMany : S.error;
@@ -382,7 +382,7 @@ function poll() {
       const next = await api.view();
       if (next && JSON.stringify(next.messages) !== JSON.stringify(view.messages)) {
         readFields();
-        useView({ ...next, stale });
+        applyView({ ...next, stale });
         render();
       }
     } catch {
@@ -400,7 +400,7 @@ async function load() {
   }
   app.replaceChildren(simpleCard('BandWith', S.loading, '', false));
   try {
-    useView(await (preview ? api.view() : api.seen()));
+    applyView(await (preview ? api.view() : api.seen()));
   } catch {
     view = null;
   }
