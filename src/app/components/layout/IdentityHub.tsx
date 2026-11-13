@@ -38,6 +38,7 @@ import { updateBand } from '@/lib/services/bands';
 import { uploadBandBrandingAsset, getBandPricing, saveBandPricing } from '@/lib/services/pricing';
 import { personName, personInitials, hasRealName } from '@/lib/personName';
 import { useT } from '@/lib/i18n';
+import { assetStatusParts, EMPTY_ASSET_STATUS, type AssetId, type AssetStatusCounts, type StatusPart } from '@/lib/assetStatus';
 
 interface NotificationGroup {
   type: string;
@@ -56,7 +57,7 @@ export interface IdentityHubProps {
   onNotificationClick?: (ids: number[], actionType: string) => void;
   onMarkAsRead?: (id: number) => void;
   onMarkGroupAsRead?: (ids: number[]) => void;
-  entityCounts?: { templates: number; documents: number; inventory: number; repertoire: number };
+  entityCounts?: { templates: number; documents: number; inventory: number; repertoire: number; status?: AssetStatusCounts };
   onEntityDetailClick?: (label: string) => void;
   onEditProfile?: () => void;
   onEditBand?: () => void;
@@ -348,6 +349,29 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
       icon: CheckSquare,
     },
   ];
+  const statusParts = assetStatusParts(entityCounts?.status ?? EMPTY_ASSET_STATUS, {
+    repertoire: entityCounts?.repertoire ?? 0,
+    inventory: entityCounts?.inventory ?? 0,
+    documents: entityCounts?.documents ?? 0,
+    templates: entityCounts?.templates ?? 0,
+  });
+  const partText = (p: StatusPart): string => {
+    const n = p.count ?? 0;
+    switch (p.key) {
+      case 'ready': return t('{count} ready', { count: n });
+      case 'allReady': return t('All ready');
+      case 'learning': return t('{count} learning', { count: n });
+      case 'repair': return t('{count} in repair', { count: n });
+      case 'missing': return t('{count} missing', { count: n });
+      case 'toSign': return t('{count} to sign', { count: n });
+      case 'drafts': return n === 1 ? t('1 draft') : t('{count} drafts', { count: n });
+      case 'overdue': return t('{count} overdue', { count: n });
+      case 'due': return t('{count} due this week', { count: n });
+      case 'allGood': return t('All in order');
+      case 'nothingToSign': return t('Nothing to sign');
+      case 'nothingDue': return t('Nothing due this week');
+    }
+  };
   const assetShortcuts = isAdmin
     ? allAssetShortcuts
     : allAssetShortcuts.filter((item) => item.id !== 'DOCUMENTS');
@@ -854,7 +878,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                     onClick={() => {
                       onEntityDetailClick?.(item.id);
                     }}
-                    aria-label={`${item.label}: ${item.count} ${item.unit}`}
+                    aria-label={[`${item.label}: ${item.count} ${item.unit}`, ...(statusParts[item.id as AssetId] ?? []).map(partText)].join(', ')}
                     className={cn(
                       'p-4 rounded-[24px] flex flex-col gap-3 text-left min-w-0 active:scale-[0.98] transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       HUB_CARD,
@@ -870,6 +894,14 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                       <DotText text={item.count} size={24} />
                       <span className="bw-body-lg leading-none truncate">{item.unit}</span>
                     </span>
+                    {(statusParts[item.id as AssetId] ?? []).length > 0 && (
+                      <span aria-hidden className="flex items-center gap-1.5 min-w-0 w-full bw-body-sm text-muted-foreground">
+                        {statusParts[item.id as AssetId].some((p) => p.attention) && (
+                          <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
+                        )}
+                        <span className="truncate">{statusParts[item.id as AssetId].map(partText).join(' · ')}</span>
+                      </span>
+                    )}
                   </button>
                 );
               })}

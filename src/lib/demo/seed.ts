@@ -150,7 +150,7 @@ export const buildSeed = (): DemoDB => {
   }));
   const rehearsal_tasks: Row[] = [
     { id: id(820), event_id: id(601), title: 'Learn horn lines for "I Wish"', description: null, task_type: 'practice', assigned_to: IDS.lena, status: 'pending', is_completed: false, created_by: IDS.me, created_at: created, updated_at: created },
-    { id: id(821), event_id: id(601), title: 'Bring the new in-ear mixer', description: null, task_type: 'gear', assigned_to: IDS.me, status: 'pending', is_completed: false, created_by: IDS.me, created_at: created, updated_at: created },
+    { id: id(821), event_id: id(601), title: 'Bring the new in-ear mixer', description: null, task_type: 'gear', assigned_to: IDS.me, status: 'pending', is_completed: false, due_date: day(1), created_by: IDS.me, created_at: created, updated_at: created },
   ];
   const song_proposals: Row[] = [
     { id: id(840), band_id: IDS.band, event_id: null, title: 'Feel It Still', artist: 'Portugal. The Man', proposed_by: IDS.jonah, reason: 'Great for the cocktail hour', status: 'pending', votes_up: 3, votes_down: 0, votes_yes: 3, votes_no: 0, created_at: ago(60 * 30), updated_at: ago(60 * 30) },
@@ -239,12 +239,13 @@ export const buildSeed = (): DemoDB => {
   ];
   const contracts: Row[] = [
     { id: id(1700), band_id: IDS.band, event_id: id(602), title: 'Wedding performance agreement', type: 'performance', status: 'signed', event_name: 'Giulia & Marco — Wedding', event_date: day(5), client_name: 'Giulia Bianchi', client_email: 'giulia@example.com', signed_at: ago(60 * 24 * 34), created_by: IDS.me, created_at: created, updated_at: created },
+    { id: id(1701), band_id: IDS.band, event_id: null, title: 'Year-end gala agreement', type: 'performance', status: 'sent', event_name: 'Year-end gala', event_date: day(52), client_name: 'Northwind Conferences', client_email: 'ops@northwind.example', signed_at: null, created_by: IDS.me, created_at: created, updated_at: created },
   ];
   const inventory: Row[] = [
     { id: id(1800), band_id: IDS.band, name: 'Nord Stage 4', category: 'keys', quantity: 1, status: 'available', location: 'Lena', created_at: created, updated_at: created },
     { id: id(1801), band_id: IDS.band, name: 'Shure SM58', category: 'microphones', quantity: 4, status: 'available', location: 'Rehearsal room', created_at: created, updated_at: created },
     { id: id(1802), band_id: IDS.band, name: 'In-ear mixer (Behringer P16)', category: 'monitoring', quantity: 1, status: 'in_use', location: 'Alex', created_at: created, updated_at: created },
-    { id: id(1803), band_id: IDS.band, name: 'DI boxes', category: 'cables', quantity: 6, status: 'available', location: 'Rehearsal room', created_at: created, updated_at: created },
+    { id: id(1803), band_id: IDS.band, name: 'DI boxes', category: 'cables', quantity: 6, status: 'maintenance', location: 'Rehearsal room', created_at: created, updated_at: created },
   ];
   const onboarding_progress: Row[] = [
     { id: id(1900), user_id: IDS.me, path: 'creator', current_step: 6, completed_steps: ['account', 'profile', 'band', 'members', 'songs', 'done'], skipped_steps: [], checklist_dismissed: true, started_at: created, completed_at: created, duration_seconds: 240 },
