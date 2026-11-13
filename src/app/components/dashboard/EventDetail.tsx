@@ -45,6 +45,7 @@ import type { RsvpStatus } from '@/app/components/notifications/EventRSVPSheet';
 import { AskDeputySheet } from '@/app/components/band/AskDeputySheet';
 import { KeyValueRow, LINK_CLASS, MemberRow, SectionTitle, type ResolvedMember } from '@/app/components/event/parts';
 import { useEventMembers } from '@/app/components/event/useEventMembers';
+import { useEventLiveRefresh } from '@/app/components/event/useEventLiveRefresh';
 import { useLinkedQuote, QuoteSummaryCard, QuoteLineItems, QuoteClientSection } from '@/app/components/event/QuoteSections';
 import { RsvpChoiceCard, type RsvpAnswer } from '@/app/components/event/RsvpChoiceCard';
 import {
@@ -318,6 +319,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     markAllPaid,
     markingPaid,
     markError,
+    reload: reloadMembers,
   } = useEventMembers({
     eventId: event.eventId,
     bandId: event.band_id,
@@ -335,10 +337,21 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   }, [isAdmin, isPersonalGig, eventType, userResponse, onClose]);
 
   // Event to-dos (from the create form or a task template).
-  const { tasks: eventTasks, toggle: toggleEventTask, error: eventTasksError } = useEventTasks(
+  const { tasks: eventTasks, toggle: toggleEventTask, error: eventTasksError, reload: reloadTasks } = useEventTasks(
     isPersonalGig ? null : event.eventId,
   );
   const tasksDone = eventTasks.filter((task) => task.is_completed).length;
+
+  // Lineup, to-dos and setlist reload as soon as someone changes them.
+  const [setlistReloadKey, setSetlistReloadKey] = useState(0);
+  useEventLiveRefresh({
+    eventId: event.eventId,
+    setlistId: event.setlistId,
+    disabled: isPersonalGig,
+    onMembers: reloadMembers,
+    onTasks: reloadTasks,
+    onSetlist: () => setSetlistReloadKey((k) => k + 1),
+  });
 
   // Fetch setlist songs
   useEffect(() => {
@@ -347,7 +360,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
       return;
     }
     let cancelled = false;
-    setSetlistLoading(true);
+    // A live reload keeps the songs on screen while it fetches.
+    if (setlistReloadKey === 0) setSetlistLoading(true);
     const fetchSetlist = async () => {
       try {
         const { data } = await supabase
@@ -356,6 +370,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           // column makes PostgREST fail the whole query.
           .select('*, song:songs(title, artist, duration_seconds, key)')
           .eq('setlist_id', event.setlistId)
+          .order('set_number', { ascending: true })
           .order('position', { ascending: true });
         if (cancelled) return;
         // An empty or failed query clears the list instead of keeping the
@@ -383,7 +398,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [event.setlistId, isPersonalGig, t]);
+  }, [event.setlistId, isPersonalGig, t, setlistReloadKey]);
 
   // Times of this gig on its day; `time` is a 19:00 default when none was set.
   const gigTimes = useMemo(
