@@ -5,6 +5,7 @@ import { IconButton } from '@/app/components/bw/Screen';
 import { closeLyrics, parseInline, parseLyrics, useLyricsDoc } from '@/lib/lyrics';
 import { togglePlay, usePlayer } from '@/lib/audioPlayer';
 import { useSystemBack } from '@/lib/backStack';
+import { useT } from '@/lib/i18n';
 
 const SIZES = [18, 21, 24, 28, 33, 40];
 const SIZE_KEY = 'bw-lyrics-size';
@@ -17,6 +18,7 @@ const SIZE_KEY = 'bw-lyrics-size';
 export const LyricsViewer: React.FC = () => {
   const doc = useLyricsDoc();
   const player = usePlayer();
+  const tr = useT();
   const [size, setSize] = React.useState(() => {
     try {
       const v = Number(localStorage.getItem(SIZE_KEY));
@@ -50,7 +52,7 @@ export const LyricsViewer: React.FC = () => {
           key="lyrics"
           role="dialog"
           aria-modal="true"
-          aria-label={`Lyrics · ${doc.title}`}
+          aria-label={tr('Lyrics · {title}', { title: doc.title })}
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 24 }}
@@ -62,21 +64,21 @@ export const LyricsViewer: React.FC = () => {
             style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}
           >
             <span className="flex-1 min-w-0 flex flex-col">
-              <span className="bw-label-sm text-muted-foreground truncate">Lyrics{doc.artist ? ` · ${doc.artist}` : ''}</span>
+              <span className="bw-label-sm text-muted-foreground truncate">{doc.artist ? tr('Lyrics · {artist}', { artist: doc.artist }) : tr('Lyrics')}</span>
               <span className="bw-h2 truncate">{doc.title}</span>
             </span>
             {isThisTrack && (
               <IconButton
-                label={player.status === 'playing' ? 'Pause' : 'Play'}
+                label={player.status === 'playing' ? tr('Pause') : tr('Play')}
                 variant="filled"
                 size="sm"
                 icon={player.status === 'playing' ? <Pause /> : <Play />}
                 onClick={togglePlay}
               />
             )}
-            <IconButton label="Smaller text" size="sm" icon={<Minus />} onClick={() => step(-1)} disabled={size === SIZES[0]} />
-            <IconButton label="Bigger text" size="sm" icon={<Plus />} onClick={() => step(1)} disabled={size === SIZES[SIZES.length - 1]} />
-            <IconButton label="Close lyrics" size="sm" icon={<X />} onClick={closeLyrics} />
+            <IconButton label={tr('Smaller text')} size="sm" icon={<Minus />} onClick={() => step(-1)} disabled={size === SIZES[0]} />
+            <IconButton label={tr('Bigger text')} size="sm" icon={<Plus />} onClick={() => step(1)} disabled={size === SIZES[SIZES.length - 1]} />
+            <IconButton label={tr('Close lyrics')} size="sm" icon={<X />} onClick={closeLyrics} />
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-16">
             <div
@@ -84,7 +86,7 @@ export const LyricsViewer: React.FC = () => {
               style={{ fontSize: size, lineHeight: 1.45 }}
             >
               {sections.length === 0 ? (
-                <p className="bw-body-lg text-muted-foreground">No lyrics for this song yet.</p>
+                <p className="bw-body-lg text-muted-foreground">{tr('No lyrics for this song yet.')}</p>
               ) : (
                 sections.map((s, i) => (
                   <section key={i} className="flex flex-col gap-1">

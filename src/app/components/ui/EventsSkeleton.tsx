@@ -1,9 +1,11 @@
 import React from 'react';
 import { Skeleton } from './skeleton';
+import { useT } from '@/lib/i18n';
 
 export const EventsSkeleton: React.FC = () => {
+  const tr = useT();
   return (
-    <div className="flex flex-col gap-6 relative z-10 animate-fade-in" aria-busy="true" aria-label="Loading events">
+    <div className="flex flex-col gap-6 relative z-10 animate-fade-in" aria-busy="true" aria-label={tr('Loading events')}>
       {/* Search & Filter Bar Skeleton */}
       <div className="flex flex-col gap-3">
         <Skeleton className="h-10 w-full rounded-full bg-foreground/10" />

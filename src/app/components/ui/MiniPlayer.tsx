@@ -5,6 +5,7 @@ import { openLyrics } from '@/lib/lyrics';
 import { IconButton } from '@/app/components/bw/Screen';
 import { openSongResource } from '@/lib/services/songFiles';
 import { seekTo, stopPlayer, togglePlay, usePlayer } from '@/lib/audioPlayer';
+import { useT } from '@/lib/i18n';
 
 const clock = (s: number) => {
   const t = Math.max(0, Math.floor(s || 0));
@@ -17,6 +18,7 @@ const clock = (s: number) => {
  */
 export const MiniPlayer: React.FC = () => {
   const p = usePlayer();
+  const tr = useT();
   // Signing out (the app unmounts) stops the music.
   React.useEffect(() => () => stopPlayer(), []);
   const busy = p.status === 'loading';
@@ -28,7 +30,7 @@ export const MiniPlayer: React.FC = () => {
         <motion.div
           key="mini-player"
           role="region"
-          aria-label="Now playing"
+          aria-label={tr('Now playing')}
           initial={{ y: 24, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 24, opacity: 0 }}
@@ -47,13 +49,13 @@ export const MiniPlayer: React.FC = () => {
                 {p.status === 'error'
                   ? p.error
                   : busy
-                    ? 'Loading…'
+                    ? tr('Loading…')
                     : [p.track.artist, p.duration ? `${clock(p.position)} / ${clock(p.duration)}` : null].filter(Boolean).join(' · ')}
               </span>
             </span>
             {p.status === 'error' && p.sourceUrl ? (
               <IconButton
-                label="Open the link"
+                label={tr('Open the link')}
                 variant="sheet"
                 size="sm"
                 icon={<Play />}
@@ -61,7 +63,7 @@ export const MiniPlayer: React.FC = () => {
               />
             ) : (
               <IconButton
-                label={p.status === 'playing' ? 'Pause' : 'Play'}
+                label={p.status === 'playing' ? tr('Pause') : tr('Play')}
                 variant="filled"
                 size="sm"
                 disabled={busy || p.status === 'error'}
@@ -71,7 +73,7 @@ export const MiniPlayer: React.FC = () => {
             )}
             {p.track.lyrics?.trim() && (
               <IconButton
-                label="Lyrics"
+                label={tr('Lyrics')}
                 variant="sheet"
                 size="sm"
                 icon={<BookOpen />}
@@ -80,12 +82,12 @@ export const MiniPlayer: React.FC = () => {
                 }
               />
             )}
-            <IconButton label="Stop" variant="sheet" size="sm" icon={<Square />} onClick={stopPlayer} />
+            <IconButton label={tr('Stop')} variant="sheet" size="sm" icon={<Square />} onClick={stopPlayer} />
           </div>
           {p.duration > 0 && p.status !== 'error' && (
             <input
               type="range"
-              aria-label="Position"
+              aria-label={tr('Position')}
               min={0}
               max={Math.round(p.duration)}
               step={1}

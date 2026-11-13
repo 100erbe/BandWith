@@ -5,6 +5,7 @@ import { cn } from '@/app/components/ui/utils';
 import { ArrowUpRight, Copy, MapPin, Navigation } from '@/app/components/icons';
 import { RailCover } from '@/lib/railActions';
 import { haptic } from '@/lib/haptics';
+import { useT } from '@/lib/i18n';
 
 /**
  * Tappable addresses → "Open in Maps" chooser (Apple Maps / Google Maps / Waze / Copy).
@@ -50,6 +51,7 @@ const isAppleDevice = () =>
 // ── Host (mount once near the app root) ─────────────────────────
 
 const ChooserSheet: React.FC<{ query: string }> = ({ query }) => {
+  const tr = useT();
   const [copied, setCopied] = useState(false);
   const urls = mapsUrls(query);
   const go = (url: string) => {
@@ -95,7 +97,7 @@ const ChooserSheet: React.FC<{ query: string }> = ({ query }) => {
         key="maps-sheet"
         role="dialog"
         aria-modal="true"
-        aria-label="Open in Maps"
+        aria-label={tr('Open in Maps')}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
@@ -113,7 +115,7 @@ const ChooserSheet: React.FC<{ query: string }> = ({ query }) => {
       >
         <span className="mx-auto w-10 h-[5px] rounded-full bg-sheet-foreground/85 cursor-grab" aria-hidden />
         <div className="flex flex-col gap-1">
-          <span className="bw-label-sm text-sheet-foreground/70">Open in Maps</span>
+          <span className="bw-label-sm text-sheet-foreground/70">{tr('Open in Maps')}</span>
           <span className="flex items-start gap-2 bw-label-md [overflow-wrap:anywhere]">
             <MapPin className="w-4 h-4 mt-[2px] shrink-0" aria-hidden />
             {query}
@@ -141,14 +143,14 @@ const ChooserSheet: React.FC<{ query: string }> = ({ query }) => {
               className="flex items-center justify-center gap-2 min-h-12 rounded-full border border-sheet-foreground/25 bw-button-sm"
             >
               <Copy className="w-4 h-4" aria-hidden />
-              {copied ? 'Copied' : 'Copy address'}
+              {copied ? tr('Copied') : tr('Copy address')}
             </button>
             <button
               type="button"
               onClick={closeMaps}
               className="min-h-12 rounded-full bg-sheet-foreground text-sheet bw-button-sm"
             >
-              Cancel
+              {tr('Cancel')}
             </button>
           </div>
         </div>
@@ -181,6 +183,7 @@ interface MapsLinkProps {
  * it reads as tappable; falls back to plain text when there's nothing to search.
  */
 export const MapsLink: React.FC<MapsLinkProps> = ({ query, children, className, cue = true, pin = false }) => {
+  const tr = useT();
   const q = (query || '').trim();
   if (!q) {
     return (
@@ -197,8 +200,8 @@ export const MapsLink: React.FC<MapsLinkProps> = ({ query, children, className, 
         e.stopPropagation();
         openMaps(q);
       }}
-      aria-label={`Open ${q} in Maps`}
-      title={`Open ${q} in Maps`}
+      aria-label={tr('Open {place} in Maps', { place: q })}
+      title={tr('Open {place} in Maps', { place: q })}
       className={cn(
         'group inline-flex items-center gap-1.5 min-w-0 max-w-full text-left active:opacity-70',
         className,
@@ -208,7 +211,7 @@ export const MapsLink: React.FC<MapsLinkProps> = ({ query, children, className, 
       <span className="truncate underline decoration-dotted decoration-1 underline-offset-[3px]">{children}</span>
       {cue && (
         <span className="inline-flex items-center gap-0.5 shrink-0 px-1.5 h-[18px] rounded-full border border-current/40 bw-label-xs opacity-80">
-          MAP
+          {tr('MAP')}
           <ArrowUpRight className="w-2.5 h-2.5" aria-hidden />
         </span>
       )}

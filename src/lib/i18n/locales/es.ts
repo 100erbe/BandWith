@@ -2810,6 +2810,29 @@ const dict: Dictionary = {
   "Create a band": "Crear una banda",
   "Free during the beta": "Gratis durante la beta",
   "Requires a Pro subscription": "Requiere una suscripción Pro",
+
+  // Small pieces
+  "Loading forecast": "Cargando previsión",
+  "Forecast for {city}": "Previsión para {city}",
+  "Daily forecast": "Previsión del día",
+  "Available 7 days prior": "Disponible 7 días antes",
+  "Forecast": "Previsión",
+  "Location missing": "Falta el lugar",
+  "Past event": "Evento pasado",
+  "Location not found": "Lugar no encontrado",
+  "Forecast unavailable": "Previsión no disponible",
+  "or": "o",
+  "Open the link": "Abrir el enlace",
+  "Position": "Posición",
+  "Lyrics · {title}": "Letra · {title}",
+  "Lyrics · {artist}": "Letra · {artist}",
+  "Smaller text": "Texto más pequeño",
+  "Bigger text": "Texto más grande",
+  "Close lyrics": "Cerrar la letra",
+  "No lyrics for this song yet.": "Este tema aún no tiene letra.",
+  "Open in Maps": "Abrir en Mapas",
+  "Loading dashboard": "Cargando el inicio",
+  "Loading events": "Cargando eventos",
 };
 
 export default dict;
