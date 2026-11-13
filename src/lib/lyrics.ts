@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import type { SongChart } from './ireal';
 
 /**
  * Song lyrics (`songs.lyrics`): plain text, light Markdown or JSON, shown in
@@ -99,6 +100,10 @@ export interface LyricsDoc {
   title: string;
   artist?: string | null;
   lyrics: string;
+  /** songs.chord_chart: the reader can switch between lyrics and chords. */
+  chart?: SongChart | null;
+  /** Which one to show first (default: lyrics when there are any). */
+  view?: 'lyrics' | 'chords';
 }
 
 let current: LyricsDoc | null = null;

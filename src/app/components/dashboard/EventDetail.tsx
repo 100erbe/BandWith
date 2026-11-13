@@ -74,6 +74,7 @@ import {
   rehearsalCadence,
   shortPlace,
 } from '@/app/components/event/format';
+import { asSongChart, type SongChart } from '@/lib/ireal';
 
 interface EventDetailProps {
   event: EventData;
@@ -313,7 +314,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   // Setlist state
   const laptopPose = useLaptopPose();
   const [setlistSongs, setSetlistSongs] = useState<
-    { id?: string; songId?: string; setNumber?: number; title: string; artist?: string; duration?: string; key?: string; lyrics?: string }[]
+    { id?: string; songId?: string; setNumber?: number; title: string; artist?: string; duration?: string; key?: string; lyrics?: string; chart?: SongChart }[]
   >([]);
   const [setlistLoading, setSetlistLoading] = useState(false);
 
@@ -376,7 +377,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           .from('setlist_songs')
           // songs has duration_seconds, not duration: asking for a missing
           // column makes PostgREST fail the whole query.
-          .select('*, song:songs(title, artist, duration_seconds, key, lyrics)')
+          .select('*, song:songs(title, artist, duration_seconds, key, lyrics, chord_chart)')
           .eq('setlist_id', event.setlistId)
           .order('set_number', { ascending: true })
           .order('position', { ascending: true });
@@ -405,6 +406,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   : undefined,
               key: s.song?.key || undefined,
               lyrics: s.song?.lyrics || undefined,
+              chart: asSongChart(s.song?.chord_chart) || undefined,
             }));
           setSetlistSongs(songs);
           writeCachedSetlist(setlistId, songs);

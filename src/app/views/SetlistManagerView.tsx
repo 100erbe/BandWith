@@ -20,6 +20,7 @@ import {
   BookOpen,
 } from '@/app/components/icons';
 import { openLyrics } from '@/lib/lyrics';
+import { asSongChart } from '@/lib/ireal';
 import { cn } from '@/app/components/ui/utils';
 import { useBand } from '@/lib/BandContext';
 import {
@@ -835,7 +836,10 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                               items={[
                                 ...(canPlay ? [{ label: t('Play'), icon: <Play className="w-4 h-4" />, run: () => handlePlaySong(song) }] : []),
                                 ...(song.lyrics?.trim()
-                                  ? [{ label: t('Lyrics'), icon: <BookOpen className="w-4 h-4" />, run: () => { setActionMenuId(null); openLyrics({ songId: song.id, title: song.title, artist: song.artist, lyrics: song.lyrics || '' }); } }]
+                                  ? [{ label: t('Lyrics'), icon: <BookOpen className="w-4 h-4" />, run: () => { setActionMenuId(null); openLyrics({ songId: song.id, title: song.title, artist: song.artist, lyrics: song.lyrics || '', chart: asSongChart(song.chord_chart) }); } }]
+                                  : []),
+                                ...(asSongChart(song.chord_chart)
+                                  ? [{ label: t('Chords'), icon: <Music2 className="w-4 h-4" />, run: () => { setActionMenuId(null); openLyrics({ songId: song.id, title: song.title, artist: song.artist, lyrics: song.lyrics || '', chart: asSongChart(song.chord_chart), view: 'chords' }); } }]
                                   : []),
                                 ...(hasChart ? [{ label: t('Open chart'), icon: <FileText className="w-4 h-4" />, run: () => handleOpenChart(song) }] : []),
                                 { label: t('Edit'), icon: <Edit3 className="w-4 h-4" />, run: () => handleEditSong(song) },

@@ -3308,6 +3308,24 @@ const dict: Dictionary = {
   "{title} moved to position {position} of {total}": "{title} spostato in posizione {position} di {total}",
   "Picked up {title}": "{title} selezionato per lo spostamento",
   "Reordering cancelled: {title} stays where it was": "Riordino annullato: {title} resta dov’era",
+  // iReal Pro chord charts
+  "Chords · {title}": "Accordi · {title}",
+  "No chords for this song yet.": "Ancora nessun accordo per questo brano.",
+  "This is not an iReal Pro link.": "Questo non è un link di iReal Pro.",
+  "Chord chart · iReal Pro": "Griglia accordi · iReal Pro",
+  "{count} bars": "{count} battute",
+  "Remove chord chart": "Rimuovi griglia accordi",
+  "Preview chords": "Anteprima accordi",
+  "Import chords from iReal Pro": "Importa accordi da iReal Pro",
+  "iReal Pro link": "Link di iReal Pro",
+  "On the iReal Pro forums, press and hold a song or playlist link, choose Copy Link and paste it here. Only chords and form are imported: no melody, no lyrics.": "Sui forum di iReal Pro tieni premuto il link di un brano o di una playlist, scegli Copia link e incollalo qui. Si importano solo accordi e struttura: niente melodia, niente testo.",
+  "{name} · {count} songs": "{name} · {count} brani",
+  "Playlist": "Playlist",
+  "Find a song": "Cerca un brano",
+  "No songs match.": "Nessun brano corrisponde.",
+  "Showing {shown} of {count}: type to narrow the list.": "{shown} di {count}: scrivi per restringere l’elenco.",
+  "Section {name}": "Sezione {name}",
+  "Chord chart from iReal Pro": "Griglia accordi da iReal Pro",
 };
 
 export default dict;

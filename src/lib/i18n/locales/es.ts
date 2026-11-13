@@ -3308,6 +3308,24 @@ const dict: Dictionary = {
   "{title} moved to position {position} of {total}": "{title} movida a la posición {position} de {total}",
   "Picked up {title}": "{title} seleccionada para mover",
   "Reordering cancelled: {title} stays where it was": "Reordenación cancelada: {title} se queda donde estaba",
+  // iReal Pro chord charts
+  "Chords · {title}": "Acordes · {title}",
+  "No chords for this song yet.": "Aún no hay acordes para esta canción.",
+  "This is not an iReal Pro link.": "Esto no es un enlace de iReal Pro.",
+  "Chord chart · iReal Pro": "Cifrado · iReal Pro",
+  "{count} bars": "{count} compases",
+  "Remove chord chart": "Quitar cifrado",
+  "Preview chords": "Ver acordes",
+  "Import chords from iReal Pro": "Importar acordes de iReal Pro",
+  "iReal Pro link": "Enlace de iReal Pro",
+  "On the iReal Pro forums, press and hold a song or playlist link, choose Copy Link and paste it here. Only chords and form are imported: no melody, no lyrics.": "En los foros de iReal Pro, mantén pulsado el enlace de una canción o lista, elige Copiar enlace y pégalo aquí. Solo se importan acordes y estructura: sin melodía ni letra.",
+  "{name} · {count} songs": "{name} · {count} canciones",
+  "Playlist": "Lista",
+  "Find a song": "Buscar una canción",
+  "No songs match.": "Ninguna canción coincide.",
+  "Showing {shown} of {count}: type to narrow the list.": "{shown} de {count}: escribe para acotar la lista.",
+  "Section {name}": "Sección {name}",
+  "Chord chart from iReal Pro": "Cifrado de iReal Pro",
 };
 
 export default dict;
