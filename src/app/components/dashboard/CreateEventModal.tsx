@@ -675,8 +675,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     zip: '',
     country: '',
     date: editingEvent?.date || initialDate || todayLocal(),
-    startTime: editingEvent?.time || '20:00',
-    endTime: editingEvent?.endTime || '23:30',
+    // Saved times come back as 20:00:00; the wizard works in HH:MM.
+    startTime: editingEvent?.time?.slice(0, 5) || '20:00',
+    endTime: editingEvent?.endTime?.slice(0, 5) || '23:30',
     // Optional call times for gigs (events.load_in_time / soundcheck_time).
     loadInTime: editingEvent?.loadInTime?.slice(0, 5) || '',
     soundcheckTime: editingEvent?.soundcheckTime?.slice(0, 5) || '',
