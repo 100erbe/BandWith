@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { t } from '@/lib/i18n';
+import { instrumentKeys } from '@/lib/instruments';
 
 /**
  * Deputies: session musicians the band calls when a member can't play
@@ -59,12 +60,17 @@ export async function deleteDeputy(id: string) {
 
 /** Same instrument first ("Bass" matches "Bass · Backing vocals"). */
 export function rankDeputies(deputies: Deputy[], role: string | null | undefined): Deputy[] {
-  const want = (role || '').toLowerCase().split(/[·,/]/)[0].trim();
-  if (!want) return deputies;
+  const want = instrumentKeys(role);
+  if (want.length === 0) return deputies;
+  // 0 plays it as main instrument · 1 plays it too · 2 plays another instrument
+  // the member covers · 3 something else · 4 no instrument set.
   const score = (d: Deputy) => {
-    const i = (d.instrument || '').toLowerCase();
-    if (!i) return 2;
-    return i.includes(want) || want.includes(i) ? 0 : 1;
+    const has = instrumentKeys(d.instrument);
+    if (has.length === 0) return 4;
+    if (has[0] === want[0]) return 0;
+    if (has.includes(want[0])) return 1;
+    if (has.some((k) => want.includes(k))) return 2;
+    return 3;
   };
   return [...deputies].sort((a, b) => score(a) - score(b));
 }

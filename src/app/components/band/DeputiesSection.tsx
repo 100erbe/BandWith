@@ -10,6 +10,7 @@ import {
   type Deputy,
 } from '@/lib/services/deputies';
 import { useT } from '@/lib/i18n';
+import { deputyCoverage, type CoverageMember } from '@/lib/instruments';
 
 const EMPTY = { name: '', instrument: '', phone: '', email: '', fee: '', notes: '' };
 
@@ -18,7 +19,11 @@ const EMPTY = { name: '', instrument: '', phone: '', email: '', fee: '', notes: 
  * when a member can't play. A gig's lineup offers them to replace a member
  * who declined ("Find a deputy").
  */
-export const DeputiesSection: React.FC<{ bandId: string; bandName?: string }> = ({ bandId, bandName }) => {
+export const DeputiesSection: React.FC<{ bandId: string; bandName?: string; members?: CoverageMember[] }> = ({
+  bandId,
+  bandName,
+  members = [],
+}) => {
   const t = useT();
   const [deputies, setDeputies] = React.useState<Deputy[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -45,13 +50,17 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string }> = 
     void load();
   }, [load]);
 
-  const open = (d: Deputy | 'new') => {
+  // Who covers what: each instrument the band plays, with its deputies.
+  const coverage = React.useMemo(() => deputyCoverage(members, deputies), [members, deputies]);
+  const gaps = coverage.rows.filter((r) => r.deputies.length === 0).length;
+
+  const open = (d: Deputy | 'new', instrument = '') => {
     setEditing(d);
     setConfirmDelete(false);
     setError(null);
     setForm(
       d === 'new'
-        ? EMPTY
+        ? { ...EMPTY, instrument }
         : {
             name: d.name,
             instrument: d.instrument || '',
@@ -110,6 +119,45 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string }> = 
         </div>
         {!unavailable && <IconButton label={t('Add deputy')} variant="outline" size="sm" icon={<Plus />} onClick={() => open('new')} />}
       </div>
+
+      {!loading && !unavailable && coverage.rows.length > 0 && (
+        <Card className="gap-3">
+          <div className="flex flex-col gap-0.5">
+            <h3 className="bw-label-md">{t('Who covers what')}</h3>
+            <p className="bw-body-sm text-muted-foreground">
+              {gaps === 0
+                ? t('Every instrument in the band has a deputy.')
+                : gaps === 1
+                  ? t('1 instrument has no deputy yet.')
+                  : t('{count} instruments have no deputy yet.', { count: gaps })}
+            </p>
+          </div>
+          <ul className="flex flex-col divide-y divide-foreground/10" aria-label={t('Who covers what')}>
+            {coverage.rows.map((row) => (
+              <li key={row.key} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                  <span className="bw-label-sm uppercase truncate">{row.label}</span>
+                  <span className="bw-body-sm text-muted-foreground truncate">{row.members.join(', ')}</span>
+                  {row.deputies.length > 0 ? (
+                    <span className="bw-body-sm truncate">{t('Deputies: {names}', { names: row.deputies.map((d) => d.name).join(', ') })}</span>
+                  ) : (
+                    <span className="bw-body-sm text-destructive">{t('No deputy yet')}</span>
+                  )}
+                </span>
+                {row.deputies.length === 0 && (
+                  <IconButton
+                    label={t('Add a deputy for {instrument}', { instrument: row.label })}
+                    variant="outline"
+                    size="sm"
+                    icon={<Plus />}
+                    onClick={() => open('new', row.label)}
+                  />
+                )}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-6">

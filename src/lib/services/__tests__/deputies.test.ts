@@ -12,6 +12,12 @@ describe('deputies', () => {
     expect(rankDeputies(list, '').map((d) => d.name)).toEqual(['A', 'B', 'C']);
   });
 
+  it('matches spellings, keeps double bass apart and prefers the main instrument', () => {
+    const list = [dep('Upright', 'Double bass'), dep('Vox', 'Vocals'), dep('Both', 'Guitar / Bass'), dep('Basso', 'Basso elettrico'), dep('None', null)];
+    expect(rankDeputies(list, 'Bass guitar · Band leader').map((d) => d.name)).toEqual(['Basso', 'Both', 'Upright', 'Vox', 'None']);
+    expect(rankDeputies(list, 'Member').map((d) => d.name)).toEqual(list.map((d) => d.name));
+  });
+
   it('writes the request and links', () => {
     const t = deputyRequestText({ deputyName: 'Marco Rossi', bandName: 'Velvet', eventTitle: 'Wedding', dateLabel: 'Sat 12 Dec', venue: 'Villa', role: 'Bass' });
     expect(t).toContain('Hi Marco');

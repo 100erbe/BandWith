@@ -3150,6 +3150,13 @@ const dict: Dictionary = {
   "{amount} not paid yet": "{amount} por pagar",
   "Former member": "Antigo membro",
   "Couldn't load member stats.": "Não foi possível carregar as estatísticas dos membros.",
+  "Who covers what": "Quem cobre o quê",
+  "Every instrument in the band has a deputy.": "Cada instrumento da banda tem um substituto.",
+  "1 instrument has no deputy yet.": "1 instrumento ainda não tem substituto.",
+  "{count} instruments have no deputy yet.": "{count} instrumentos ainda não têm substituto.",
+  "Deputies: {names}": "Substitutos: {names}",
+  "No deputy yet": "Sem substituto",
+  "Add a deputy for {instrument}": "Adicionar um substituto para {instrument}",
 };
 
 export default dict;
