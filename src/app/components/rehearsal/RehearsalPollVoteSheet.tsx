@@ -303,12 +303,12 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
         // iPhone Duo open: a rehearsal detail on the trailing page moves to the
         // leading page while you vote (Figma "Open · Event detail / Rehearsal |
         // Rehearsal / Poll vote sheet").
-        className="bw-rail-sheet bw-picker dark fixed bottom-0 left-0 right-0 z-[185] bg-sheet text-sheet-foreground rounded-t-[32px] max-h-[88vh] flex flex-col sm:max-w-lg sm:mx-auto sm:bottom-6 sm:rounded-[32px] sm:max-h-[82vh]"
+        className="bw-rail-sheet bw-sheet-card bw-picker dark fixed bottom-0 left-0 right-0 z-[185] bg-sheet text-sheet-foreground rounded-t-[32px] max-h-[88vh] flex flex-col sm:max-w-lg sm:mx-auto sm:bottom-6 sm:rounded-[32px] sm:max-h-[82vh]"
         {...drag.sheet}
       >
         {/* Sheet Header */}
         <div className="shrink-0 px-5 pt-3 pb-2 flex flex-col gap-3" {...drag.handle}>
-          <span className="mx-auto w-10 h-[5px] rounded-full bg-sheet-foreground/85" />
+          <span className="bw-grabber mx-auto w-10 h-[5px] rounded-full bg-sheet-foreground/85" />
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0 flex flex-col gap-1">
               <p className="bw-label-sm text-sheet-foreground/85">{overline}</p>

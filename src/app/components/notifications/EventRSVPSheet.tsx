@@ -204,7 +204,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'tween', duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
-        className="bw-rail-sheet fixed bottom-0 left-0 right-0 z-[185] bg-sheet text-sheet-foreground rounded-t-[32px] sm:rounded-[32px] px-5 pt-3 sm:max-w-lg sm:mx-auto sm:bottom-6 max-h-[90vh] overflow-y-auto flex flex-col gap-4"
+        className="bw-rail-sheet bw-sheet-card fixed bottom-0 left-0 right-0 z-[185] bg-sheet text-sheet-foreground rounded-t-[32px] sm:rounded-[32px] px-5 pt-3 sm:max-w-lg sm:mx-auto sm:bottom-6 max-h-[90vh] overflow-y-auto flex flex-col gap-4"
         style={{
           paddingBottom: 'calc(16px + var(--safe-bottom))',
           ...maskStyle,
@@ -213,7 +213,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
       >
         {/* Sheet header */}
         <div className="flex flex-col gap-3" {...drag.handle}>
-          <span className="mx-auto w-10 h-[5px] rounded-full bg-sheet-foreground/85" />
+          <span className="bw-grabber mx-auto w-10 h-[5px] rounded-full bg-sheet-foreground/85" />
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0 flex flex-col gap-1">
               <p className="bw-label-sm text-sheet-foreground/85">{t('RSVP')}{dayLabel ? ` · ${dayLabel}` : ''}</p>
