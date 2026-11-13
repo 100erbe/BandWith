@@ -5,7 +5,8 @@ import { instrumentKeys } from '@/lib/instruments';
 /**
  * Deputies: session musicians the band calls when a member can't play
  * (table band_deputies, migration 069; admins only). They don't need a
- * BandWith account: the request goes out by WhatsApp, SMS or email.
+ * BandWith account: the request goes out by WhatsApp, SMS or email with
+ * a reply link (/deputy.html, migration 084).
  */
 export interface Deputy {
   id: string;
@@ -75,27 +76,154 @@ export function rankDeputies(deputies: Deputy[], role: string | null | undefined
   return [...deputies].sort((a, b) => score(a) - score(b));
 }
 
-/** The request text sent to a deputy. */
-export function deputyRequestText(o: {
+// ------------------------------------------------------------------
+// Requests with a reply link (migration 084). The deputy answers on
+// /deputy.html without an account; the admins get a push.
+// ------------------------------------------------------------------
+
+export const DEPUTY_PAGE_URL = 'https://bandwith.pages.dev/deputy.html';
+export const deputyReplyUrl = (token: string) => `${DEPUTY_PAGE_URL}?t=${token}`;
+
+export type DeputyRequestStatus = 'pending' | 'available' | 'maybe' | 'unavailable' | 'cancelled';
+
+export interface DeputyRequest {
+  id: string;
+  event_id: string;
+  deputy_id: string | null;
+  deputy_name: string;
+  replaces_user_id: string | null;
+  role: string | null;
+  fee_offered: number | null;
+  token: string;
+  status: DeputyRequestStatus;
+  reply_note: string | null;
+  responded_at: string | null;
+  created_at: string;
+  /** What changed in the gig since the deputy answered (from the reply page's view). */
+  changes?: string[];
+}
+
+/** True when the table isn't there yet (migration 084 not applied). */
+export const deputyRequestsUnavailable = (e: { code?: string; message?: string } | null | undefined) =>
+  !!e &&
+  (e.code === '42P01' || e.code === 'PGRST205' || e.code === 'PGRST202' ||
+    (/deputy_request/.test(e.message || '') && /exist|schema cache|function/i.test(e.message || '')));
+
+/** Creates the request (or reuses the open one for this deputy and gig). */
+export async function openDeputyRequest(o: {
+  eventId: string;
+  deputyId: string;
+  replacesUserId?: string | null;
+  role?: string | null;
+  fee?: number | null;
+}) {
+  const { data, error } = await supabase.rpc('bw_deputy_request_open', {
+    p_event_id: o.eventId,
+    p_deputy_id: o.deputyId,
+    p_replaces_user_id: o.replacesUserId ?? null,
+    p_role: o.role ?? null,
+    p_fee: o.fee ?? null,
+  });
+  const row = (Array.isArray(data) ? data[0] : data) as { id: string; token: string; status: DeputyRequestStatus } | null;
+  return { data: row, error };
+}
+
+/** The gig's requests, newest first, with what changed since each answer. */
+export async function listDeputyRequests(eventId: string) {
+  const { data, error } = await supabase
+    .from('deputy_requests')
+    .select('id, event_id, deputy_id, deputy_name, replaces_user_id, role, fee_offered, token, status, reply_note, responded_at, created_at')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: false });
+  const rows = (data || []) as DeputyRequest[];
+  await Promise.all(
+    rows
+      .filter((r) => r.status === 'available' || r.status === 'maybe')
+      .map(async (r) => {
+        const { data: view } = await supabase.rpc('bw_deputy_request_view', { p_token: r.token });
+        const changes = (view as { changes?: unknown } | null)?.changes;
+        r.changes = Array.isArray(changes) ? changes.map(String) : [];
+      }),
+  );
+  return { data: rows, error };
+}
+
+export async function cancelDeputyRequest(id: string) {
+  const { error } = await supabase
+    .from('deputy_requests')
+    .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+    .eq('id', id);
+  return { error };
+}
+
+/** The latest request per deputy (cancelled ones only when nothing newer). */
+export function latestRequestByDeputy(requests: DeputyRequest[]): Record<string, DeputyRequest> {
+  const out: Record<string, DeputyRequest> = {};
+  for (const r of requests) {
+    if (!r.deputy_id) continue;
+    const prev = out[r.deputy_id];
+    if (!prev || (prev.status === 'cancelled' && r.status !== 'cancelled')) out[r.deputy_id] = r;
+  }
+  return out;
+}
+
+export interface DeputyGigText {
   deputyName: string;
   bandName: string;
   eventTitle: string;
   dateLabel: string;
   timeLabel?: string | null;
+  loadInLabel?: string | null;
   venue?: string | null;
   role?: string | null;
   fee?: string | null;
-}): string {
-  const first = o.deputyName.trim().split(/\s+/)[0] || o.deputyName;
+  /** The reply page. */
+  link?: string | null;
+}
+
+const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;
+
+/** The request text sent to a deputy. */
+export function deputyRequestText(o: DeputyGigText): string {
   return [
-    t("Hi {name}, it's {band}.", { name: first, band: o.bandName }),
+    t("Hi {name}, it's {band}.", { name: firstName(o.deputyName), band: o.bandName }),
     o.role
       ? t('Are you available to play {role} with us at "{event}"?', { role: o.role.toLowerCase(), event: o.eventTitle })
       : t('Are you available to play with us at "{event}"?', { event: o.eventTitle }),
     `📅 ${o.dateLabel}${o.timeLabel ? ` · ${o.timeLabel}` : ''}`,
     o.venue ? `📍 ${o.venue}` : null,
     o.fee ? `💶 ${o.fee}` : null,
-    t('Let us know as soon as you can. Thanks!'),
+    o.link ? t('Answer here in one tap: {link}', { link: o.link }) : t('Let us know as soon as you can. Thanks!'),
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+const gigLines = (o: DeputyGigText) => [
+  `📅 ${o.dateLabel}${o.timeLabel ? ` · ${o.timeLabel}` : ''}`,
+  o.loadInLabel ? `🚚 ${t('Load-in {time}', { time: o.loadInLabel })}` : null,
+  o.venue ? `📍 ${o.venue}` : null,
+  o.role ? `🎸 ${o.role}` : null,
+  o.fee ? `💶 ${o.fee}` : null,
+];
+
+/** After the deputy said yes: the gig in short, with the page (address, calendar). */
+export function deputyRecapText(o: DeputyGigText): string {
+  return [
+    t('Hi {name}, it\'s {band}: you\'re confirmed for "{event}". Thanks!', { name: firstName(o.deputyName), band: o.bandName, event: o.eventTitle }),
+    ...gigLines(o),
+    o.link ? t('Details, address and calendar: {link}', { link: o.link }) : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+/** The gig changed after the deputy answered. */
+export function deputyUpdateText(o: DeputyGigText): string {
+  return [
+    t('Hi {name}, it\'s {band}: "{event}" has changed. The new details:', { name: firstName(o.deputyName), band: o.bandName, event: o.eventTitle }),
+    ...gigLines(o),
+    o.link ? t('Can you still make it? Answer here: {link}', { link: o.link }) : t('Can you still make it?'),
   ]
     .filter(Boolean)
     .join('\n');

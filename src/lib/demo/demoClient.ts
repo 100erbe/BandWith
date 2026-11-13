@@ -792,6 +792,30 @@ const rpc = (fn: string, args: Row = {}) => {
       data = true;
       break;
     }
+    // Deputy reply links (084): the request is real in the demo, the page is not.
+    case 'bw_deputy_request_open': {
+      const rows = table('deputy_requests');
+      let r = rows.find((x) => x.event_id === args.p_event_id && x.deputy_id === args.p_deputy_id && x.status !== 'cancelled');
+      if (!r) {
+        const dep = table('band_deputies').find((x) => x.id === args.p_deputy_id);
+        const ev = table('events').find((x) => x.id === args.p_event_id);
+        const now = new Date().toISOString();
+        r = {
+          id: uuid(), band_id: ev?.band_id, event_id: args.p_event_id, deputy_id: args.p_deputy_id,
+          deputy_name: dep?.name || 'Deputy', replaces_user_id: args.p_replaces_user_id ?? null,
+          role: args.p_role ?? null, fee_offered: args.p_fee ?? null, currency: ev?.currency ?? null,
+          token: (uuid() + uuid()).replace(/-/g, ''), status: 'pending', reply_note: null,
+          responded_at: null, answer_snapshot: null, created_at: now, updated_at: now,
+        };
+        rows.push(r);
+        persist();
+      }
+      data = [{ id: r.id, token: r.token, status: r.status }];
+      break;
+    }
+    case 'bw_deputy_request_view':
+      data = { changes: [] };
+      break;
     case 'update_setlist_song_count': {
       const id = args.p_setlist_id ?? args.setlist_id;
       const s = table('setlists').find((r) => r.id === id);

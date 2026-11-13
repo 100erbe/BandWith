@@ -42,7 +42,8 @@ import { FIT, FitText } from '@/app/components/bw/FitText';
 import { getActiveSymbol as sym, money, useCurrency } from '@/lib/currency';
 import { openMaps } from '@/app/components/ui/MapsLink';
 import type { RsvpStatus } from '@/app/components/notifications/EventRSVPSheet';
-import { AskDeputySheet } from '@/app/components/band/AskDeputySheet';
+import { AskDeputySheet, DEPUTY_STATUS_LABEL, deputyMessageMode } from '@/app/components/band/AskDeputySheet';
+import { listDeputyRequests, type DeputyRequest } from '@/lib/services/deputies';
 import { KeyValueRow, LINK_CLASS, MemberRow, SectionTitle, type ResolvedMember } from '@/app/components/event/parts';
 import { useEventMembers } from '@/app/components/event/useEventMembers';
 import { useEventLiveRefresh } from '@/app/components/event/useEventLiveRefresh';
@@ -284,6 +285,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const [activeSheet, setActiveSheet] = useState<ActiveSheetType>(null);
   /** Member who declined, being replaced by a deputy ("Find a deputy"). */
   const [deputyFor, setDeputyFor] = useState<ResolvedMember | null>(null);
+  /** Deputies asked for this gig and their answers (084, admins only). */
+  const [deputyRequests, setDeputyRequests] = useState<DeputyRequest[]>([]);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [isShareQuoteOpen, setIsShareQuoteOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -432,6 +435,15 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const resolvedMembers: ResolvedMember[] = dbMembers || [];
   // A member said no: the admin can ask one of the band's deputies instead.
   const canFindDeputy = isAdmin && !isPast && !isRehearsal && !isPersonalGig && !!event.band_id;
+  const loadDeputyRequests = React.useCallback(async () => {
+    if (!canFindDeputy || !event.eventId) return;
+    const { data, error } = await listDeputyRequests(event.eventId);
+    if (!error) setDeputyRequests(data);
+  }, [canFindDeputy, event.eventId]);
+  // Reload when the lineup opens: answers arrive from the reply page.
+  useEffect(() => {
+    if (activeSheet === 'lineup' || activeSheet === null) void loadDeputyRequests();
+  }, [activeSheet, loadDeputyRequests]);
   const activeMembers = resolvedMembers.filter((m) => m.status !== 'declined');
 
   const myResolvedFee = useMemo(() => {
@@ -1863,6 +1875,51 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                         )}
                       </div>
                     ))}
+                    {deputyRequests.some((r) => r.status !== 'cancelled') && (
+                      <div className="flex flex-col gap-2 pt-2">
+                        <span className="bw-label-xs text-muted-foreground uppercase">{t('Deputies asked')}</span>
+                        {deputyRequests
+                          .filter((r) => r.status !== 'cancelled')
+                          .map((r) => {
+                            const replaced = resolvedMembers.find((m) => m.userId && m.userId === r.replaces_user_id);
+                            return (
+                              <button
+                                key={r.id}
+                                type="button"
+                                className="text-left flex items-center justify-between gap-3 rounded-[16px] bg-foreground/[0.08] px-3 py-3"
+                                onClick={() => setDeputyFor(replaced || resolvedMembers.find((m) => m.status === 'declined') || null)}
+                              >
+                                <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                  <span className="bw-label-md truncate">{r.deputy_name}</span>
+                                  <span className="bw-body-sm text-muted-foreground truncate">
+                                    {[
+                                      replaced ? t('for {name}', { name: replaced.name }) : r.role,
+                                      deputyMessageMode(r) === 'update'
+                                        ? t('Changed after their answer · send the update')
+                                        : r.reply_note
+                                          ? `“${r.reply_note}”`
+                                          : null,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(' · ') || t('Deputy')}
+                                  </span>
+                                </span>
+                                <span className="flex items-center gap-1.5 bw-label-sm shrink-0">
+                                  <span
+                                    aria-hidden="true"
+                                    className="w-2 h-2 rounded-full"
+                                    style={{
+                                      background:
+                                        r.status === 'available' ? 'var(--success)' : r.status === 'unavailable' ? 'var(--destructive-solid)' : 'var(--warning)',
+                                    }}
+                                  />
+                                  {t(DEPUTY_STATUS_LABEL[r.status])}
+                                </span>
+                              </button>
+                            );
+                          })}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="py-8 text-center bw-body-sm text-muted-foreground">
@@ -1995,20 +2052,27 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           open={!!deputyFor}
           onClose={() => setDeputyFor(null)}
           formatFee={(n) => formatCurrencyExact(n)}
+          onRequestsChange={() => void loadDeputyRequests()}
           member={
             deputyFor && {
+              userId: deputyFor.userId ?? null,
               name: deputyFor.name,
               role: deputyFor.role,
-              feeLabel: deputyFor.fee > 0 ? formatCurrencyExact(deputyFor.fee) : null,
+              fee: deputyFor.fee,
             }
           }
           ctx={{
             bandId: event.band_id!,
             bandName: bands.find((b) => b.id === event.band_id)?.name || event.band_name || selectedBand?.name || 'the band',
+            eventId: event.eventId!,
             eventTitle: event.title,
-            dateLabel: heroDate ? heroDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'date to be confirmed',
+            dateLabel: heroDate
+              ? heroDate.toLocaleDateString(intlLocale('en-GB'), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+              : t('date to be confirmed'),
             timeLabel: event.time ? formatEventTime(event.time) : null,
-            venue: venueName !== 'TBD' ? venueName : null,
+            loadInLabel: event.loadInTime ? formatEventTime(event.loadInTime) : null,
+            venue: venueName !== 'TBD' ? [venueName, event.venueCity].filter(Boolean).join(', ') : null,
+            venueFull: fullLocationQuery || null,
           }}
         />
       )}
