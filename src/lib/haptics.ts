@@ -47,4 +47,24 @@ export const haptic = {
 
   /** Selection tick: toggles, step pads, pickers. */
   selection: () => run(() => Haptics.selectionChanged(), 5),
+
+  /**
+   * Drag to reorder: picking an item up. Also arms iOS selection ticks
+   * (selectionChanged does nothing on iOS until selectionStart).
+   */
+  pickUp: () =>
+    run(async () => {
+      await Haptics.impact({ style: ImpactStyle.Medium });
+      await Haptics.selectionStart();
+    }, 20),
+
+  /** Drag to reorder: the item moved to another slot. */
+  dragTick: () => run(() => Haptics.selectionChanged(), 5),
+
+  /** Drag to reorder: dropped (or cancelled). */
+  drop: () =>
+    run(async () => {
+      await Haptics.selectionEnd();
+      await Haptics.impact({ style: ImpactStyle.Light });
+    }, 10),
 };
