@@ -1729,6 +1729,7 @@ export default function AuthenticatedApp() {
     }
     if (item === "Analytics") setShowAnalytics(true);
     if (item === "PricingSettings") {
+      setPricingModalInitialTab('rates');
       setPricingReturnTo('control_deck');
       setShowPricingModal(true);
     }
@@ -3628,6 +3629,7 @@ export default function AuthenticatedApp() {
               onOpenPricing={() => {
                 localStorage.setItem('bandwith_admin_tour_seen', 'true');
                 setShowAdminTour(false);
+                setPricingModalInitialTab('rates');
                 setPricingReturnTo(null);
                 setShowPricingModal(true);
               }}

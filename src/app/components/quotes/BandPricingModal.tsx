@@ -62,6 +62,7 @@ interface BandPricingModalProps {
 }
 
 type TabType = PricingModalTabType;
+const TAB_ORDER: TabType[] = ['rates', 'services', 'production', 'commercial', 'branding'];
 
 import { formatDistance, fromUnit, ratePerKm, ratePerUnit, toUnit, unitSingular, useDistanceUnit, type DistanceUnit } from '@/lib/units';
 
@@ -304,6 +305,20 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
       setActiveTab(initialTab);
     }
   }, [isOpen, initialTab]);
+
+  // Keep the selected section in view: the strip scrolls sideways on narrow
+  // screens, and a deep link (e.g. Band settings → Branding) opens on the last one.
+  const tabStripRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    const strip = tabStripRef.current;
+    const idx = TAB_ORDER.indexOf(activeTab);
+    const el = strip?.children[idx] as HTMLElement | undefined;
+    if (!strip || !el) return;
+    const left = el.getBoundingClientRect().left - strip.getBoundingClientRect().left + strip.scrollLeft;
+    const target = idx === 0 ? 0 : Math.max(0, left - (strip.clientWidth - el.offsetWidth) / 2);
+    strip.scrollTo({ left: target, behavior: 'auto' });
+  }, [isOpen, activeTab]);
 
   useEffect(() => {
     if (isOpen && effectiveBandId) {
@@ -737,7 +752,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
 
         {/* Tabs */}
         <div className="px-4 pt-4">
-          <div role="group" aria-label={t('Pricing sections')} className="max-w-2xl mx-auto w-full flex gap-2 overflow-x-auto scrollbar-hide">
+          <div ref={tabStripRef} role="group" aria-label={t('Pricing sections')} className="max-w-2xl mx-auto w-full flex gap-2 overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => (
               <Selector key={tab.id} size="md" selected={activeTab === tab.id} onClick={() => setActiveTab(tab.id)} count={tab.count}>
                 {tab.label}
