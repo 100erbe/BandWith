@@ -46,7 +46,7 @@ import {
   deletePersonalGig,
 } from "@/lib/services/events";
 import type { EventMember, Event } from "@/lib/services/events";
-import { createSetlist, replaceSetlistSongs, updateSetlist } from "@/lib/services/songs";
+import { createSetlist, deleteSetlist, replaceSetlistSongs, updateSetlist } from "@/lib/services/songs";
 import { receiptFor, deleteChat as deleteChatService, createChat as createChatService } from "@/lib/services/chats";
 import { deleteNotification as deleteNotificationService, createNotification, getUnreadCount } from "@/lib/services/notifications";
 import { syncAppBadge } from "@/lib/services/appBadge";
@@ -2600,7 +2600,12 @@ export default function AuthenticatedApp() {
     if (refetchDashboard) await refetchDashboard();
   };
 
-  const handleEventCreate = async (data: any) => {
+  /**
+   * Saves the gig or rehearsal wizard. The wizard closes only once the event
+   * is saved (or queued offline): on a failure it stays open with what the
+   * user typed, and this resolves false.
+   */
+  const handleEventCreate = async (data: any): Promise<boolean> => {
     const isRehearsalWizard = !data.details && data.title;
     const title = isRehearsalWizard ? data.title : data.details?.title;
     const date = isRehearsalWizard ? data.date : data.details?.date;
@@ -2612,15 +2617,16 @@ export default function AuthenticatedApp() {
 
     if (!realBand?.id) {
       setSaveToast({ message: t('No band selected'), type: 'error' });
-      setEditingEventData(null);
-      setIsCreateEventOpen(false);
-      return;
+      return false;
     }
 
-    // Close the wizard immediately so the UI feels instant even when offline or on slow connections
-    setEditingEventData(null);
-    setIsCreateEventOpen(false);
-    setCreateEventInitialDate(null);
+    const closeWizard = () => {
+      setEditingEventData(null);
+      setIsCreateEventOpen(false);
+      setCreateEventInitialDate(null);
+      setCreateEventInitialTasks(undefined);
+      setActiveEventDraft(null);
+    };
 
     // Declared outside `try` so the `catch` below can still queue the event
     // offline (it used to be block-scoped → ReferenceError on timeout and the
@@ -2652,8 +2658,10 @@ export default function AuthenticatedApp() {
         venue_name: venueFinal,
         venue: venueFinal,
         venue_address: fullAddress,
-        venue_city: venueCity || null,
-        client_name: clientName || null,
+        // The rehearsal wizard has no city, client, notes or setting fields:
+        // it must not blank them when it edits a rehearsal (CR-2).
+        ...(!isRehearsalWizard || venueCity !== undefined ? { venue_city: venueCity || null } : {}),
+        ...(!isRehearsalWizard || clientName !== undefined ? { client_name: clientName || null } : {}),
         fee: parseFloat(price) || 0,
         // "Fee TBD" (wizard toggle): confirmed date, money still to agree.
         ...(!isRehearsalWizard && data.feeTbd
@@ -2661,8 +2669,8 @@ export default function AuthenticatedApp() {
           : !isRehearsalWizard && data._wasFeeTbd
             ? { payment_status: 'pending' }
             : {}),
-        notes: data.notes || null,
-        indoor_outdoor: data.setting || null,
+        ...(!isRehearsalWizard || data.notes !== undefined ? { notes: data.notes || null } : {}),
+        ...(!isRehearsalWizard || data.setting !== undefined ? { indoor_outdoor: data.setting || null } : {}),
         is_recurring: isRehearsalWizard
           ? Boolean(data.recurrence && data.recurrence !== 'once')
           : Boolean(data.is_recurring || (data.recurrence && data.recurrence !== 'once')),
@@ -2879,7 +2887,8 @@ export default function AuthenticatedApp() {
 
       if (!isOnline || (typeof navigator !== 'undefined' && !navigator.onLine)) {
         await saveEventOffline(Boolean(data._editing && data._editingEventId), data._editingEventId);
-        return;
+        closeWizard();
+        return true;
       }
 
       let setlistFailed = false;
@@ -2895,6 +2904,7 @@ export default function AuthenticatedApp() {
       if (data._editing && data._editingEventId) {
         const { error } = await withFastTimeout(updateEvent(data._editingEventId, eventData), 4500);
         if (!error) {
+          closeWizard();
           const memberResult = await persistMembers(data._editingEventId, true);
           const tasksSaved = await persistTasks(data._editingEventId);
           if (optimisticMembers.length > 0) {
@@ -2919,13 +2929,16 @@ export default function AuthenticatedApp() {
           }
         } else if (isOfflineError(error)) {
           await saveEventOffline(true, data._editingEventId);
-          return;
+          closeWizard();
+          return true;
         } else {
           setSaveToast({ message: t('Save failed: {error}', { error: error.message || JSON.stringify(error) }), type: 'error' });
+          return false;
         }
       } else {
         const { data: saved, error } = await withFastTimeout(createEvent({ ...eventData, id: newEventId }), 4500);
         if (!error && saved) {
+          closeWizard();
           const memberResult = await persistMembers(saved.id, false);
           const tasksSaved = await persistTasks(saved.id);
           // Optimistic update
@@ -2956,25 +2969,33 @@ export default function AuthenticatedApp() {
           }
         } else if (isOfflineError(error)) {
           await saveEventOffline(false);
-          return;
+          closeWizard();
+          return true;
         } else {
+          // The setlist was created for this gig: a retry makes a new one.
+          if (setlistId) deleteSetlist(setlistId).catch(() => {});
           setSaveToast({ message: t('Create failed: {error}', { error: error?.message || JSON.stringify(error) }), type: 'error' });
+          return false;
         }
       }
       setMembersRefreshKey(k => k + 1);
       refetchEvents().catch(() => {});
       if (refetchDashboard) refetchDashboard().catch(() => {});
+      return true;
     } catch (err: any) {
       if (saveEventOffline && (!isOnline || isOfflineError(err))) {
         try {
           await saveEventOffline(Boolean(data._editing && data._editingEventId), data._editingEventId);
+          closeWizard();
+          return true;
         } catch (offlineErr: any) {
           console.error('Offline save failed:', offlineErr);
           setSaveToast({ message: t('Could not save the event. Please try again.'), type: 'error' });
+          return false;
         }
-      } else {
-        setSaveToast({ message: t('Error: {error}', { error: err?.message || String(err) }), type: 'error' });
       }
+      setSaveToast({ message: t('Error: {error}', { error: err?.message || String(err) }), type: 'error' });
+      return false;
     }
   };
 

@@ -46,6 +46,7 @@ import { listEventTasks } from '@/lib/services/eventTasks';
 import { getBandPricing, DEFAULT_BAND_PRICING, type BandPricingSettings } from '@/lib/services/pricing';
 import { todayLocal } from '../../../lib/dates';
 import { deleteEventDraft, newDraftId, saveEventDraft, type EventDraft } from '@/lib/wizardDrafts';
+import { addressWithoutCity } from '@/lib/eventAddress';
 import { useSystemBack } from '@/lib/backStack';
 import { haptic } from '@/lib/haptics';
 import { LeaveWizardSheet } from '@/app/components/bw/LeaveWizardSheet';
@@ -111,7 +112,11 @@ export const formatDurationOption = (m: number): string => {
 
 interface CreateEventModalProps {
   onClose: () => void;
-  onCreate: (eventData: any) => void;
+  /**
+   * Saves the gig. Resolves false when nothing was saved (the form stays open
+   * with what the user typed); anything else means saved or queued offline.
+   */
+  onCreate: (eventData: any) => Promise<boolean | void> | boolean | void;
   initialType?: EventType | null;
   initialDate?: string;
   layoutId?: string;
@@ -135,6 +140,8 @@ interface CreateEventModalProps {
     clientName?: string;
     venueAddress?: string;
     venueCity?: string;
+    /** events.indoor_outdoor: also "hybrid" (from quotes). */
+    indoorOutdoor?: string;
     guests?: number;
     notes?: string;
     endTime?: string;
@@ -644,14 +651,23 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       cloudy: t('cloudy'),
     }) as Record<string, string>)[sky] ?? sky;
   const [performanceType, setPerformanceType] = useState<PerformanceType>(() => ds?.performanceType ?? 'full_band');
-  const [setting, setSetting] = useState<SettingType>(() => ds?.setting ?? 'indoor');
+  const [setting, setSettingState] = useState<SettingType>(
+    () => ds?.setting ?? (editingEvent?.indoorOutdoor === 'outdoor' ? 'outdoor' : 'indoor')
+  );
+  // Editing: an untouched choice keeps the saved value (also "hybrid" or none,
+  // which this form cannot show) instead of resetting it to indoor.
+  const settingTouchedRef = useRef(false);
+  const setSetting = (value: SettingType) => {
+    settingTouchedRef.current = true;
+    setSettingState(value);
+  };
 
   const [details, setDetails] = useState(() => {
     const base = {
     title: editingEvent?.title || '',
     clientName: editingEvent?.clientName || '',
     venue: editingEvent?.location || '',
-    address: editingEvent?.venueAddress || '',
+    address: addressWithoutCity(editingEvent?.venueAddress, editingEvent?.venueCity),
     city: editingEvent?.venueCity || '',
     province: '',
     zip: '',
@@ -915,7 +931,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setMemberFees(newFees);
   };
 
-  const handleCreate = () => {
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleCreate = async () => {
+    if (isSaving) return;
     const fallbackTitle = getEffectiveTitle();
 
     const membersWithUserIds = selectedMembers.map(id => {
@@ -939,7 +958,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       eventType: (eventType || (modalCategory === 'quote' ? 'wedding' : 'club')) as EventType,
       _originalEventType: editingEvent?.eventType || eventType || 'club',
       performanceType,
-      setting,
+      setting: isEditing && !settingTouchedRef.current ? (editingEvent?.indoorOutdoor ?? null) : setting,
       members: membersWithUserIds,
       audienceIds: membersWithUserIds.map(m => m.id),
       setlist,
@@ -956,8 +975,21 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         ? { _editing: true, _editingEventId: editingEvent.eventId, _editingLocalId: editingEvent.id }
         : {}),
     };
-    onCreate(eventData);
-    deleteEventDraft(draft?.id);
+    setIsSaving(true);
+    let saved: boolean | void;
+    try {
+      saved = await onCreate(eventData);
+    } catch (err) {
+      console.error('[gig] save failed:', err);
+      saved = false;
+    }
+    setIsSaving(false);
+    if (saved === false) {
+      // Not saved: the form stays open, and a new gig is also kept in Drafts.
+      if (draftsEnabled) persistDraft();
+      return;
+    }
+    deleteEventDraft(draftIdRef.current);
   };
 
   // ── Drafts ──────────────────────────────────────────────────
@@ -1002,10 +1034,15 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     else onClose();
   };
 
-  const handleSaveDraft = () => {
+  // One id for this form: a draft kept after a failed save is replaced, not
+  // duplicated, and removed once the gig is saved.
+  const draftIdRef = useRef<string | null>(draft?.id ?? null);
+
+  const persistDraft = () => {
     if (!currentUserId) return;
+    if (!draftIdRef.current) draftIdRef.current = newDraftId();
     saveEventDraft({
-      id: draft?.id || newDraftId(),
+      id: draftIdRef.current,
       userId: currentUserId,
       bandId: selectedBand?.id ?? null,
       title: getEffectiveTitle(),
@@ -1014,6 +1051,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       eventType,
       state: draftState,
     });
+  };
+
+  const handleSaveDraft = () => {
+    if (!currentUserId) return;
+    persistDraft();
     haptic.confirm();
     setLeaveOpen(false);
     onClose();
@@ -1021,7 +1063,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const handleDiscardDraft = () => {
     // Reopened from a draft: throwing it away removes it from Drafts too.
-    deleteEventDraft(draft?.id);
+    deleteEventDraft(draftIdRef.current);
     setLeaveOpen(false);
     onClose();
   };
@@ -2283,6 +2325,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 icon={<Check className="w-5 h-5" />}
                 onClick={handleCreate}
                 disabled={!details.date}
+                loading={isSaving}
               >
                 {t('Save changes')}
               </PillButton>
@@ -2377,6 +2420,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               size="lg"
               onClick={rightButtonAction}
               disabled={!canProceed}
+              loading={isLastStep && isSaving}
               icon={isLastStep ? <Check className="w-5 h-5" /> : undefined}
               trailingIcon={isLastStep ? undefined : <ArrowUpRight className="w-5 h-5" />}
               className={isLastStep ? undefined : 'justify-center gap-2'}
