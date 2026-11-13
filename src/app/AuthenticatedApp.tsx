@@ -3290,7 +3290,7 @@ export default function AuthenticatedApp() {
               if (action === "Band Members") setShowBandMembers(true);
               if (action === "Setlist & Repertoire") setShowSetlistManager(true);
               if (action === "Inventory") setShowInventory(true);
-              if (action === "Contracts & Riders") setShowContracts(true);
+              if (action === "Contracts & Riders" && isAdminOfBand(realBand?.id)) setShowContracts(true);
               if (action === "Task Templates") setShowTaskTemplates(true);
             }} isSolo={isSolo}
             rehearsalPolls={rehearsalPolls}
@@ -3362,7 +3362,7 @@ export default function AuthenticatedApp() {
           onNotificationClick={handleNotificationClick}
           onMarkAsRead={handleMarkSingleAsRead}
           onMarkGroupAsRead={handleMarkGroupAsRead}
-          onEntityDetailClick={(l) => { if (l === "INVENTORY") setShowInventory(true); if (l === "REPERTOIRE") setShowSetlistManager(true); if (l === "TEMPLATES") setShowTaskTemplates(true); if (l === "DOCUMENTS") setShowContracts(true); }}
+          onEntityDetailClick={(l) => { if (l === "INVENTORY") setShowInventory(true); if (l === "REPERTOIRE") setShowSetlistManager(true); if (l === "TEMPLATES") setShowTaskTemplates(true); if (l === "DOCUMENTS" && realBand && isAdminOfBand(realBand.id)) setShowContracts(true); }}
           entityCounts={entityCounts}
           onEditProfile={() => setShowEditProfile(true)}
           onEditBand={() => setShowBandMembers(true)}
@@ -3481,7 +3481,7 @@ export default function AuthenticatedApp() {
           )}
           {showAnalytics && <AnalyticsView key="analytics" onClose={() => setShowAnalytics(false)} dashboardData={computedDashboardData as any} isAdmin={isAdmin} />}
           {showInventory && realBand && <InventoryView key="inventory" onBack={() => setShowInventory(false)} bandId={realBand.id} />}
-          {showContracts && realBand && <ContractsView key="contracts" onBack={() => setShowContracts(false)} bandId={realBand.id} />}
+          {showContracts && realBand && isAdminOfBand(realBand.id) && <ContractsView key="contracts" onBack={() => setShowContracts(false)} bandId={realBand.id} />}
           {showTaskTemplates && realBand && <TaskTemplatesView key="task-templates" onBack={() => setShowTaskTemplates(false)} bandId={realBand.id} userId={user?.id} canEdit={isAdminOfBand(realBand.id)} events={isAdminOfBand(realBand.id) ? templateTargetEvents : []} onNotify={(message) => setSaveToast({ message, type: 'success' })} onUseTemplate={(template, kind) => {
             setShowTaskTemplates(false);
             setCreateEventInitialTasks((template.tasks || []).map((t) => ({ title: t.title, templateId: template.id, dueOffset: t.dueOffset })));

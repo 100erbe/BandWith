@@ -317,7 +317,8 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
       .toUpperCase() ||
     'BW';
 
-  const assetShortcuts = [
+  // Contracts hold the client and the gig price: admins only (migration 075).
+  const allAssetShortcuts = [
     {
       id: 'REPERTOIRE',
       label: t('Repertoire'),
@@ -347,6 +348,9 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
       icon: CheckSquare,
     },
   ];
+  const assetShortcuts = isAdmin
+    ? allAssetShortcuts
+    : allAssetShortcuts.filter((item) => item.id !== 'DOCUMENTS');
 
   return (
     <AnimatePresence>
@@ -839,8 +843,10 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
             <h2 className="bw-label-md text-foreground">{t('Band assets & workflows')}</h2>
 
             <div className="grid grid-cols-2 gap-3">
-              {assetShortcuts.map((item) => {
+              {assetShortcuts.map((item, index) => {
                 const Icon = item.icon;
+                // Odd count (members see three): the last card fills the row.
+                const spansRow = assetShortcuts.length % 2 === 1 && index === assetShortcuts.length - 1;
                 return (
                   <button
                     key={item.id}
@@ -852,6 +858,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                     className={cn(
                       'p-4 rounded-[24px] flex flex-col gap-3 text-left min-w-0 active:scale-[0.98] transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       HUB_CARD,
+                      spansRow && 'col-span-2',
                     )}
                   >
                     <span className="flex items-center justify-between w-full">
