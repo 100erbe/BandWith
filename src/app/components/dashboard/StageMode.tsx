@@ -18,6 +18,8 @@ import { timelineDates } from '@/lib/gigTiming';
 import { cn } from '@/app/components/ui/utils';
 import { TransposeControl, TransposeProvider, useSongTranspose } from '@/app/components/ui/Transpose';
 import { keyLabel } from '@/lib/ireal';
+import { beatsInBar, type ClickState } from '@/lib/stageClick';
+import { StageClickButton, StageClickFrame } from './StageClick';
 import type { StageSaveState } from '@/app/components/event/useStageLive';
 import type { StageBleStatus } from '@/app/components/event/useStageBle';
 
@@ -66,6 +68,13 @@ export interface StageLiveControls {
   canReorder: boolean;
   move: (from: number, to: number) => void;
   saveState: StageSaveState;
+  /** Visual metronome (useStageLive): newest click, ours or the leader's. */
+  click?: {
+    state: ClickState | null;
+    mine: boolean;
+    offset: number;
+    setOn: (on: boolean, opts?: { bpm: number; beats: number; bars?: number | null }) => void;
+  };
 }
 
 interface StageModeProps {
@@ -133,6 +142,24 @@ export const StageMode: React.FC<StageModeProps> = ({
   const [semitones, setSemitones] = useSongTranspose(lyricsSong?.songId);
   const lyricsKey = lyricsSong?.key || keyLabel(lyricsSong?.chart?.key) || null;
   const lyricsHasChords = !!lyricsSong && (showChords ? !!lyricsSong.chart : /\[[A-G][^\]\s]{0,15}\]/.test(lyricsSong.lyrics || ''));
+
+  // Visual metronome: shows while a click runs on the current song.
+  const click = live?.click;
+  const currentSong = songs[Math.max(0, current)];
+  const clickState = click?.state;
+  const clickRunning = !!clickState?.on && !!currentSong && (clickState.songId == null || clickState.songId === currentSong.id);
+  const [clickHidden, setClickHidden] = useState(false);
+  const [clickDone, setClickDone] = useState<number | null>(null);
+  // A new click (or a new song) shows again.
+  useEffect(() => setClickHidden(false), [clickState?.seq, clickState?.from]);
+  const showClick = clickRunning && !clickHidden && clickDone !== clickState?.seq;
+  const pressClick = () => {
+    haptic.tap();
+    if (!click) return;
+    if (clickRunning && !click.mine) return setClickHidden((h) => !h);
+    if (clickRunning) return click.setOn(false);
+    if (currentSong?.bpm) click.setOn(true, { bpm: currentSong.bpm, beats: beatsInBar(currentSong.chart?.time) });
+  };
   const lyricsRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     lyricsRef.current?.scrollTo?.({ top: 0 });
@@ -569,7 +596,7 @@ export const StageMode: React.FC<StageModeProps> = ({
 
         {/* Song steps: the leader's reach the whole band. */}
         {live && songs.length > 0 && !editing && (
-          <div className={cn('grid grid-cols-2 gap-3 shrink-0 [@media(max-height:520px)_and_(min-width:600px)]:col-start-1 [@media(max-height:520px)_and_(min-width:600px)]:row-start-3 [@media(max-height:520px)_and_(min-width:600px)]:self-end', split && 'col-start-1 row-start-3 self-end')}>
+          <div className={cn('grid gap-3 shrink-0', click ? 'grid-cols-[1fr_auto_1fr]' : 'grid-cols-2', ' [@media(max-height:520px)_and_(min-width:600px)]:col-start-1 [@media(max-height:520px)_and_(min-width:600px)]:row-start-3 [@media(max-height:520px)_and_(min-width:600px)]:self-end', split && 'col-start-1 row-start-3 self-end')}>
             <button
               type="button"
               disabled={current <= 0}
@@ -582,6 +609,16 @@ export const StageMode: React.FC<StageModeProps> = ({
             >
               <ChevronLeft className="w-6 h-6" /> {t('Prev')}
             </button>
+            {click && (
+              <StageClickButton
+                bpm={currentSong?.bpm}
+                running={clickRunning}
+                following={clickRunning && !click.mine}
+                hidden={clickHidden}
+                onPress={pressClick}
+                accent={accentColor}
+              />
+            )}
             <button
               type="button"
               disabled={current >= songs.length - 1}
@@ -598,6 +635,9 @@ export const StageMode: React.FC<StageModeProps> = ({
           </div>
         )}
       </div>
+      {showClick && clickState && click && (
+        <StageClickFrame state={clickState} offset={click.offset} accent={accentColor} onDone={() => setClickDone(clickState.seq)} />
+      )}
     </motion.div>
   );
 };
