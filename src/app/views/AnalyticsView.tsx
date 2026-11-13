@@ -8,6 +8,7 @@ import { DotText } from '@/app/components/bw';
 import { ScreenHeader, Card } from '@/app/components/bw/Screen';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { supabase } from '@/lib/supabase';
+import { getEventPrivate } from '@/lib/services/eventPrivate';
 import { toLocalDateString } from '@/lib/dates';
 import { useT, dateName, intlLocale, localDecimal } from '@/lib/i18n';
 
@@ -98,11 +99,17 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
     const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     supabase
       .from('events')
-      .select('fee, event_date, status, event_type')
+      .select('id, event_date, status, event_type')
       .eq('band_id', bandId)
       .gte('event_date', toLocalDateString(start))
       .lte('event_date', toLocalDateString(end))
-      .then(({ data, error }) => {
+      .then(async ({ data: rows, error }) => {
+        // Gig fees from bw_event_private (078): admins only.
+        type Row = { id: string; event_date: string; status: string; event_type: string };
+        const list = (rows || []) as Row[];
+        const { data: priv } = error ? { data: [] } : await getEventPrivate(list.map((r) => r.id));
+        const feeOf = new Map(priv.map((p) => [p.event_id, p.private.fee as number | null]));
+        const data = list.map((r) => ({ ...r, fee: feeOf.get(r.id) ?? null }));
         if (cancelled) return;
         const sums = Array<number>(MONTH_SPAN).fill(0);
         if (!error) {

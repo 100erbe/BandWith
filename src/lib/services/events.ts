@@ -1,5 +1,6 @@
 import { supabase, getSafeUser } from '../supabase';
 import { EVENT_MEMBER_COLUMNS, getEventMemberMoney, withMoney } from './eventMemberMoney';
+import { EVENT_PUBLIC_COLUMNS, attachEventPrivate, getEventPrivate, privateFieldsOf } from './eventPrivate';
 import { todayLocal, toLocalDateString } from '../dates';
 import { t } from '@/lib/i18n';
 
@@ -125,7 +126,7 @@ export const getEvents = async (
   try {
     let query = supabase
       .from('events')
-      .select('*')
+      .select(EVENT_PUBLIC_COLUMNS)
       .order('event_date', { ascending: true });
     
     // Filter by band(s) and/or personal events (band_id IS NULL AND created_by = userId)
@@ -179,8 +180,8 @@ export const getEvents = async (
     if (error) {
       // Resilient fallback in case of PostgREST nested .or syntax issues
       if (bIds.length > 0 && resolvedUserId && includePersonal) {
-        let bandQuery = supabase.from('events').select('*').in('band_id', bIds);
-        let personalQuery = supabase.from('events').select('*').is('band_id', null).eq('created_by', resolvedUserId);
+        let bandQuery = supabase.from('events').select(EVENT_PUBLIC_COLUMNS).in('band_id', bIds);
+        let personalQuery = supabase.from('events').select(EVENT_PUBLIC_COLUMNS).is('band_id', null).eq('created_by', resolvedUserId);
         
         if (options?.fromDate) {
           bandQuery = bandQuery.gte('event_date', options.fromDate);
@@ -197,12 +198,13 @@ export const getEvents = async (
         let combined = [...(bandRes.data || []), ...(personalRes.data || [])];
         combined.sort((a, b) => (a.event_date || '').localeCompare(b.event_date || ''));
         if (options?.limit) combined = combined.slice(0, options.limit);
-        return { data: combined, error: null };
+        // Price, payments and client from bw_event_private (078), managers only.
+        return { data: await attachEventPrivate(combined as any[]), error: null };
       }
       throw error;
     }
 
-    return { data, error: null };
+    return { data: await attachEventPrivate((data || []) as any[]), error: null };
   } catch (error: any) {
     return { data: null, error };
   }
@@ -210,10 +212,10 @@ export const getEvents = async (
 
 export const getEvent = async (eventId: string): Promise<{ data: EventWithMembers | null; error: Error | null }> => {
   try {
-    const { data: event, error: eventError } = await supabase
+    const { data: publicEvent, error: eventError } = await supabase
       .from('events')
       .select(`
-        *,
+        ${EVENT_PUBLIC_COLUMNS},
         band:bands (
           id,
           name,
@@ -224,6 +226,7 @@ export const getEvent = async (eventId: string): Promise<{ data: EventWithMember
       .single();
 
     if (eventError) throw eventError;
+    const [event] = await attachEventPrivate([publicEvent as any]);
 
     const { data: lineup, error: membersError } = await supabase
       .from('event_members')
@@ -258,7 +261,7 @@ export const getUpcomingEvents = async (
     let query = supabase
       .from('events')
       .select(`
-        *,
+        ${EVENT_PUBLIC_COLUMNS},
         band:bands (
           id,
           name,
@@ -278,7 +281,7 @@ export const getUpcomingEvents = async (
 
     if (error) throw error;
 
-    return { data, error: null };
+    return { data: await attachEventPrivate((data || []) as any[]), error: null };
   } catch (error: any) {
     return { data: null, error };
   }
@@ -332,7 +335,7 @@ export const createEvent = async (
     const { data: newEvent, error: eventError } = await supabase
       .from('events')
       .insert(sanitizedPayload)
-      .select()
+      .select(EVENT_PUBLIC_COLUMNS)
       .single();
 
     if (eventError) throw eventError;
@@ -363,6 +366,7 @@ export const createEvent = async (
     return {
       data: {
         ...newEvent,
+        ...privateFieldsOf(sanitizedPayload as any),
         member_count: memberIds?.length || 0,
       } as any,
       error: null,
@@ -388,12 +392,12 @@ export const updateEvent = async (
       .from('events')
       .update(sanitizedUpdates)
       .eq('id', eventId)
-      .select()
+      .select(EVENT_PUBLIC_COLUMNS)
       .single();
 
     if (error) throw error;
 
-    return { data, error: null };
+    return { data: { ...(data as any), ...privateFieldsOf(sanitizedUpdates as any) }, error: null };
   } catch (error: any) {
     return { data: null, error };
   }
@@ -476,7 +480,7 @@ export const createPersonalGig = async (
     const { data: newEvent, error: eventError } = await supabase
       .from('events')
       .insert(eventPayload)
-      .select()
+      .select(EVENT_PUBLIC_COLUMNS)
       .single();
 
     if (eventError) throw eventError;
@@ -500,7 +504,7 @@ export const createPersonalGig = async (
       throw new Error(`Failed to save earnings tracker record: ${memberError.message}`);
     }
 
-    return { data: newEvent, error: null };
+    return { data: { ...newEvent, ...privateFieldsOf(eventPayload as any) }, error: null };
   } catch (error: any) {
     return { data: null, error };
   }
@@ -540,7 +544,7 @@ export const updatePersonalGig = async (
     }
 
     const { data: updatedEvent, error: eventError } = await eventQuery
-      .select()
+      .select(EVENT_PUBLIC_COLUMNS)
       .single();
 
     if (eventError) throw eventError;
@@ -554,7 +558,7 @@ export const updatePersonalGig = async (
         .eq('user_id', effectiveUserId);
     }
 
-    return { data: updatedEvent, error: null };
+    return { data: { ...(updatedEvent as any), ...privateFieldsOf(updates as any) }, error: null };
   } catch (error: any) {
     return { data: null, error };
   }
@@ -726,14 +730,18 @@ export const getEventStats = async (
     const prevMonthStart = toLocalDateString(new Date(now.getFullYear(), currentMonth - 1, 1));
     const prevMonthEnd = toLocalDateString(new Date(now.getFullYear(), currentMonth, 0));
 
-    const { data: events, error } = await supabase
+    const { data: rows, error } = await supabase
       .from('events')
-      .select('status, fee, event_date, event_type')
+      .select('id, status, event_date, event_type')
       .eq('band_id', bandId)
       .gte('event_date', startOfYear)
       .lte('event_date', endOfYear);
 
     if (error) throw error;
+    // Gig fees from bw_event_private (078): admins only, members count 0.
+    const { data: priv } = await getEventPrivate((rows || []).map((r: any) => r.id));
+    const feeOf = new Map(priv.map((p) => [p.event_id, Number(p.private.fee) || 0]));
+    const events = (rows || []).map((r: any) => ({ ...r, fee: feeOf.get(r.id) || 0 }));
 
     // Confirmed gigs only (exclude rehearsals)
     const confirmedGigs = events?.filter(e => 

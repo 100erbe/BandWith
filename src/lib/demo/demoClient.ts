@@ -714,6 +714,19 @@ const rpc = (fn: string, args: Row = {}) => {
         .map((b) => ({ band_id: b.id, private: Object.fromEntries(PRIVATE.map((k) => [k, b[k] ?? null])) }));
       break;
     }
+    // Gig price, payments and client (078): events the user manages only.
+    case 'bw_event_private': {
+      const ids: string[] = Array.isArray(args.p_event_ids) ? args.p_event_ids : [];
+      const adminOf = new Set(table('band_members').filter((r) => r.user_id === DEMO_USER.id && r.role === 'admin').map((r) => r.band_id));
+      const PRIVATE = [
+        'price', 'fee', 'pay', 'deposit_amount', 'deposit_paid', 'payment_status', 'client_name', 'client_email',
+        'client_phone', 'client_company', 'internal_notes', 'contract_url', 'contract_signed',
+      ];
+      data = table('events')
+        .filter((e) => ids.includes(e.id) && (e.band_id ? adminOf.has(e.band_id) : e.created_by === DEMO_USER.id))
+        .map((e) => ({ event_id: e.id, private: Object.fromEntries(PRIVATE.map((k) => [k, e[k] ?? null])) }));
+      break;
+    }
     case 'bw_save_event_lineup': {
       const rows = table('event_members');
       const now = new Date().toISOString();

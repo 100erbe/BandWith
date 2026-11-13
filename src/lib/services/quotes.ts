@@ -503,7 +503,9 @@ export const convertQuoteToEvent = async (quoteId: string): Promise<{ data: { ev
         quote_id: quoteId,
         created_by: quote.created_by,
       })
-      .select()
+      // Only the id: after 078 step 2 the price and client columns of
+      // events cannot be read back directly.
+      .select('id')
       .single();
 
     if (createError) throw createError;
