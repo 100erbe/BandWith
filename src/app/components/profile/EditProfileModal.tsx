@@ -6,6 +6,7 @@ import { PillButton, PillField, Selector, FormError } from '@/app/components/bw/
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { realName } from '@/lib/personName';
+import { t, useT } from '@/lib/i18n';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -82,6 +83,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   onProfileUpdated
 }) => {
   const { user, profile, refreshProfile } = useAuth();
+  const tr = useT();
   
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -110,13 +112,13 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     if (!file || !user) return;
 
     if (file.type && !['image/jpeg', 'image/png'].includes(file.type)) {
-      setError('Use a JPG or PNG image');
+      setError(t('Use a JPG or PNG image'));
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     if (file.size > 8 * 1024 * 1024) {
-      setError('Image must be smaller than 8MB');
+      setError(t('Image must be smaller than 8MB'));
       return;
     }
 
@@ -164,7 +166,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       if (refreshProfile) await refreshProfile();
       if (onProfileUpdated) onProfileUpdated();
     } catch (err: any) {
-      setError(err.message || 'Failed to upload photo');
+      setError(err.message || t('Failed to upload photo'));
     } finally {
       setUploadingAvatar(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -203,7 +205,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         setSuccess(false);
       }, 800);
     } catch (err: any) {
-      setError(err.message || 'Failed to update profile');
+      setError(err.message || t('Failed to update profile'));
     } finally {
       setSaving(false);
     }
@@ -213,6 +215,22 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   if (!isOpen) return null;
 
   const selectedInstrument = instrumentOptionFor(instrument);
+  // Chip labels only — the saved value stays the English option.
+  const instrumentLabel: Record<string, string> = {
+    Vocals: tr('Vocals'),
+    Guitar: tr('Guitar'),
+    Bass: tr('Bass'),
+    Drums: tr('Drums'),
+    Keys: tr('Keys'),
+    Sax: tr('Sax'),
+    Piano: tr('Piano'),
+    Trumpet: tr('Trumpet'),
+    Violin: tr('Violin'),
+    Cello: tr('Cello'),
+    DJ: tr('DJ'),
+    Producer: tr('Producer'),
+    Other: tr('Other'),
+  };
 
   const initials =
     fullName?.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() ||
@@ -230,8 +248,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         {/* ═══ HEADER (Figma: Identity / Edit profile — back + H2 title) ═══ */}
         <header className="px-4 shrink-0 bg-background" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
           <div className="max-w-xl mx-auto w-full flex items-center gap-3 min-h-11">
-            <NavBackButton label="Go back" onClick={onClose} />
-            <h2 className="bw-h2 text-foreground truncate">Edit profile</h2>
+            <NavBackButton label={tr('Go back')} onClick={onClose} />
+            <h2 className="bw-h2 text-foreground truncate">{tr('Edit profile')}</h2>
           </div>
         </header>
 
@@ -242,7 +260,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             <div className="flex flex-col gap-3">
               <div className="relative w-[92px] h-[92px]">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                  <img src={avatarUrl} alt={tr('Profile')} className="w-full h-full rounded-full object-cover" />
                 ) : (
                   <div className="w-full h-full rounded-full bg-accent text-accent-foreground flex items-center justify-center bw-h1">
                     {initials}
@@ -250,7 +268,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 )}
                 <input ref={fileInputRef} type="file" accept="image/jpeg,image/png" className="hidden" onChange={handleAvatarUpload} />
                 <IconButton
-                  label="Upload photo"
+                  label={tr('Upload photo')}
                   variant="filled"
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
@@ -259,24 +277,24 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                   className="absolute -bottom-1 -right-3"
                 />
               </div>
-              <p className="bw-label-xs text-muted-foreground">Max 8 MB · JPG or PNG</p>
+              <p className="bw-label-xs text-muted-foreground">{tr('Max 8 MB · JPG or PNG')}</p>
             </div>
 
             {error && <FormError>{error}</FormError>}
 
             <PillField
-              label="Full name"
+              label={tr('Full name')}
               icon={<User className="w-5 h-5" />}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              placeholder="Your full name"
+              placeholder={tr('Your full name')}
               autoComplete="name"
             />
 
             {/* Email (read-only) */}
             <div className="flex flex-col gap-2">
               <label htmlFor="edit-profile-email" className="bw-label-sm text-muted-foreground">
-                Email
+                {tr('Email')}
               </label>
               <div className="flex items-center gap-3 h-[52px] px-4 rounded-full bg-foreground/[0.06] text-muted-foreground">
                 <Lock className="w-5 h-5 shrink-0" />
@@ -290,12 +308,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 />
               </div>
               <p id="edit-profile-email-hint" className="bw-body-sm text-muted-foreground">
-                Linked to your sign-in.
+                {tr('Linked to your sign-in.')}
               </p>
             </div>
 
             <PillField
-              label="Phone number"
+              label={tr('Phone number')}
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -305,7 +323,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
             {/* Primary instrument */}
             <fieldset className="flex flex-col gap-2">
-              <legend className="bw-label-sm text-muted-foreground mb-2">Primary instrument / role</legend>
+              <legend className="bw-label-sm text-muted-foreground mb-2">{tr('Primary instrument / role')}</legend>
               <div className="flex flex-wrap gap-2">
                 {INSTRUMENT_OPTIONS.map(({ value }) => {
                   const isSelected = selectedInstrument === value;
@@ -316,7 +334,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                       onClick={() => setInstrument(value)}
                       className={isSelected ? 'bg-accent text-accent-foreground' : undefined}
                     >
-                      {value}
+                      {instrumentLabel[value] ?? value}
                     </Selector>
                   );
                 })}
@@ -325,11 +343,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
             {/* Bio */}
             <label className="flex flex-col gap-2 p-4 rounded-[24px] bg-field border border-border focus-within:border-foreground transition-colors">
-              <span className="bw-label-xs text-muted-foreground">Bio &amp; background</span>
+              <span className="bw-label-xs text-muted-foreground">{tr('Bio & background')}</span>
               <textarea
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
-                placeholder="Share your musical background, credits, experience…"
+                placeholder={tr('Share your musical background, credits, experience…')}
                 rows={3}
                 className="w-full bg-transparent bw-body-lg text-foreground placeholder:text-muted-foreground/60 outline-none resize-none"
               />
@@ -346,7 +364,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               variant={success ? 'dark' : 'primary'}
               icon={<Check className="w-[18px] h-[18px]" />}
             >
-              {success ? 'Saved' : 'Save changes'}
+              {success ? tr('Saved') : tr('Save changes')}
             </PillButton>
           </div>
         </div>
