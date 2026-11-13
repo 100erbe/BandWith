@@ -68,6 +68,7 @@ import { TabName, ExpandedCardType, CreateEventType, RehearsalViewMode } from "@
 import { Header } from "@/app/components/layout/Header";
 import BottomNavigation from "@/app/components/layout/BottomNavigation";
 import { useRailLayout } from "@/lib/deviceRegions";
+import { homeAutoDetail } from "@/lib/homeAutoDetail";
 import { HeaderAction, NavBackButton } from "@/app/components/bw/Screen";
 import { IdentityHub } from "@/app/components/layout/IdentityHub";
 import { PendingInvitesPrompt } from "@/app/components/notifications/PendingInvitesPrompt";
@@ -2411,18 +2412,23 @@ export default function AuthenticatedApp() {
   handleEventCardClickRef.current = handleEventCardClick;
 
   // Figma "Duo · Home" (open): the next gig / commitment is already shown on
-  // the trailing page, next to the dashboard. Once per visit to Home, so a
-  // closed detail stays closed.
+  // the trailing page, next to the dashboard. Once per visit to Home (see
+  // homeAutoDetail), so a closed detail stays closed.
   const homeAutoDetailRef = useRef(false);
   useEffect(() => {
-    if (!twoPane || activeTab !== 'Home') { homeAutoDetailRef.current = false; return; }
-    if (homeAutoDetailRef.current || selectedEvent || eventsLoading) return;
     const today = new Date().toISOString().split('T')[0];
     const next = [...visuallyFilteredEvents]
       .filter((e) => e.date >= today && e.status !== 'DRAFT' && e.status !== 'QUOTE')
       .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')))[0];
-    if (!next) return;
-    homeAutoDetailRef.current = true;
+    const { done, open } = homeAutoDetail(homeAutoDetailRef.current, {
+      twoPane,
+      onHome: activeTab === 'Home',
+      hasSelected: !!selectedEvent,
+      loading: eventsLoading,
+      hasNext: !!next,
+    });
+    homeAutoDetailRef.current = done;
+    if (!open || !next) return;
     handleEventCardClick(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [twoPane, activeTab, eventsLoading, visuallyFilteredEvents, selectedEvent]);
