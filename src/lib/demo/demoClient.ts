@@ -7,6 +7,7 @@
  * survive a reload; signing out wipes it.
  */
 import { buildSeed, DEMO_USER, type DemoDB, type Row } from './seed';
+import { memberStatsFromRows } from '@/lib/memberStats';
 
 const DB_KEY = 'bw-demo-db-v4';
 const SESSION_KEY = 'bw-demo-session';
@@ -680,6 +681,33 @@ const rpc = (fn: string, args: Row = {}) => {
     case 'bw_mark_chats_delivered':
       data = 0;
       break;
+    // Member stats (083): every member for an admin, own row otherwise.
+    case 'bw_member_stats': {
+      const bandId = args.p_band_id;
+      const from = String(args.p_from ?? '');
+      const to = String(args.p_to ?? '');
+      const members = table('band_members').filter((r) => r.band_id === bandId && r.user_id);
+      const me = members.find((r) => r.user_id === DEMO_USER.id);
+      const isAdmin = me?.role === 'admin' && me?.is_active !== false;
+      const events = new Map(
+        table('events')
+          .filter((e) => e.band_id === bandId && e.event_date >= from && e.event_date <= to)
+          .map((e) => [e.id, e]),
+      );
+      const rows = table('event_members')
+        .filter((em) => events.has(em.event_id))
+        .map((em) => {
+          const e = events.get(em.event_id)!;
+          return {
+            user_id: String(em.user_id), answer: em.status, fee: em.fee, paid_at: em.paid_at,
+            event_date: String(e.event_date), event_type: e.event_type, event_status: e.status,
+          };
+        });
+      const visible = (isAdmin ? members : members.filter((r) => r.user_id === DEMO_USER.id))
+        .map((r) => ({ user_id: String(r.user_id), is_active: r.is_active !== false }));
+      data = memberStatsFromRows(rows, visible, String(args.p_today ?? new Date().toISOString().slice(0, 10)));
+      break;
+    }
     // Fees and payouts (071). The demo user is the band admin.
     case 'bw_event_member_money': {
       const ids: string[] | null = Array.isArray(args.p_event_ids) ? args.p_event_ids : null;
