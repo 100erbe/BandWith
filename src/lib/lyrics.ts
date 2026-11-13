@@ -6,7 +6,8 @@ import type { SongChart } from './ireal';
  * the in-app reader (LyricsViewer) instead of an external PDF.
  *
  * Markdown: `# Verse` / `[Chorus]` start a section, **bold**, *italic*,
- * blank lines separate stanzas.
+ * blank lines separate stanzas. Inline chords in ChordPro style,
+ * `[Am]Words [G7]here`, show above the words that follow them.
  * JSON: ["line", …], { "lines": [...] }, { "lyrics": "…" },
  * { "sections": [{ "name": "Verse", "lines": [...] | "text": "…" }] }
  * or [{ "name": "Verse", "lines": [...] }].
@@ -73,6 +74,36 @@ export function parseLyrics(raw: string | null | undefined): LyricsSection[] {
   }
   push();
   return sections;
+}
+
+/**
+ * A chord in brackets: "Am", "F#m7b5", "Bbmaj7/D", "Gsus4", "C(add9)", and
+ * iReal spellings ("Eb^7", "A-7", "Bh7") from MusicXML. "[Chorus]",
+ * "[x2]" or "[sic]" are not chords.
+ */
+const CHORD_RE = /^(?:[A-G][b#♭♯]?)(?:maj|min|dim|aug|sus|add|alt|M|m|o|h|ø|°|\+|-|\^|\d|[b#♭♯]|\(|\)|,)*(?:\/[A-G][b#♭♯]?)?$/;
+export const isChordToken = (s: string) => s === 'N.C.' || CHORD_RE.test(s);
+
+export type ChordSegment = { chord: string | null; text: string };
+
+/** "[Am]Hello [G]world" → chord + the text it sits over; null when the line has no chords. */
+export function splitChords(line: string): ChordSegment[] | null {
+  const re = /\[([^\]\s]{1,16})\]/g;
+  const out: ChordSegment[] = [];
+  let last = 0;
+  let chord: string | null = null;
+  let found = false;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(line))) {
+    if (!isChordToken(m[1])) continue;
+    found = true;
+    if (m.index > last || chord) out.push({ chord, text: line.slice(last, m.index) });
+    chord = m[1];
+    last = m.index + m[0].length;
+  }
+  if (!found) return null;
+  out.push({ chord, text: line.slice(last) });
+  return out.filter((s) => s.chord || s.text);
 }
 
 export type InlinePart = { text: string; bold?: boolean; italic?: boolean };

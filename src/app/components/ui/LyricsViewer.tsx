@@ -2,7 +2,8 @@ import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Minus, Pause, Play, Plus, X } from '@/app/components/icons';
 import { IconButton } from '@/app/components/bw/Screen';
-import { closeLyrics, parseInline, parseLyrics, useLyricsDoc } from '@/lib/lyrics';
+import { closeLyrics, parseInline, parseLyrics, splitChords, useLyricsDoc } from '@/lib/lyrics';
+import { chordLabel } from '@/lib/ireal';
 import { togglePlay, usePlayer } from '@/lib/audioPlayer';
 import { useSystemBack } from '@/lib/backStack';
 import { useT } from '@/lib/i18n';
@@ -37,6 +38,53 @@ export function useLyricsSize() {
   return { size, step, min: size === SIZES[0], max: size === SIZES[SIZES.length - 1] };
 }
 
+const Inline: React.FC<{ text: string }> = ({ text }) => (
+  <>
+    {parseInline(text).map((part, k) => (
+      <span key={k} className={part.bold ? 'font-bold' : part.italic ? 'italic' : undefined}>
+        {part.text}
+      </span>
+    ))}
+  </>
+);
+
+/**
+ * One line of lyrics. ChordPro-style chords (`[Am]words`) sit above the word
+ * they start on; that word and its chord make one box (never overlapping the
+ * next chord), the rest of the words wrap like text on narrow screens.
+ */
+const LyricsLine: React.FC<{ line: string }> = ({ line }) => {
+  const segments = React.useMemo(() => splitChords(line), [line]);
+  if (!segments) {
+    return (
+      <p className="font-medium break-words">
+        <Inline text={line} />
+      </p>
+    );
+  }
+  return (
+    <p className="font-medium break-words">
+      {segments.map((seg, k) => {
+        if (!seg.chord) return <Inline key={k} text={seg.text} />;
+        const [, head, tail] = seg.text.match(/^(\S*)([\s\S]*)$/) || ['', '', seg.text];
+        const label = chordLabel(seg.chord);
+        return (
+          <React.Fragment key={k}>
+            {/* Text first in the DOM: the box's baseline is the lyric's, the chord shows above it. */}
+            {/* An inline-block's baseline is its last line: the word stays on the line, the chord sits above it. */}
+            <span className="inline-block align-baseline">
+              <span className="block text-[0.62em] font-bold leading-[1.3] pr-[0.35em] whitespace-nowrap">{label}</span>
+              <span className="block whitespace-pre">{head ? <Inline text={head} /> : '\u00a0'}</span>
+            </span>
+            {/* A chord on a space already holds one: no double gap. */}
+            {(head ? tail : tail.replace(/^ /, '')) && <Inline text={head ? tail : tail.replace(/^ /, '')} />}
+          </React.Fragment>
+        );
+      })}
+    </p>
+  );
+};
+
 /**
  * Lyrics as sections of lines (Markdown / JSON, see src/lib/lyrics.ts).
  * `muted` is the class for section names and the empty message.
@@ -59,13 +107,7 @@ export const LyricsText: React.FC<{ lyrics?: string | null; size: number; muted?
             {s.name && <h3 className={`bw-label-md ${muted} uppercase mb-1`}>{s.name}</h3>}
             {s.lines.map((line, j) =>
               line.trim() ? (
-                <p key={j} className="font-medium break-words">
-                  {parseInline(line).map((part, k) => (
-                    <span key={k} className={part.bold ? 'font-bold' : part.italic ? 'italic' : undefined}>
-                      {part.text}
-                    </span>
-                  ))}
-                </p>
+                <LyricsLine key={j} line={line} />
               ) : (
                 <span key={j} className="block h-[0.8em]" aria-hidden />
               )

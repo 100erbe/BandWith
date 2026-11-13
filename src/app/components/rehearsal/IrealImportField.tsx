@@ -5,22 +5,27 @@ import { chartSource, chartSummary } from '@/app/components/ui/ChordChart';
 import { chartBarCount, type SongChart } from '@/lib/ireal';
 import { openLyrics } from '@/lib/lyrics';
 import { useT } from '@/lib/i18n';
+import type { ImportedSong } from '@/lib/songImport';
 import { ChordImportSheet } from './ChordImportSheet';
 
 /**
- * Song form: the song's chord chart, or "Import chords from iReal Pro", which
- * opens the import sheet (iReal Pro forum or a MusicXML file).
+ * Song form: the song's chord chart, or "Import chords and lyrics", which
+ * opens the import sheet (iReal Pro forum, a MusicXML / ChordPro / text file,
+ * or pasted lyrics).
  */
 export const IrealImportField: React.FC<{
   chart: SongChart | null;
   onChange: (chart: SongChart | null) => void;
+  /** Whatever the sheet brings: a chart, lyrics, or both. */
+  onImport: (song: ImportedSong) => void;
   /** The song's title: preselects the matching songs of a playlist. */
   title: string;
-}> = ({ chart, onChange, title }) => {
+  hasLyrics?: boolean;
+}> = ({ chart, onChange, onImport, title, hasLyrics }) => {
   const t = useT();
   const [open, setOpen] = React.useState(false);
 
-  const sheet = <ChordImportSheet open={open} onClose={() => setOpen(false)} onPick={onChange} title={title} />;
+  const sheet = <ChordImportSheet open={open} onClose={() => setOpen(false)} onPick={onImport} title={title} hasLyrics={hasLyrics} />;
 
   if (chart) {
     const sections = chart.sections.map((s) => s.label).filter(Boolean).join(' ');
@@ -59,7 +64,7 @@ export const IrealImportField: React.FC<{
   return (
     <>
       <PillButton size="md" variant="outline" fullWidth={false} className="self-start" icon={<Music2 className="w-4 h-4" />} onClick={() => setOpen(true)}>
-        {t('Import chords from iReal Pro')}
+        {t('Import chords and lyrics')}
       </PillButton>
       {sheet}
     </>

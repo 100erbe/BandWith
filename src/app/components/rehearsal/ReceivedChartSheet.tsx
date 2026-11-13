@@ -134,7 +134,7 @@ export const ReceivedChartSheet: React.FC = () => {
           </span>
         </div>
         <p className="bw-body-sm text-sheet-foreground/80">
-          {t('Choose the song it belongs to. For a new song, add the song first: the file waits in Import chords › From file.')}
+          {t('Choose the song it belongs to. For a new song, add the song first: the file waits in Import chords and lyrics › From file.')}
         </p>
         <PillField
           tone="sheet"
