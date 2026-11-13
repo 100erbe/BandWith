@@ -8,6 +8,7 @@
  */
 import { buildSeed, DEMO_USER, type DemoDB, type Row } from './seed';
 import { memberStatsFromRows } from '@/lib/memberStats';
+import { freeSlotsFromRows, type MemberCommitment } from '@/lib/freeSlots';
 
 const DB_KEY = 'bw-demo-db-v4';
 const SESSION_KEY = 'bw-demo-session';
@@ -715,6 +716,36 @@ const rpc = (fn: string, args: Row = {}) => {
             email_exact: exact,
           };
         });
+      break;
+    }
+    // Free-slot heatmap (095): counts only, any active member may ask.
+    case 'bw_band_free_slots': {
+      const bandId = args.p_band_id;
+      const members = table('band_members').filter((r) => r.band_id === bandId && r.user_id && r.is_active !== false && !r.left_at);
+      if (!members.some((r) => r.user_id === DEMO_USER.id)) {
+        data = [];
+        break;
+      }
+      const ids = members.map((r) => String(r.user_id));
+      const events = new Map(table('events').map((e) => [e.id, e]));
+      const commitments: MemberCommitment[] = [
+        ...table('event_members').filter((em) => events.has(em.event_id)).map((em) => {
+          const e = events.get(em.event_id)!;
+          return {
+            user_id: String(em.user_id), event_id: String(e.id), event_date: String(e.event_date),
+            start_time: e.start_time ?? null, end_time: e.end_time ?? null, event_status: e.status, answer: em.status ?? '',
+          };
+        }),
+        ...table('events').filter((e) => !e.band_id && e.created_by).map((e) => ({
+          user_id: String(e.created_by), event_id: String(e.id), event_date: String(e.event_date),
+          start_time: e.start_time ?? null, end_time: e.end_time ?? null, event_status: e.status, answer: null,
+        })),
+        ...table('demo_member_busy').map((b) => ({ ...b, user_id: String(b.user_id), event_date: String(b.event_date), answer: null })),
+      ];
+      data = freeSlotsFromRows(ids, commitments, {
+        from: String(args.p_from ?? ''), to: String(args.p_to ?? ''), start: args.p_start ?? null, end: args.p_end ?? null,
+        slotMinutes: args.p_slot_minutes ?? null, excludeEventId: args.p_exclude_event ?? null,
+      }).map((r) => ({ day: r.day, slot_start: r.slotStart, free_count: r.free, total_count: r.total }));
       break;
     }
     case 'bw_mark_chats_delivered':

@@ -278,8 +278,31 @@ export const buildSeed = (): DemoDB => {
     },
   ];
 
+  // Other calendars of the band members (their other bands, personal plans):
+  // only the free-slot heatmap (095) reads these, as counts.
+  const demo_member_busy: Row[] = [
+    { user_id: IDS.marta, event_date: day(2), start_time: '20:00', end_time: '23:00' },
+    { user_id: IDS.jonah, event_date: day(2), start_time: '18:00', end_time: '22:00' },
+    { user_id: IDS.lena, event_date: day(3), start_time: null, end_time: null },
+    { user_id: IDS.sam, event_date: day(4), start_time: '21:00', end_time: '23:30' },
+    { user_id: IDS.marta, event_date: day(6), start_time: '19:00', end_time: '22:00' },
+    { user_id: IDS.jonah, event_date: day(6), start_time: '20:30', end_time: '23:30' },
+    { user_id: IDS.lena, event_date: day(6), start_time: '21:00', end_time: '00:00' },
+    { user_id: IDS.sam, event_date: day(9), start_time: '12:00', end_time: '16:00' },
+    { user_id: IDS.lena, event_date: day(10), start_time: '20:00', end_time: '23:00' },
+    { user_id: IDS.marta, event_date: day(11), start_time: null, end_time: null },
+    { user_id: IDS.jonah, event_date: day(11), start_time: null, end_time: null },
+    { user_id: IDS.sam, event_date: day(13), start_time: '20:00', end_time: '22:00' },
+    { user_id: IDS.marta, event_date: day(16), start_time: '21:00', end_time: '23:00' },
+    { user_id: IDS.lena, event_date: day(18), start_time: null, end_time: null },
+    { user_id: IDS.jonah, event_date: day(20), start_time: '19:00', end_time: '23:00' },
+    { user_id: IDS.sam, event_date: day(20), start_time: '19:00', end_time: '23:00' },
+    { user_id: IDS.marta, event_date: day(24), start_time: null, end_time: null },
+    { user_id: IDS.lena, event_date: day(30), start_time: '20:00', end_time: '22:00' },
+  ];
+
   return {
-    band_deputies, event_drafts: [], demo_deputy_gigs,
+    band_deputies, event_drafts: [], demo_deputy_gigs, demo_member_busy,
     profiles, bands, band_members, songs, song_folders: [], setlists, setlist_songs, events, event_members,
     rehearsal_setlist, rehearsal_tasks, song_proposals, proposal_votes: [], quotes, quote_musicians: [],
     transactions, chats, chat_participants, messages, notifications, rehearsal_polls, rehearsal_poll_options,

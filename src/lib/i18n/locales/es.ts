@@ -3331,6 +3331,12 @@ const dict: Dictionary = {
   "Showing {shown} of {count}: type to narrow the list.": "{shown} de {count}: escribe para acotar la lista.",
   "Section {name}": "Sección {name}",
   "Chord chart from iReal Pro": "Cifrado de iReal Pro",
+  "{free}/{total} free": "{free}/{total} libres",
+  "{free} of {total} free": "{free} de {total} libres",
+  "{free} of {total} free · no conflicts": "{free} de {total} libres · sin conflictos",
+  "Free in band calendars": "Libres en los calendarios de la banda",
+  "Free in band calendars · {n} members": "Libres en calendarios · {n} miembros",
+  "{day}: {free} of {total} free": "{day}: {free} de {total} libres",
 };
 
 export default dict;
