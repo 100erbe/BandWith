@@ -21,6 +21,7 @@ import {
   type RehearsalPoll,
 } from '@/lib/services/rehearsalPolls';
 import { markAsRead, type Notification } from '@/lib/services/notifications';
+import { PollDetails } from './PollDetails';
 import { haptic } from '@/lib/haptics';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { FindADateMode } from '@/app/components/duo';
@@ -57,6 +58,11 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [showLocationInput, setShowLocationInput] = useState<string | null>(null);
   const [finalLocation, setFinalLocation] = useState(() => t('Band Practice Space'));
+  // The place set in the poll (097) is the default for the lock-in.
+  const pollLocation = (poll as RehearsalPoll | null)?.location?.trim();
+  useEffect(() => {
+    if (pollLocation) setFinalLocation(pollLocation);
+  }, [pollLocation]);
   const [isClearing, setIsClearing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -415,6 +421,8 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
               </div>
 
               {poll.notes && <p className="bw-body-sm text-sheet-foreground/75">{poll.notes}</p>}
+
+              <PollDetails poll={{ ...poll, total_members_count: totalMembers }} className="text-sheet-foreground/85" />
 
               <p className="bw-label-sm">{t('Select the dates that work for you')}</p>
 

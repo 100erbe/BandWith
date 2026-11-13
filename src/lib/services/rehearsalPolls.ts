@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
 import { attachMemberFees } from './bandMemberFees';
 import { createEvent } from './events';
+import { createSetlist } from './songs';
 import { createBulkNotifications } from './notifications';
 import { personName } from '@/lib/personName';
 import { t } from '@/lib/i18n';
@@ -53,6 +54,10 @@ export interface RehearsalPoll {
   } | null;
   preferred_days?: string[];
   total_members_count?: number;
+  /** 097: rehearsal place, room cost and focus songs set in the poll. */
+  location?: string | null;
+  room_cost?: number | string | null;
+  focus_song_ids?: string[] | null;
 }
 
 export interface ProposalEligibility {
@@ -239,6 +244,9 @@ export const createOrPublishAdminPoll = async ({
   notes,
   timeSlots,
   voteBy,
+  location,
+  roomCost,
+  focusSongIds,
 }: {
   pollId?: string;
   bandId: string;
@@ -247,6 +255,10 @@ export const createOrPublishAdminPoll = async ({
   notes?: string;
   /** rehearsal_polls.vote_by (058): the day members should vote by. Left out when not given. */
   voteBy?: string | null;
+  /** 097 (iPad composer): place, room cost and focus songs. Left out when not given. */
+  location?: string | null;
+  roomCost?: number | null;
+  focusSongIds?: string[];
   timeSlots: Array<{ proposed_date: string; start_time: string; end_time?: string | null }>;
 }): Promise<{ data: RehearsalPoll | null; error: Error | null }> => {
   try {
@@ -255,6 +267,11 @@ export const createOrPublishAdminPoll = async ({
     }
 
     let activePollId = pollId;
+    const details = {
+      ...(location !== undefined ? { location: location?.trim() || null } : {}),
+      ...(roomCost !== undefined ? { room_cost: roomCost != null && roomCost > 0 ? roomCost : null } : {}),
+      ...(focusSongIds !== undefined ? { focus_song_ids: focusSongIds } : {}),
+    };
 
     if (pollId) {
       // Converting an existing proposal: update status to polling
@@ -266,6 +283,7 @@ export const createOrPublishAdminPoll = async ({
           status: 'polling',
           updated_at: new Date().toISOString(),
           ...(voteBy !== undefined ? { vote_by: voteBy || null } : {}),
+          ...details,
         })
         .eq('id', pollId)
         .select()
@@ -288,6 +306,7 @@ export const createOrPublishAdminPoll = async ({
           notes: notes?.trim() || null,
           status: 'polling',
           ...(voteBy !== undefined ? { vote_by: voteBy || null } : {}),
+          ...details,
         })
         .select()
         .single();
@@ -488,8 +507,20 @@ export const finalizePollIntoRehearsal = async ({
       status: bm.user_id === adminId ? 'confirmed' : 'pending',
     }));
 
-    // 4. Create confirmed rehearsal event
-    const venueName = location?.trim() || t('Band Practice Space');
+    // 4. Create confirmed rehearsal event, with the place, room cost and
+    // focus songs set in the poll (097).
+    const venueName = location?.trim() || poll.location?.trim() || t('Band Practice Space');
+    const roomCost = poll.room_cost != null ? Number(poll.room_cost) : 0;
+    const focusIds: string[] = Array.isArray(poll.focus_song_ids) ? poll.focus_song_ids.filter(Boolean) : [];
+    let setlistId: string | null = null;
+    if (focusIds.length > 0) {
+      const { data: sl, error: slErr } = await createSetlist(
+        { band_id: bandId, name: `${poll.title?.trim() || t('Rehearsal')} setlist` },
+        focusIds.map((song_id, position) => ({ song_id, position, set_number: 1 }))
+      );
+      if (slErr) console.warn('Failed to create the poll setlist:', slErr);
+      setlistId = sl?.id || null;
+    }
     const finalNotes = notes?.trim() || poll.notes || t('Scheduled via Band Availability Poll');
 
     const { data: newEvent, error: eventError } = await createEvent(
@@ -504,6 +535,8 @@ export const finalizePollIntoRehearsal = async ({
         venue: venueName,
         venue_name: venueName,
         notes: finalNotes,
+        ...(roomCost > 0 ? { fee: roomCost } : {}),
+        ...(setlistId ? { setlist_id: setlistId } : {}),
       },
       roster
     );

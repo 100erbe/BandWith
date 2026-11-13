@@ -18,6 +18,7 @@ import {
   deletePoll,
   type RehearsalPoll,
 } from '@/lib/services/rehearsalPolls';
+import { PollDetails } from './PollDetails';
 import { haptic } from '@/lib/haptics';
 import { StepPad, Card, Tag, PillButton, PillField } from '@/app/components/bw';
 import { personName } from '@/lib/personName';
@@ -47,7 +48,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
   const [votingOptionId, setVotingOptionId] = useState<string | null>(null);
   const [finalizingOptionId, setFinalizingOptionId] = useState<string | null>(null);
   const [showLocationInput, setShowLocationInput] = useState<string | null>(null); // optionId when admin clicks lock-in
-  const [finalLocation, setFinalLocation] = useState(() => t('Band Practice Space'));
+  const [finalLocation, setFinalLocation] = useState(() => poll.location?.trim() || t('Band Practice Space'));
   const [dismissing, setDismissing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -310,6 +311,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
             {poll.notes ? `${poll.notes} — ` : t('Select your available options — ')}
             {t('{voted} of {total} voted', { voted: uniqueVoterCount, total: totalMembers })}
           </p>
+          <PollDetails poll={{ ...poll, total_members_count: totalMembers }} className="text-white/85" />
         </div>
 
         <div className="grid grid-cols-3 gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(4, Math.max(1, padOptions.length))}, minmax(0, 1fr))` }}>

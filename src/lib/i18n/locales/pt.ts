@@ -3624,6 +3624,11 @@ const dict: Dictionary = {
   "Tap a day to add it with these times": "Toque num dia para o adicionar com estes horários",
   "Vote by": "Votar até",
   "Vote deadline & note": "Prazo de votação e nota",
+  "Place, cost & songs": "Local, custo e músicas",
+  "Room cost": "Custo da sala",
+  "Split": "Divisão",
+  "e.g. Blackbox Studios · room 2": "ex. Blackbox Studios · sala 2",
+  "{amount} each": "{amount} cada um",
 };
 
 export default dict;
