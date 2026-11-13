@@ -68,6 +68,7 @@ import { TabName, ExpandedCardType, CreateEventType, RehearsalViewMode } from "@
 import { Header } from "@/app/components/layout/Header";
 import BottomNavigation from "@/app/components/layout/BottomNavigation";
 import { useRailLayout } from "@/lib/deviceRegions";
+import { syncOpenEvent } from '@/lib/openEventSync';
 import { homeAutoDetail } from "@/lib/homeAutoDetail";
 import { HeaderAction, NavBackButton } from "@/app/components/bw/Screen";
 import { IdentityHub } from "@/app/components/layout/IdentityHub";
@@ -701,6 +702,28 @@ export default function AuthenticatedApp() {
     }
     return [];
   }, [masterEventsList, eventMembersMap, isAdminOfBand, user?.id, bandLookup, realBand?.name]);
+
+  // The open detail follows the list: a newer version of its event (saved
+  // here or by someone else, delivered by realtime) replaces the snapshot.
+  const openEventSeenRef = useRef<{ key: string | null; seen: string | null }>({ key: null, seen: null });
+  const openEventKey = selectedEvent ? eventKeyOf(selectedEvent) : null;
+  useEffect(() => {
+    const track = openEventSeenRef.current;
+    if (track.key !== openEventKey) {
+      track.key = openEventKey;
+      track.seen = null;
+    }
+    if (!openEventKey) return;
+    const fresh = events.find(e => (e.eventId || e.id?.toString()) === openEventKey);
+    if (!fresh) return;
+    const { next, seen } = syncOpenEvent<EventData>(selectedEvent, fresh as Partial<EventData>, track.seen);
+    track.seen = seen;
+    if (next === selectedEvent) return;
+    setSelectedEvent(prev =>
+      prev && eventKeyOf(prev) === openEventKey ? { ...prev, ...(fresh as Partial<EventData>) } : prev,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events, openEventKey]);
 
   // ═══ INSTANT CLIENT-SIDE FILTERING (band pill + status + search + optimistic) ═══
   // To-do lists → "Add to an existing one": the band's upcoming gigs,
@@ -2805,7 +2828,9 @@ export default function AuthenticatedApp() {
             }
           });
         }
-        if (songs.length === 0) return null;
+        // No songs: leave the setlist as it is, unless the user removed every
+        // song of the gig's saved setlist while editing.
+        if (songs.length === 0 && !(data._setlistCleared && data._editing)) return null;
 
         const name = `${title || (isRehearsalWizard ? 'Rehearsal' : 'Event')} setlist`;
         if (data._editing && data._editingEventId) {
@@ -2825,6 +2850,7 @@ export default function AuthenticatedApp() {
             return existingId;
           }
         }
+        if (songs.length === 0) return null;
         const { data: sl, error: slErr } = await createSetlist({ band_id: realBand.id, name, song_count: songs.length }, songs);
         if (slErr) throw slErr;
         return sl?.id || null;

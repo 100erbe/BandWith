@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { initialsOf, type ResolvedMember } from './parts';
 import { personName } from '@/lib/personName';
@@ -43,16 +43,22 @@ export function useEventMembers({
   const [paidSupported, setPaidSupported] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(false);
   const [markError, setMarkError] = useState<string | null>(null);
+  // Bumped to reload the lineup (someone changed it while it's open).
+  const [reloadKey, setReloadKey] = useState(0);
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
+  const shownForRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (!eventId || disabled) {
       setMembers(null);
+      shownForRef.current = undefined;
       setError(null);
       return;
     }
     let cancelled = false;
     const load = async () => {
-      setLoading(true);
+      // A live reload of the same event keeps the lineup on screen.
+      if (shownForRef.current !== eventId) setLoading(true);
       setError(null);
       // fee and paid_at come from bw_event_member_money (071): all rows for
       // admins, only the viewer's own row for members.
@@ -120,6 +126,7 @@ export function useEventMembers({
 
       setPaidSupported(withPaid);
       setMembers(resolved);
+      shownForRef.current = eventId;
       setLoading(false);
     };
     load().catch((e) => {
@@ -130,7 +137,7 @@ export function useEventMembers({
     return () => {
       cancelled = true;
     };
-  }, [eventId, bandId, createdBy, currentUserId, disabled, bands, selectedBand, t]);
+  }, [eventId, bandId, createdBy, currentUserId, disabled, bands, selectedBand, t, reloadKey]);
 
   /** Admins: stamp paid_at on every non-declined member still unpaid. */
   const markAllPaid = useCallback(async () => {
@@ -147,5 +154,5 @@ export function useEventMembers({
     setMembers((prev) => prev?.map((m) => (m.userId && stamped.has(m.userId) ? { ...m, paidAt: stamped.get(m.userId) } : m)) ?? prev);
   }, [eventId, paidSupported, markingPaid]);
 
-  return { members, loading, error, paidSupported, markAllPaid, markingPaid, markError };
+  return { members, loading, error, paidSupported, markAllPaid, markingPaid, markError, reload };
 }

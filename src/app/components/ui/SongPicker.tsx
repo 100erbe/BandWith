@@ -30,6 +30,11 @@ interface SongPickerProps {
   theme?: 'lime' | 'blue' | 'beige';
   /** Sheet overline, e.g. the target set ("Set 1 · Dinner"). */
   overline?: string;
+  /**
+   * When set, tapping a song from `selectedIds` unchecks it and confirming
+   * reports those songs here, so the caller can take them out of its list.
+   */
+  onRemoveSelected?: (ids: string[]) => void;
 }
 
 type Tab = 'library' | 'add';
@@ -54,6 +59,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
   selectedIds = [],
   theme = 'lime',
   overline,
+  onRemoveSelected,
 }) => {
   const t = useT();
   const { selectedBand } = useBand();
@@ -65,6 +71,8 @@ export const SongPicker: React.FC<SongPickerProps> = ({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [multiSelected, setMultiSelected] = useState<Set<string>>(new Set());
+  // Songs from selectedIds the user unchecked (only with onRemoveSelected).
+  const [unselected, setUnselected] = useState<Set<string>>(new Set());
 
   // Add form
   const [newTitle, setNewTitle] = useState('');
@@ -115,7 +123,14 @@ export const SongPicker: React.FC<SongPickerProps> = ({
       duration_seconds: song.duration_seconds,
       category: song.category,
     };
-    if (multiSelect) {
+    if (multiSelect && onRemoveSelected && selectedIds.includes(song.id)) {
+      setUnselected(prev => {
+        const next = new Set(prev);
+        if (next.has(song.id)) next.delete(song.id);
+        else next.add(song.id);
+        return next;
+      });
+    } else if (multiSelect) {
       setMultiSelected(prev => {
         const next = new Set(prev);
         if (next.has(song.id)) next.delete(song.id);
@@ -126,17 +141,18 @@ export const SongPicker: React.FC<SongPickerProps> = ({
       onSelect(picked);
       onClose();
     }
-  }, [multiSelect, onSelect, onClose]);
+  }, [multiSelect, onSelect, onClose, onRemoveSelected, selectedIds]);
 
   const handleConfirmMulti = useCallback(() => {
-    if (!onSelectMultiple) return;
+    if (onRemoveSelected && unselected.size > 0) onRemoveSelected(Array.from(unselected));
+    if (!onSelectMultiple) { onClose(); return; }
     const selected = songs.filter(s => multiSelected.has(s.id)).map(s => ({
       id: s.id, title: s.title, artist: s.artist || '',
       duration_seconds: s.duration_seconds, category: s.category,
     }));
     onSelectMultiple(selected);
     onClose();
-  }, [multiSelected, songs, onSelectMultiple, onClose]);
+  }, [multiSelected, unselected, songs, onSelectMultiple, onRemoveSelected, onClose]);
 
   const handleAddSong = useCallback(async () => {
     if (!newTitle.trim() || !selectedBand?.id) return;
@@ -187,7 +203,9 @@ export const SongPicker: React.FC<SongPickerProps> = ({
 
   if (!isOpen) return null;
 
-  const allSelected = new Set([...selectedIds, ...Array.from(multiSelected)]);
+  const allSelected = new Set(
+    [...selectedIds.filter(id => !unselected.has(id)), ...Array.from(multiSelected)],
+  );
   const query = search.trim();
 
   const goToManual = () => {
@@ -205,6 +223,10 @@ export const SongPicker: React.FC<SongPickerProps> = ({
         loading={saving}
       >
         {saving ? t('Saving…') : t('Add & select')}
+      </PillButton>
+    ) : multiSelect && unselected.size > 0 ? (
+      <PillButton icon={<Check className="w-5 h-5" />} onClick={handleConfirmMulti}>
+        {t('Update setlist')}
       </PillButton>
     ) : multiSelect && multiSelected.size > 0 ? (
       <PillButton icon={<Plus className="w-5 h-5" />} onClick={handleConfirmMulti}>
@@ -299,7 +321,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
               <div className="flex flex-col gap-3">
                 {displayed.map(song => {
                   const isChecked = allSelected.has(song.id);
-                  const inSet = selectedIds.includes(song.id) && !multiSelected.has(song.id);
+                  const inSet = selectedIds.includes(song.id) && !multiSelected.has(song.id) && !unselected.has(song.id);
                   const subtitle = [song.artist || t('Unknown artist'), parseGenres(song.genre).join(', ')].filter(Boolean).join(' · ');
                   return (
                     <button

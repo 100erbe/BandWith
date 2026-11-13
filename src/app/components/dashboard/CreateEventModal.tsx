@@ -41,6 +41,7 @@ import type { EventData } from '@/app/components/dashboard/EventCard';
 import { RehearsalCreationWizard } from '@/app/components/rehearsal/RehearsalCreationWizard';
 import { useBand } from '@/lib/BandContext';
 import { getSongs, getSetlists, getSetlist, type Song, type Setlist } from '@/lib/services/songs';
+import { removeSongsFromSets, setsFromSetlistSongs, setSongCount } from '@/lib/setlistSets';
 import { supabase } from '@/lib/supabase';
 import { listEventTasks } from '@/lib/services/eventTasks';
 import { getBandPricing, DEFAULT_BAND_PRICING, type BandPricingSettings } from '@/lib/services/pricing';
@@ -131,6 +132,7 @@ interface CreateEventModalProps {
   editingEvent?: {
     id: number;
     eventId?: string;
+    setlistId?: string;
     title: string;
     status: string;
     date: string;
@@ -767,6 +769,24 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   }, [selectedBand?.id, isEditing, currentUserMemberId, MEMBERS, selectedMembers]);
 
   const [setlist, setSetlist] = useState<any[]>(() => (Array.isArray(ds?.setlist) ? ds!.setlist : []));
+  // Editing: start from the songs already on the gig (the screen showed them,
+  // the form used to open with 0). Songs the user picked meanwhile win.
+  const editingSetlistId: string | undefined = isEditing ? editingEvent?.setlistId : undefined;
+  const savedSongCountRef = useRef(0);
+  useEffect(() => {
+    if (!editingSetlistId || Array.isArray(ds?.setlist)) return;
+    let cancelled = false;
+    getSetlist(editingSetlistId).then(({ data, error }) => {
+      if (cancelled || error || !data?.songs?.length) return;
+      const sets = setsFromSetlistSongs(data.songs, (n) => t('Set {n}', { n }));
+      savedSongCountRef.current = setSongCount(sets);
+      setSetlist((prev) => (setSongCount(prev) > 0 ? prev : sets));
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingSetlistId]);
   const [tasks, setTasks] = useState<any[]>(() =>
     Array.isArray(ds?.tasks) ? ds!.tasks : (initialTasks || []).map((t, i) => ({
       uid: `t-init-${i}-${Math.random().toString(36).slice(2)}`,
@@ -962,6 +982,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       members: membersWithUserIds,
       audienceIds: membersWithUserIds.map(m => m.id),
       setlist,
+      // Every song removed from a saved setlist: empty it (no songs alone means "unchanged").
+      _setlistCleared: isEditing && savedSongCountRef.current > 0 && setSongCount(setlist) === 0,
       // A task typed but not yet added with the button still counts.
       tasks: newTaskText.trim()
         ? [...tasks, { uid: `t-${Date.now()}`, title: newTaskText.trim(), completed: false }]
@@ -1169,6 +1191,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     });
   };
 
+  const handleRemovedSongs = (songIds: string[]) => {
+    setSetlist(prev => removeSongsFromSets(prev, songIds));
+  };
+
   const handlePickedMultipleSongs = (picked: PickedSong[]) => {
     setSetlist(prev => {
       if (prev.length === 0) {
@@ -1221,25 +1247,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setLibraryError(null);
     if (!data?.songs?.length) return;
 
-    const groupedBySet = new Map<number, { title: string; artist: string; songId: string; uid: string }[]>();
-    data.songs.forEach((ss: any) => {
-      const setNum = ss.set_number || 1;
-      if (!groupedBySet.has(setNum)) groupedBySet.set(setNum, []);
-      groupedBySet.get(setNum)!.push({
-        uid: `song-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        title: ss.song?.title || 'Untitled',
-        artist: ss.song?.artist || '',
-        songId: ss.song_id,
-      });
-    });
-
-    const sets = Array.from(groupedBySet.entries()).map(([num, songs]) => ({
-      uid: `set-${Date.now()}-${num}`,
-      title: t('Set {n}', { n: num }),
-      songs,
-    }));
-
-    setSetlist(sets);
+    setSetlist(setsFromSetlistSongs(data.songs, (n) => t('Set {n}', { n })));
   };
 
   const addSet = () => {
@@ -2344,6 +2352,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               }}
               onSelect={handlePickedSong}
               onSelectMultiple={handlePickedMultipleSongs}
+              onRemoveSelected={handleRemovedSongs}
               multiSelect={true}
               selectedIds={setlist.flatMap((s: any) =>
                 (s.songs || []).filter((sg: any) => sg.songId).map((sg: any) => sg.songId)
@@ -2442,6 +2451,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             }}
             onSelect={handlePickedSong}
             onSelectMultiple={handlePickedMultipleSongs}
+            onRemoveSelected={handleRemovedSongs}
             multiSelect={true}
             selectedIds={setlist.flatMap((s: any) =>
               (s.songs || []).filter((sg: any) => sg.songId).map((sg: any) => sg.songId)
