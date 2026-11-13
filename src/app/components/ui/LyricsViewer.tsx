@@ -3,7 +3,9 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Minus, Pause, Play, Plus, X } from '@/app/components/icons';
 import { IconButton } from '@/app/components/bw/Screen';
 import { closeLyrics, parseInline, parseLyrics, splitChords, useLyricsDoc } from '@/lib/lyrics';
-import { chordLabel } from '@/lib/ireal';
+import { chordLabel, keyLabel } from '@/lib/ireal';
+import { transposeChord } from '@/lib/transpose';
+import { TransposeControl, TransposeProvider, useSongTranspose, useTranspose } from './Transpose';
 import { togglePlay, usePlayer } from '@/lib/audioPlayer';
 import { useSystemBack } from '@/lib/backStack';
 import { useT } from '@/lib/i18n';
@@ -55,6 +57,7 @@ const Inline: React.FC<{ text: string }> = ({ text }) => (
  */
 const LyricsLine: React.FC<{ line: string }> = ({ line }) => {
   const segments = React.useMemo(() => splitChords(line), [line]);
+  const { semitones, flats } = useTranspose();
   if (!segments) {
     return (
       <p className="font-medium break-words">
@@ -67,7 +70,7 @@ const LyricsLine: React.FC<{ line: string }> = ({ line }) => {
       {segments.map((seg, k) => {
         if (!seg.chord) return <Inline key={k} text={seg.text} />;
         const [, head, tail] = seg.text.match(/^(\S*)([\s\S]*)$/) || ['', '', seg.text];
-        const label = chordLabel(seg.chord);
+        const label = chordLabel(transposeChord(seg.chord, semitones, flats));
         return (
           <React.Fragment key={k}>
             {/* Text first in the DOM: the box's baseline is the lyric's, the chord shows above it. */}
@@ -172,6 +175,10 @@ export const LyricsViewer: React.FC = () => {
   }, [doc]); // eslint-disable-line react-hooks/exhaustive-deps
   const showChords = view === 'chords' && hasChart;
   const kind = showChords ? tr('Chords') : tr('Lyrics');
+  // Transpose on this device: only when there are chords to move.
+  const [semitones, setSemitones] = useSongTranspose(doc?.songId);
+  const songKey = doc?.songKey || keyLabel(doc?.chart?.key) || null;
+  const hasChords = hasChart || /\[[A-G][^\]\s]{0,15}\]/.test(doc?.lyrics || '');
 
   return (
     <AnimatePresence>
@@ -208,9 +215,16 @@ export const LyricsViewer: React.FC = () => {
             <IconButton label={tr('Bigger text')} size="sm" icon={<Plus />} onClick={() => step(1)} disabled={max} />
             <IconButton label={showChords ? tr('Close') : tr('Close lyrics')} size="sm" icon={<X />} onClick={closeLyrics} />
           </div>
-          {hasLyrics && hasChart && <LyricsChordsTabs view={view} onChange={setView} className="shrink-0 px-4 pb-2" />}
+          {((hasLyrics && hasChart) || hasChords) && (
+            <div className="shrink-0 px-4 pb-2 flex flex-wrap items-center justify-between gap-2">
+              {hasLyrics && hasChart ? <LyricsChordsTabs view={view} onChange={setView} /> : <span />}
+              {hasChords && <TransposeControl semitones={semitones} onChange={setSemitones} songKey={songKey} />}
+            </div>
+          )}
           <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-16">
-            {showChords && doc.chart ? <ChordChartView chart={doc.chart} size={size} /> : <LyricsText lyrics={doc.lyrics} size={size} />}
+            <TransposeProvider semitones={semitones} songKey={songKey}>
+              {showChords && doc.chart ? <ChordChartView chart={doc.chart} size={size} /> : <LyricsText lyrics={doc.lyrics} size={size} />}
+            </TransposeProvider>
           </div>
         </motion.div>
       )}

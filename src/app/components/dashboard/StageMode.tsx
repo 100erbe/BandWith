@@ -16,6 +16,8 @@ import '@/styles/stage.css';
 import { useT } from '@/lib/i18n';
 import { timelineDates } from '@/lib/gigTiming';
 import { cn } from '@/app/components/ui/utils';
+import { TransposeControl, TransposeProvider, useSongTranspose } from '@/app/components/ui/Transpose';
+import { keyLabel } from '@/lib/ireal';
 import type { StageSaveState } from '@/app/components/event/useStageLive';
 import type { StageBleStatus } from '@/app/components/event/useStageBle';
 
@@ -37,6 +39,8 @@ export interface StageSong {
   artist?: string;
   duration?: string;
   key?: string;
+  /** songs.bpm: the visual metronome's tempo. */
+  bpm?: number;
   /** songs.lyrics (Markdown / JSON, src/lib/lyrics.ts). */
   lyrics?: string;
   /** songs.chord_chart (iReal Pro import, src/lib/ireal.ts). */
@@ -125,6 +129,10 @@ export const StageMode: React.FC<StageModeProps> = ({
   const showLyrics = ((view === 'lyrics' && hasLyrics) || showChords) && !editing;
   const lyricsSong = songs[Math.max(0, current)];
   const lyricsSize = useLyricsSize();
+  // Transpose for this player only (kept per song on the device).
+  const [semitones, setSemitones] = useSongTranspose(lyricsSong?.songId);
+  const lyricsKey = lyricsSong?.key || keyLabel(lyricsSong?.chart?.key) || null;
+  const lyricsHasChords = !!lyricsSong && (showChords ? !!lyricsSong.chart : /\[[A-G][^\]\s]{0,15}\]/.test(lyricsSong.lyrics || ''));
   const lyricsRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     lyricsRef.current?.scrollTo?.({ top: 0 });
@@ -442,6 +450,10 @@ export const StageMode: React.FC<StageModeProps> = ({
                   <Plus className="w-5 h-5" />
                 </button>
               </div>
+              {lyricsHasChords && (
+                <TransposeControl tone="stage" semitones={semitones} onChange={setSemitones} songKey={lyricsKey} className="shrink-0 pb-2 self-end" />
+              )}
+              <TransposeProvider semitones={semitones} songKey={lyricsKey}>
               <div ref={lyricsRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain -mx-4 px-4 pb-6">
                 {showChords ? (
                   lyricsSong.chart ? (
@@ -464,6 +476,7 @@ export const StageMode: React.FC<StageModeProps> = ({
                   />
                 )}
               </div>
+              </TransposeProvider>
             </div>
           ) : (
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain -mx-4 px-4">
