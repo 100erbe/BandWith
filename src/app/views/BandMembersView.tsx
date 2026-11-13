@@ -28,6 +28,8 @@ import {
 import { inviteToBand } from '@/lib/services/invitations';
 import type { BandMember } from '@/lib/services/bands';
 import { DotText } from '@/app/components/bw';
+import { MemberDetail } from '@/app/components/band/MemberDetail';
+import { createChat } from '@/lib/services/chats';
 import { ScreenHeader, IconButton, Card, Tag, BwSheet } from '@/app/components/bw/Screen';
 import { PillButton } from '@/app/components/bw/Form';
 import { personName } from '@/lib/personName';
@@ -122,7 +124,8 @@ interface SearchUser {
 export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => {
   const t = useT();
   const { selectedBand, isAdmin } = useBand();
-  const { profile: currentProfile } = useAuth();
+  const { profile: currentProfile, user: authUser } = useAuth();
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [members, setMembers] = useState<BandMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
@@ -393,9 +396,18 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                     <div
                       className={cn(
                         'flex items-center gap-3 p-4 pr-3 rounded-[24px] bg-card text-card-foreground border-[1.5px]',
-                        open ? 'border-foreground' : 'border-transparent',
+                        open || detailId === member.id ? 'border-foreground' : 'border-transparent',
                       )}
                     >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionMenuId(null);
+                          setDetailId(member.id);
+                        }}
+                        aria-label={t('Open {name}', { name })}
+                        className="flex-1 min-w-0 flex items-center gap-3 text-left"
+                      >
                       <Avatar
                         src={member.profile?.avatar_url}
                         alt={personName(member.profile)}
@@ -411,6 +423,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                           {[member.instrument, roleLabel].filter(Boolean).join(' · ')}
                         </span>
                       </div>
+                      </button>
                       <IconButton
                         label={t('Actions for {name}', { name })}
                         variant="ghost"
@@ -462,6 +475,53 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
             members={members.map((m) => ({ name: m.stage_name || personName(m.profile, t('Unknown')), instrument: m.instrument }))}
           />}
       </div>
+
+      {/* Member detail (Figma "Band / Member detail – stats"): trailing pane on the open Duo, detail column on a tablet. */}
+      <AnimatePresence>
+        {(() => {
+          const m = detailId ? members.find((x) => x.id === detailId) : undefined;
+          if (!m || !selectedBand?.id) return null;
+          const self = !!authUser?.id && m.user_id === authUser.id;
+          // createChat lets a member write only to admins.
+          const canMessage = !self && (isAdmin || m.role === 'admin');
+          return (
+            <MemberDetail
+              key={m.id}
+              member={m}
+              bandId={selectedBand.id}
+              viewerId={authUser?.id}
+              viewerIsAdmin={isAdmin}
+              isPro={isProMember(m)}
+              initials={getInitials(m)}
+              canBeAdmin={true}
+              onClose={() => setDetailId(null)}
+              onMessage={
+                canMessage
+                  ? async () => {
+                      const { data, error } = await createChat({ type: 'direct', participant_ids: [m.user_id] });
+                      if (error || !data) {
+                        flashNotice(error?.message || t('Could not open the chat. Try again.'));
+                        return;
+                      }
+                      setDetailId(null);
+                      onClose();
+                      window.dispatchEvent(new CustomEvent('push-navigate', { detail: { screen: 'chat', chatId: data.id } }));
+                    }
+                  : undefined
+              }
+              onToggleRole={isAdmin && !self ? () => void handleToggleRole(m) : undefined}
+              onRemove={
+                isAdmin && !self
+                  ? () => {
+                      setDetailId(null);
+                      handleRemoveMember(m);
+                    }
+                  : undefined
+              }
+            />
+          );
+        })()}
+      </AnimatePresence>
 
       {/* Primary CTA (Figma Button, lime) */}
       {isAdmin && !loading && (
