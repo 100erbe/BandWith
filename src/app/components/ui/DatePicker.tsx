@@ -2,7 +2,7 @@ import { motion } from 'motion/react';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 import React, { useState, useMemo, useEffect } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { Calendar, ArrowLeft, ArrowRight, Check, X, AlertTriangle } from '@/app/components/icons';
+import { Calendar, ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, X, AlertTriangle } from '@/app/components/icons';
 import { cn } from './utils';
 import { IconButton } from '@/app/components/bw/Screen';
 import { RailSheet } from '@/lib/railActions';
@@ -576,5 +576,120 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         {freeDays && <FreeHeatLegend total={freeTotal} className="pt-1" />}
       </div>
     </PickerSheet>
+  );
+};
+
+/* ─────────────────────────── Inline month calendar ───────────────────────────
+ * The month grid without a sheet, for the tablet composers (Figma iPad · 04
+ * "New gig · Date & time"): month name with ‹ ›, weekday initials, plain day
+ * numbers; the chosen day in the event colour, a grey dot on busy days.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+export interface InlineMonthCalendarProps {
+  value: string;
+  onChange: (value: string) => void;
+  events?: DatePickerEvent[];
+  /** Selected-day colour and its foreground. */
+  accent?: string;
+  accentFg?: string;
+  className?: string;
+}
+
+export const InlineMonthCalendar: React.FC<InlineMonthCalendarProps> = ({
+  value,
+  onChange,
+  events,
+  accent = 'var(--wizard-accent)',
+  accentFg = 'var(--wizard-accent-fg, #000)',
+  className,
+}) => {
+  const t = useT();
+  const start = value ? new Date(value + 'T00:00:00') : new Date();
+  const [month, setMonth] = useState(() => (isNaN(start.getTime()) ? new Date().getMonth() : start.getMonth()));
+  const [year, setYear] = useState(() => (isNaN(start.getTime()) ? new Date().getFullYear() : start.getFullYear()));
+  useEffect(() => {
+    if (!value) return;
+    const d = new Date(value + 'T00:00:00');
+    if (!isNaN(d.getTime())) {
+      setMonth(d.getMonth());
+      setYear(d.getFullYear());
+    }
+  }, [value]);
+  const busy = useMemo(() => new Set((events || []).map(e => (e.date || '').slice(0, 10))), [events]);
+  const shift = (delta: number) => {
+    const d = new Date(year, month + delta, 1);
+    setMonth(d.getMonth());
+    setYear(d.getFullYear());
+  };
+  const first = (new Date(year, month, 1).getDay() + 6) % 7;
+  const days = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = [...Array(first).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)];
+  while (cells.length % 7) cells.push(null);
+  const today = getTodayStr();
+  const monthName = new Date(year, month, 1).toLocaleDateString(intlLocale('en-US'), { month: 'long', year: 'numeric' });
+  return (
+    <div className={cn('flex flex-col gap-2', className)}>
+      <div className="flex items-center gap-2">
+        <span className="bw-body-lg font-semibold text-foreground flex-1 min-w-0 truncate capitalize" aria-live="polite">
+          {monthName}
+        </span>
+        <button
+          type="button"
+          aria-label={t('Previous month')}
+          onClick={() => shift(-1)}
+          className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-foreground/[0.08] cursor-pointer"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <button
+          type="button"
+          aria-label={t('Next month')}
+          onClick={() => shift(1)}
+          className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-foreground/[0.08] cursor-pointer"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      </div>
+      <div className="grid grid-cols-7" aria-hidden>
+        {weekdayInitials().map((d, i) => (
+          <span key={i} className="text-center bw-label-xs text-muted-foreground">
+            {d}
+          </span>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-y-1">
+        {cells.map((day, i) => {
+          if (day == null) return <span key={i} aria-hidden />;
+          const key = ymd(year, month, day);
+          const on = key === value;
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onChange(key)}
+              aria-pressed={on}
+              aria-current={key === today ? 'date' : undefined}
+              aria-label={`${new Date(year, month, day).toLocaleDateString(intlLocale('en-GB'), {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}${busy.has(key) ? `, ${t('busy')}` : ''}`}
+              className={cn(
+                'relative h-8 mx-auto w-full max-w-[52px] rounded-full flex items-center justify-center bw-body-md tabular-nums cursor-pointer transition-colors',
+                on ? 'font-semibold' : 'text-foreground hover:bg-foreground/[0.08]',
+                key === today && !on && 'ring-1 ring-inset ring-foreground/40',
+              )}
+              style={on ? { backgroundColor: accent, color: accentFg } : undefined}
+            >
+              {day}
+              {busy.has(key) && !on && (
+                <span aria-hidden className="absolute top-0.5 right-[18%] w-1.5 h-1.5 rounded-full bg-muted-foreground/70" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 };

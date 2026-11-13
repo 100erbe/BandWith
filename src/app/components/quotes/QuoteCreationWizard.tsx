@@ -72,7 +72,11 @@ import { formatDistance, fromUnit, ratePerUnit, toUnit, useDistanceUnit } from '
 import { QuoteDeskMode, quoteDeskLinesFromQuote, useLeadingCompanion, type QuoteDeskLine } from '@/app/components/duo';
 import { LiveQuotePreview } from '@/app/components/duo/previews/LiveQuotePreview';
 import { personName } from '@/lib/personName';
-import { t, useT, intlLocale, getLocale } from '@/lib/i18n';
+import { t, useT, intlLocale, getLocale, translate, type Locale } from '@/lib/i18n';
+import { docLanguageFor, rememberDocLanguage } from '@/lib/i18n/docLanguage';
+import { DocLanguagePicker } from '@/app/components/bw/DocLanguagePicker';
+import { BwSheet } from '@/app/components/bw/Screen';
+import { ComposerCard, ComposerPreview, ComposerShell, useComposerLayout } from '@/app/components/composer/Composer';
 import { builtinText } from '@/lib/i18n/builtins';
 
 export interface QuoteBandMember {
@@ -3003,6 +3007,20 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
     />
   );
 
+  // iPad (Figma iPad · 06 "Quote / New"): every step on one screen with the
+  // quote as the client will read it, in the client's language. Phones and
+  // the iPhone Duo keep the steps. Same state, totals and save as the steps.
+  const composerLayout = useComposerLayout();
+  const composerOn = composerLayout.composer && !isEditing;
+  const [quoteSheet, setQuoteSheet] = useState<null | 'production' | 'billing'>(null);
+  const docClientKey = clientEmail.trim() || clientName.trim();
+  const [docLang, setDocLang] = useState<Locale>(() => docLanguageFor(docClientKey));
+  const docLangPicked = useRef(false);
+  useEffect(() => {
+    // Follows the client typed in (their remembered language) until a language is picked here.
+    if (!docLangPicked.current) setDocLang(docLanguageFor(docClientKey));
+  }, [docClientKey]);
+
   // Book layout (Figma "Duo · 06"): steps 1–2 show the live quote on the
   // leading page; step 3 already shows the same review on the trailing page.
   const previewMusicians = selectedMusicians.length || pricingSettings.core_members_count;
@@ -3040,7 +3058,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       total={formatQuoteMoney(totals.total, currencySymbol, intlLocale('en-US'))}
       totalLabel={`${t('Total')}${depositRequired && depositPercentage > 0 ? ` · ${t('{percent}% deposit', { percent: depositPercentage })}` : ''}`}
     />,
-    !isEditing && step < 2
+    !isEditing && step < 2 && !composerOn
   );
 
   // ── EDIT MODE RENDER ────────────────────────────────────────
@@ -3065,6 +3083,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const requestClose = useCallback(() => requestCloseRef.current(), []);
   useSystemBack(!isEditing, () => {
     if (leaveOpen) setLeaveOpen(false);
+    else if (quoteSheet) setQuoteSheet(null);
     else requestClose();
     return true;
   });
@@ -3131,7 +3150,391 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
     );
   }
 
+  // ── TABLET COMPOSER (Figma iPad · 06 "Quote / New") ─────────
+  const renderComposer = () => {
+    const landscape = composerLayout.landscape;
+    const tr = (source: string, vars?: Record<string, string | number>) => translate(docLang, source, vars);
+    const docTag = intlLocale(undefined, docLang);
+    const money = (n: number) => formatQuoteMoney(n, currencySymbol, docTag);
+    const appMoney = (n: number) => formatQuoteMoney(n, currencySymbol, intlLocale('en-US'));
+    const musicians = selectedMusicians.length || pricingSettings.core_members_count || 1;
+    const doneClient = !!eventType && !!clientName.trim();
+    const doneLineup = lineupBaseAmount > 0 || selectedMusicians.length > 0;
+    const doneDate = !!eventDate && !!venueName.trim();
+    const ready = [doneClient, doneLineup, doneDate, true, true].filter(Boolean).length;
+    const canSend = !!eventType && !!eventDate;
+    const productionAmount = effectiveSoundFee + effectiveLightsFee + effectiveBacklineFee;
+    const docDate = eventDate
+      ? new Date(eventDate + 'T00:00:00').toLocaleDateString(intlLocale('en-GB', docLang), {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        })
+      : tr('Date TBD');
+    const validUntilLabel = new Date(validUntilDate + 'T00:00:00').toLocaleDateString(intlLocale('en-GB', docLang), {
+      day: 'numeric',
+      month: 'short',
+    });
+    const depositAmount = depositRequired ? calculateDepositAmount(totals.total, depositPercentage) : 0;
+    const bandInitials = (selectedBand?.name || 'BW')
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(w => w[0]?.toUpperCase())
+      .join('');
+
+    const docLines: { label: string; detail?: string; value: string }[] = [
+      {
+        label: tr('MAIN BAND'),
+        detail: `${tr('{count}pc band', { count: musicians })} · ${numberOfSets} × ${setDuration} min`,
+        value: money(lineupBaseAmount + legacyMomentsTotal),
+      },
+      ...(productionTier !== 'none'
+        ? [{ label: tr('MUSICAL PRODUCTION'), value: productionAmount > 0 ? money(productionAmount) : tr('included') }]
+        : []),
+      ...customItems.map((it, i) => {
+        const n = normalizedCustomItemsForCalc[i];
+        const amount = (n?.amount || 0) * (n?.quantity || 1);
+        return {
+          label: (builtinText(it.name || it.description, docLang) || tr('EXTRA SERVICE')).toUpperCase(),
+          detail: (n?.quantity || 1) > 1 ? `× ${n?.quantity}` : undefined,
+          value: amount > 0 ? money(amount) : tr('included'),
+        };
+      }),
+      ...(effectiveTravelFee > 0
+        ? [
+            {
+              label: tr('TRAVEL & LOGISTICS'),
+              detail: travelDistanceKm ? tr('{distance} round trip', { distance: formatDistance(travelDistanceKm * 2) }) : undefined,
+              value: money(effectiveTravelFee),
+            },
+          ]
+        : []),
+      ...(effectiveAccommodationFee > 0 ? [{ label: tr('ACCOMMODATION'), value: money(effectiveAccommodationFee) }] : []),
+      ...(effectiveMealsFee > 0 ? [{ label: tr('CATERING / MEALS'), value: money(effectiveMealsFee) }] : []),
+    ];
+    const vatLabel = vatExempt
+      ? tr('VAT (Exempt):')
+      : reverseCharge
+        ? tr('VAT (Reverse Charge 0%):')
+        : tr('VAT {rate}%:', { rate: vatRate });
+
+    const clientCard = (
+      <ComposerCard n={1} title={t('Client & event')} done={doneClient}>
+        <div className="flex flex-wrap gap-2" role="group" aria-label={t('Event type')}>
+          {EVENT_TYPE_OPTIONS.map(opt => (
+            <Chip key={opt.value} size="md" selected={eventType === opt.value} title={opt.subtitle} onClick={() => setEventType(opt.value)}>
+              {opt.label}
+            </Chip>
+          ))}
+        </div>
+        <PillField
+          label={t('Event title')}
+          hideLabel
+          value={eventName}
+          onChange={e => setEventName(e.target.value)}
+          placeholder={getEffectiveTitle()}
+          autoComplete="off"
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <PillField
+            label={t('Client name')}
+            hideLabel
+            icon={<User className="w-5 h-5" />}
+            value={clientName}
+            onChange={e => setClientName(e.target.value)}
+            placeholder={t('Client full name')}
+            autoComplete="off"
+            className="min-w-0"
+          />
+          <PillField
+            label={t('Client email')}
+            hideLabel
+            type="email"
+            icon={<Mail className="w-5 h-5" />}
+            value={clientEmail}
+            onChange={e => setClientEmail(e.target.value)}
+            placeholder="client@example.com"
+            className="min-w-0"
+          />
+        </div>
+        <PillField
+          label={t('Client phone')}
+          hideLabel
+          type="tel"
+          icon={<Phone className="w-5 h-5" />}
+          value={clientPhone}
+          onChange={e => setClientPhone(e.target.value)}
+          placeholder={t('Phone with country code')}
+        />
+      </ComposerCard>
+    );
+
+    const lineupCard = (
+      <ComposerCard n={2} title={t('Lineup & rate')} done={doneLineup}>
+        {renderLineupAndExtraSetsSection()}
+      </ComposerCard>
+    );
+
+    const dateCard = (
+      <ComposerCard n={3} title={t('Date & venue')} done={doneDate}>
+        {renderStep2()}
+      </ComposerCard>
+    );
+
+    const row = (label: string, value: React.ReactNode) => (
+      <div className="flex items-baseline justify-between gap-3 py-2.5 border-b border-border last:border-b-0 min-w-0">
+        <span className="bw-body-md text-muted-foreground min-w-0 truncate">{label}</span>
+        <span className="bw-label-md text-foreground text-right min-w-0 [overflow-wrap:anywhere]">{value}</span>
+      </div>
+    );
+    const editButton = (key: 'production' | 'billing', label: string) => (
+      <PillButton variant="ghost" size="sm" fullWidth={false} className="px-0" icon={<Edit3 className="w-3.5 h-3.5" />} onClick={() => setQuoteSheet(key)} aria-label={label}>
+        {t('Edit')}
+      </PillButton>
+    );
+
+    const productionCard = (
+      <ComposerCard n={4} title={t('Production & travel')} done trailing={editButton('production', t('Edit production & travel'))}>
+        <div className="flex flex-col">
+          {row(
+            t('Sound & lights'),
+            productionTier === 'none'
+              ? t('Client PA')
+              : `${productionTier === 'pro' ? t('Pro PA') : productionTier === 'custom' ? t('Custom PA') : t('Standard PA')}${productionAmount > 0 ? ` · ${appMoney(productionAmount)}` : ''}`,
+          )}
+          {row(
+            travelDistanceKm ? `${t('Travel')} · ${formatDistance(travelDistanceKm)}` : t('Travel'),
+            travelMode === 'included'
+              ? t('Included')
+              : travelMode === 'separate'
+                ? `${t('Separate fee')} · ${appMoney(effectiveTravelFee)}`
+                : t('By client'),
+          )}
+          {row(t('Accommodation'), effectiveAccommodationFee > 0 ? appMoney(effectiveAccommodationFee) : t('Not needed'))}
+          {customItems.length > 0 &&
+            row(
+              customItems.length === 1 ? t('{count} custom item', { count: 1 }) : t('{count} custom items', { count: customItems.length }),
+              appMoney(customItemsTotal),
+            )}
+        </div>
+      </ComposerCard>
+    );
+
+    const billingCard = (
+      <ComposerCard n={5} title={t('Billing & terms')} done trailing={editButton('billing', t('Edit billing & terms'))}>
+        <div className="flex flex-col">
+          {row(t('VAT'), vatExempt || reverseCharge ? t('VAT exempt') : `${vatRate}%`)}
+          {row(t('Deposit'), depositRequired && depositPercentage > 0 ? `${depositPercentage}%` : t('No deposit'))}
+          {row(t('Valid for'), t('{count} days', { count: validityDays }))}
+          {row(
+            t('Cancellation'),
+            cancellationPolicy === 'flexible' ? t('Flexible') : cancellationPolicy === 'strict' ? t('Strict') : t('Moderate'),
+          )}
+          {totals.discountAmount > 0 && row(t('Discount'), `−${appMoney(totals.discountAmount)}`)}
+        </div>
+      </ComposerCard>
+    );
+
+    const paper = (
+      <article
+        lang={docLang}
+        aria-label={t('Quote preview')}
+        className="rounded-[20px] bg-white text-black p-5 flex flex-col gap-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] min-w-0"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <span className="w-9 h-9 rounded-[10px] bg-black text-[var(--accent-gig)] flex items-center justify-center bw-label-sm shrink-0">
+            {bandInitials}
+          </span>
+          <span className="flex flex-col items-end gap-0.5 min-w-0">
+            <span className="bw-label-xs text-black/60">{tr('Event Quote')}</span>
+            <span className="bw-label-sm truncate">{initialData?.quoteNumber || '—'}</span>
+          </span>
+        </div>
+        <div className="flex flex-col gap-1 min-w-0">
+          <h3 className="bw-h1 [overflow-wrap:anywhere]">{getEffectiveTitle()}</h3>
+          <p className="bw-body-sm text-black/60 [overflow-wrap:anywhere]">
+            {[clientCompany.trim() || clientName.trim() || tr('Client TBD'), venueName.trim(), docDate].filter(Boolean).join(' · ')}
+          </p>
+        </div>
+        <div className="flex flex-col">
+          {docLines.map((l, i) => (
+            <div key={i} className="flex items-baseline justify-between gap-3 py-2 border-t border-black/10 min-w-0">
+              <span className="bw-body-sm min-w-0">
+                <span className="font-semibold">{l.label}</span>
+                {l.detail ? <span className="text-black/60"> · {l.detail}</span> : null}
+              </span>
+              <span className="bw-body-sm tabular-nums shrink-0">{l.value}</span>
+            </div>
+          ))}
+          {totals.discountAmount > 0 && (
+            <div className="flex items-baseline justify-between gap-3 py-2 border-t border-black/10">
+              <span className="bw-body-sm text-black/60 min-w-0">
+                {tr('Package Discount Applied ({amount})', {
+                  amount: discountType === 'percentage' ? `${discountValue}%` : money(totals.discountAmount),
+                })}
+              </span>
+              <span className="bw-body-sm tabular-nums shrink-0">−{money(totals.discountAmount)}</span>
+            </div>
+          )}
+          <div className="flex items-baseline justify-between gap-3 py-2 border-t border-black/10">
+            <span className="bw-body-sm text-black/60">{vatLabel}</span>
+            <span className="bw-body-sm tabular-nums text-black/60 shrink-0">{money(totals.vatAmount)}</span>
+          </div>
+        </div>
+        <div
+          className="rounded-[14px] bg-black text-[var(--accent-gig)] px-4 py-3 flex items-center justify-between gap-3"
+          style={{ '--dot-off': 'rgba(255,255,255,0.12)' } as React.CSSProperties}
+        >
+          <span className="bw-label-xs text-white">{tr('TOTAL:')}</span>
+          <DotText text={money(totals.total)} size={22} showGrid label={money(totals.total)} />
+        </div>
+        <p className="bw-label-xs text-black/60 [overflow-wrap:anywhere]">
+          {[
+            depositRequired && depositPercentage > 0
+              ? `${tr('Advance Deposit ({percent}%)', { percent: depositPercentage })} · ${money(depositAmount)}`
+              : null,
+            `${tr('Validity:')} ${validUntilLabel}`,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+      </article>
+    );
+
+    const preview = (
+      <ComposerPreview
+        label={t('Live PDF')}
+        caption={t('As the client sees it')}
+        className={cn(landscape && 'sticky top-0 min-h-[min(720px,calc(100dvh-140px))]')}
+        footer={
+          <PillButton
+            size="lg"
+            icon={<Share2 className="w-5 h-5" />}
+            loading={submitting}
+            disabled={!canSend}
+            onClick={() => handleCreate(true)}
+            style={{ backgroundColor: 'var(--accent-gig)', color: 'var(--accent-gig-fg)' }}
+          >
+            {t('Save & share')}
+          </PillButton>
+        }
+      >
+        {paper}
+        <DocLanguagePicker
+          value={docLang}
+          onChange={l => {
+            docLangPicked.current = true;
+            rememberDocLanguage(docClientKey, l);
+            setDocLang(l);
+          }}
+        />
+        {allMusicians.length > 0 && (
+          <div className="flex items-center gap-3">
+            <Toggle
+              checked={askAvailability}
+              onCheckedChange={() => setAskAvailability(v => !v)}
+              aria-label={t('Ask the lineup for availability now')}
+            />
+            <span className="flex flex-col gap-0.5 min-w-0">
+              <span className="bw-label-md">{t('Ask the lineup now')}</span>
+              <span className="bw-body-sm text-muted-foreground">{t('Check who is free before you send')}</span>
+            </span>
+          </div>
+        )}
+      </ComposerPreview>
+    );
+
+    return (
+      <>
+        <ComposerShell
+          kind="quote"
+          title={t('New quote')}
+          subline={[t('Draft'), selectedBand?.name].filter(Boolean).join(' · ')}
+          closeLabel={t('Close quote wizard')}
+          onClose={requestClose}
+          ready={{ done: ready, total: 5 }}
+          onSaveDraft={() => handleCreate(false)}
+          accent="var(--accent-gig)"
+          accentFg="var(--accent-gig-fg)"
+        >
+          {landscape ? (
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.05fr)] gap-4 items-start">
+              <div className="flex flex-col gap-4 min-w-0">
+                {clientCard}
+                {lineupCard}
+              </div>
+              <div className="flex flex-col gap-4 min-w-0">
+                {dateCard}
+                {productionCard}
+                {billingCard}
+              </div>
+              {preview}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 items-start">
+              <div className="flex flex-col gap-4 min-w-0">
+                {clientCard}
+                {lineupCard}
+                {dateCard}
+                {billingCard}
+              </div>
+              <div className="flex flex-col gap-4 min-w-0 sticky top-0">
+                {productionCard}
+                {preview}
+              </div>
+            </div>
+          )}
+        </ComposerShell>
+        <BwSheet
+          open={quoteSheet !== null}
+          onClose={() => setQuoteSheet(null)}
+          title={quoteSheet === 'production' ? t('Production & travel') : t('Billing & terms')}
+          overline={getEffectiveTitle()}
+          tone="light"
+          zIndex={106}
+          footer={
+            <PillButton variant="primary" size="lg" onClick={() => setQuoteSheet(null)}>
+              {t('Done')}
+            </PillButton>
+          }
+        >
+          <div className="flex flex-col gap-5">
+            {quoteSheet === 'production' && renderLogisticsAndCustomItemsControls()}
+            {quoteSheet === 'billing' && (
+              <>
+                {renderBillingControls()}
+                {renderProposalAndTermsControls()}
+              </>
+            )}
+          </div>
+        </BwSheet>
+        {quoteDesk}
+        <LeaveWizardSheet
+          open={leaveOpen}
+          what="quote"
+          draftHint={
+            askAvailability
+              ? t('Saved as a draft quote, not sent to the client. The musicians still get the availability check. Find it under Drafts on the home screen, in Quotes, and on its day in the calendar.')
+              : t("Saved as a draft quote that members can't see. Find it under Drafts on the home screen, in Quotes, and on its day in the calendar.")
+          }
+          onSaveDraft={() => {
+            setLeaveOpen(false);
+            handleCreate(false);
+          }}
+          onDiscard={() => {
+            setLeaveOpen(false);
+            onClose();
+          }}
+          onKeepEditing={() => setLeaveOpen(false)}
+        />
+      </>
+    );
+  };
+
   // ── CREATION MODE RENDER (3-ZONE SHELL) ─────────────────────
+  if (composerOn) return renderComposer();
   return (
     <motion.div
       data-modal-open="true"

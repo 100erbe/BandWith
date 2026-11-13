@@ -23,6 +23,9 @@ import {
   User,
   ArrowUpRight,
   LayoutTemplate,
+  ListChecks,
+  ListMusic,
+  Truck,
 } from '@/app/components/icons';
 import { HeaderAction, IconButton, NavBackButton, Tag } from '@/app/components/bw/Screen';
 import { RailCover, useRailAction } from '@/lib/railActions';
@@ -55,6 +58,12 @@ import { LeaveWizardSheet } from '@/app/components/bw/LeaveWizardSheet';
 import { useLeadingCompanion } from '@/app/components/duo';
 import { LiveGigPreview } from '@/app/components/duo/previews/LiveGigPreview';
 import { useT, intlLocale, getLocale } from '@/lib/i18n';
+import { ComposerCard, ComposerCheck, ComposerPreview, ComposerShell, Segmented, useComposerLayout } from '@/app/components/composer/Composer';
+import { InlineMonthCalendar } from '@/app/components/ui/DatePicker';
+import { useBandFreeDays } from '@/lib/bandAvailability';
+import { heatLevel } from '@/lib/freeSlots';
+import { freeTone } from '@/app/components/ui/FreeHeat';
+import { BwSheet, DotText } from '@/app/components/bw';
 import { builtinText } from '@/lib/i18n/builtins';
 
 export interface BandMember {
@@ -1056,13 +1065,30 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   };
 
   // Android Back: the leave sheet first, then the song picker, then close.
+  // Tablet composer: the sheet open over it (setlist, tasks, logistics).
+  const [composerSheet, setComposerSheet] = useState<null | 'setlist' | 'tasks' | 'logistics'>(null);
   useSystemBack(!isEditing && eventType !== 'rehearsal', () => {
     if (leaveOpen) setLeaveOpen(false);
     else if (songPickerOpen) {
       setSongPickerOpen(false);
       setSongPickerTargetSet(null);
-    } else requestClose();
+    } else if (composerSheet) setComposerSheet(null);
+    else requestClose();
     return true;
+  });
+
+  // iPad (Figma iPad · 04 "New gig"): every step on one screen, with a live
+  // preview. Only a new gig on a tablet-sized window; phones and the iPhone
+  // Duo keep the step wizard. Same state and save as the steps.
+  const composerLayout = useComposerLayout();
+  const composerOn = composerLayout.composer && !isEditing && modalCategory === 'gig' && eventType !== 'rehearsal';
+  const composerFree = useBandFreeDays({
+    bandId: selectedBand?.id,
+    from: details.date,
+    to: details.date,
+    start: details.startTime,
+    end: details.endTime,
+    enabled: composerOn && !!details.date,
   });
 
   // iPhone Duo book layout (Figma "Duo · 04"): on step 1 the leading page
@@ -1087,7 +1113,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       accent={activeAccentColor}
       accentFg={activeAccentFg}
     />,
-    !isEditing && step === 0 && eventType !== 'rehearsal'
+    !isEditing && step === 0 && eventType !== 'rehearsal' && !composerOn
   );
 
   // Members never see quotes (the effect above closes the wizard). This sits
@@ -1447,10 +1473,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     </div>
   );
 
-  const renderExtraFee = () =>
+  const renderExtraFee = (withTbd = true) =>
     isAdmin && (
       <div className="flex flex-col gap-3">
-        {modalCategory === 'gig' && (
+        {modalCategory === 'gig' && withTbd && (
           <Selector
             selected={feeTbd}
             onClick={() => setFeeTbd(v => !v)}
@@ -1580,42 +1606,44 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         />
       </div>
     </div>
-    {/* Call times: shown on the event and the member's Home card. */}
-    {(
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-2 min-w-0">
-          <FieldLabel htmlFor="cem-loadin-time">{t('Load-in (optional)')}</FieldLabel>
-          <TimePicker
-            id="cem-loadin-time"
-            value={details.loadInTime}
-            onChange={val => setDetails(prev => ({ ...prev, loadInTime: val }))}
-            accentColor={activeAccentColor}
-            textSize="text-lg"
-            showIcon
-            allowEmpty
-            emptyLabel={t('Add')}
-            className={PICKER_FIELD}
-            overline={timeOverline}
-          />
-        </div>
-        <div className="flex flex-col gap-2 min-w-0">
-          <FieldLabel htmlFor="cem-soundcheck-time">{t('Soundcheck (optional)')}</FieldLabel>
-          <TimePicker
-            id="cem-soundcheck-time"
-            value={details.soundcheckTime}
-            onChange={val => setDetails(prev => ({ ...prev, soundcheckTime: val }))}
-            accentColor={activeAccentColor}
-            align="end"
-            textSize="text-lg"
-            showIcon
-            allowEmpty
-            emptyLabel={t('Add')}
-            className={PICKER_FIELD}
-            overline={timeOverline}
-          />
-        </div>
+    {renderCallTimes()}
+    </div>
+  );
+
+  // Call times: shown on the event and the member's Home card.
+  const renderCallTimes = () => (
+    <div className="grid grid-cols-2 gap-3">
+      <div className="flex flex-col gap-2 min-w-0">
+        <FieldLabel htmlFor="cem-loadin-time">{t('Load-in (optional)')}</FieldLabel>
+        <TimePicker
+          id="cem-loadin-time"
+          value={details.loadInTime}
+          onChange={val => setDetails(prev => ({ ...prev, loadInTime: val }))}
+          accentColor={activeAccentColor}
+          textSize="text-lg"
+          showIcon
+          allowEmpty
+          emptyLabel={t('Add')}
+          className={PICKER_FIELD}
+          overline={timeOverline}
+        />
       </div>
-    )}
+      <div className="flex flex-col gap-2 min-w-0">
+        <FieldLabel htmlFor="cem-soundcheck-time">{t('Soundcheck (optional)')}</FieldLabel>
+        <TimePicker
+          id="cem-soundcheck-time"
+          value={details.soundcheckTime}
+          onChange={val => setDetails(prev => ({ ...prev, soundcheckTime: val }))}
+          accentColor={activeAccentColor}
+          align="end"
+          textSize="text-lg"
+          showIcon
+          allowEmpty
+          emptyLabel={t('Add')}
+          className={PICKER_FIELD}
+          overline={timeOverline}
+        />
+      </div>
     </div>
   );
 
@@ -1822,6 +1850,187 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     </div>
   );
 
+  // Setlist and tasks editors: the review step and the tablet composer's sheets.
+  const renderSetlistEditor = () => (
+    <>
+      {libraryError && (
+        <p role="alert" className="bw-body-sm text-destructive [overflow-wrap:anywhere]">
+          {libraryError}
+        </p>
+      )}
+      {savedSetlists.length > 0 && (setlist.length === 0 || showSetlistTemplates) && (
+        <div className="flex flex-col gap-2">
+          <FieldLabel>{setlist.length > 0 ? t('Replace with a template') : t('Load from templates')}</FieldLabel>
+          <div className="flex flex-wrap gap-2">
+            {savedSetlists.map(sl => (
+              <Selector
+                key={sl.id}
+                size="sm"
+                selected={false}
+                onClick={() => {
+                  loadSavedSetlist(sl);
+                  setShowSetlistTemplates(false);
+                }}
+              >
+                <Folder className="w-3.5 h-3.5" />
+                {sl.name}
+                {sl.song_count != null && <span className="opacity-60">({sl.song_count})</span>}
+              </Selector>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {setlist.length > 0 && reorderHint}
+      {setlist.length > 0 ? (
+        setlist.map((item, i) => (
+          <div key={item.uid || i} className="rounded-[16px] bg-foreground/[0.08] p-3 flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                aria-label={t('Set name')}
+                value={item.title}
+                onChange={e =>
+                  setSetlist(prev => prev.map(s => (s.uid === item.uid ? { ...s, title: e.target.value } : s)))
+                }
+                className="flex-1 min-w-0 bg-transparent bw-label-md text-foreground placeholder:text-muted-foreground focus:outline-none"
+                placeholder={t('Set name...')}
+              />
+              <PillButton variant="danger" size="sm" fullWidth={false} className="px-0" onClick={() => removeSet(item.uid)}>
+                {t('Remove set')}
+              </PillButton>
+            </div>
+
+            {(item.songs || []).length > 0 && (
+              <SortableSongList
+                songs={item.songs}
+                startNumber={setStarts[i]}
+                canReorder={isAdmin}
+                label={item.title || t('Set {n}', { n: i + 1 })}
+                onReorder={songs => setSetlist(prev => withSetSongs(prev, item.uid, songs))}
+                onRemove={songUid => removeSongFromSet(item.uid, songUid)}
+              />
+            )}
+            {(item.songs || []).length === 0 && (
+              <p className="bw-body-sm text-muted-foreground">{t('No songs in this set.')}</p>
+            )}
+
+            <div className="flex items-center gap-4">
+              <PillButton
+                variant="ghost"
+                size="sm"
+                fullWidth={false}
+                className="px-0"
+                icon={<Music className="w-3.5 h-3.5" />}
+                onClick={() => openSongPicker(item.uid)}
+              >
+                {t('From library')}
+              </PillButton>
+              <PillButton
+                variant="ghost"
+                size="sm"
+                fullWidth={false}
+                className="px-0 text-muted-foreground"
+                icon={<Plus className="w-3.5 h-3.5" />}
+                onClick={() => addSongToSet(item.uid)}
+              >
+                {t('Manual')}
+              </PillButton>
+            </div>
+          </div>
+        ))
+      ) : (
+        <p className="bw-body-sm text-muted-foreground">
+          {t('No sets added yet. Load a saved template or add songs from your catalog.')}
+        </p>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <PillButton
+          variant="outline"
+          size="sm"
+          fullWidth={false}
+          icon={<Plus className="w-4 h-4" />}
+          onClick={() => openSongPicker(setlist[0]?.uid || null)}
+        >
+          {t('Add songs')}
+        </PillButton>
+        <PillButton variant="outline" size="sm" fullWidth={false} icon={<Layers className="w-4 h-4" />} onClick={addSet}>
+          {t('Add set')}
+        </PillButton>
+        {savedSetlists.length > 0 && setlist.length > 0 && (
+          <PillButton
+            variant={showSetlistTemplates ? 'dark' : 'outline'}
+            size="sm"
+            fullWidth={false}
+            icon={<LayoutTemplate className="w-4 h-4" />}
+            aria-expanded={showSetlistTemplates}
+            onClick={() => setShowSetlistTemplates(v => !v)}
+          >
+            {t('Templates')}
+          </PillButton>
+        )}
+      </div>
+    </>
+  );
+
+  const renderTasksEditor = () => (
+    <>
+      {taskTemplates.length > 0 && tasks.length === 0 && (
+        <div className="flex flex-col gap-2">
+          <FieldLabel>{t('Load a to-do list')}</FieldLabel>
+          <div className="flex flex-wrap gap-2">
+            {taskTemplates.map(tpl => (
+              <Selector
+                key={tpl.id}
+                size="sm"
+                selected={false}
+                onClick={() => {
+                  const loaded = tpl.tasks.map((tk: any) => ({
+                    uid: `t-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                    title: tk.title,
+                    completed: false,
+                    templateId: tpl.id,
+                    dueOffset: tk.dueOffset ?? tk.due_offset,
+                  }));
+                  setTasks(loaded);
+                }}
+              >
+                <Folder className="w-3.5 h-3.5" />
+                {tpl.name}
+                <span className="opacity-60">({tpl.tasks.length})</span>
+              </Selector>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {renderTaskInput()}
+
+      {tasks.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {tasks.map((task, idx) => (
+            <div
+              key={task.uid || idx}
+              className="flex items-center gap-3 rounded-[16px] bg-foreground/[0.08] pl-4 pr-1 py-1 min-h-11"
+            >
+              <span className="bw-body-md text-foreground truncate flex-1 min-w-0">{task.title}</span>
+              <IconButton
+                label={t('Delete task')}
+                variant="ghost"
+                size="sm"
+                icon={<X />}
+                onClick={() => setTasks(tasks.filter((_, i) => i !== idx))}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {renderNotesField(t('Band notes'), t('Any details, directions, or notes for the band...'))}
+    </>
+  );
+
   // ── STEP 03: REVIEW & OPTIONAL EXTRAS ───────────────────────
   const setlistSummary =
     totalSongCount === 0 && setlist.length === 0
@@ -1896,124 +2105,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         title={t('Setlist & songs')}
         summary={setlistSummary}
       >
-        {libraryError && (
-          <p role="alert" className="bw-body-sm text-destructive [overflow-wrap:anywhere]">
-            {libraryError}
-          </p>
-        )}
-        {savedSetlists.length > 0 && (setlist.length === 0 || showSetlistTemplates) && (
-          <div className="flex flex-col gap-2">
-            <FieldLabel>{setlist.length > 0 ? t('Replace with a template') : t('Load from templates')}</FieldLabel>
-            <div className="flex flex-wrap gap-2">
-              {savedSetlists.map(sl => (
-                <Selector
-                  key={sl.id}
-                  size="sm"
-                  selected={false}
-                  onClick={() => {
-                    loadSavedSetlist(sl);
-                    setShowSetlistTemplates(false);
-                  }}
-                >
-                  <Folder className="w-3.5 h-3.5" />
-                  {sl.name}
-                  {sl.song_count != null && <span className="opacity-60">({sl.song_count})</span>}
-                </Selector>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {setlist.length > 0 && reorderHint}
-        {setlist.length > 0 ? (
-          setlist.map((item, i) => (
-            <div key={item.uid || i} className="rounded-[16px] bg-foreground/[0.08] p-3 flex flex-col gap-2">
-              <div className="flex items-center gap-3">
-                <input
-                  type="text"
-                  aria-label={t('Set name')}
-                  value={item.title}
-                  onChange={e =>
-                    setSetlist(prev => prev.map(s => (s.uid === item.uid ? { ...s, title: e.target.value } : s)))
-                  }
-                  className="flex-1 min-w-0 bg-transparent bw-label-md text-foreground placeholder:text-muted-foreground focus:outline-none"
-                  placeholder={t('Set name...')}
-                />
-                <PillButton variant="danger" size="sm" fullWidth={false} className="px-0" onClick={() => removeSet(item.uid)}>
-                  {t('Remove set')}
-                </PillButton>
-              </div>
-
-              {(item.songs || []).length > 0 && (
-                <SortableSongList
-                  songs={item.songs}
-                  startNumber={setStarts[i]}
-                  canReorder={isAdmin}
-                  label={item.title || t('Set {n}', { n: i + 1 })}
-                  onReorder={songs => setSetlist(prev => withSetSongs(prev, item.uid, songs))}
-                  onRemove={songUid => removeSongFromSet(item.uid, songUid)}
-                />
-              )}
-              {(item.songs || []).length === 0 && (
-                <p className="bw-body-sm text-muted-foreground">{t('No songs in this set.')}</p>
-              )}
-
-              <div className="flex items-center gap-4">
-                <PillButton
-                  variant="ghost"
-                  size="sm"
-                  fullWidth={false}
-                  className="px-0"
-                  icon={<Music className="w-3.5 h-3.5" />}
-                  onClick={() => openSongPicker(item.uid)}
-                >
-                  {t('From library')}
-                </PillButton>
-                <PillButton
-                  variant="ghost"
-                  size="sm"
-                  fullWidth={false}
-                  className="px-0 text-muted-foreground"
-                  icon={<Plus className="w-3.5 h-3.5" />}
-                  onClick={() => addSongToSet(item.uid)}
-                >
-                  {t('Manual')}
-                </PillButton>
-              </div>
-            </div>
-          ))
-        ) : (
-          <p className="bw-body-sm text-muted-foreground">
-            {t('No sets added yet. Load a saved template or add songs from your catalog.')}
-          </p>
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          <PillButton
-            variant="outline"
-            size="sm"
-            fullWidth={false}
-            icon={<Plus className="w-4 h-4" />}
-            onClick={() => openSongPicker(setlist[0]?.uid || null)}
-          >
-            {t('Add songs')}
-          </PillButton>
-          <PillButton variant="outline" size="sm" fullWidth={false} icon={<Layers className="w-4 h-4" />} onClick={addSet}>
-            {t('Add set')}
-          </PillButton>
-          {savedSetlists.length > 0 && setlist.length > 0 && (
-            <PillButton
-              variant={showSetlistTemplates ? 'dark' : 'outline'}
-              size="sm"
-              fullWidth={false}
-              icon={<LayoutTemplate className="w-4 h-4" />}
-              aria-expanded={showSetlistTemplates}
-              onClick={() => setShowSetlistTemplates(v => !v)}
-            >
-              {t('Templates')}
-            </PillButton>
-          )}
-        </div>
+        {renderSetlistEditor()}
       </EditAccordionCard>
 
       {/* Accordion 2: Logistics, guests & setting */}
@@ -2035,58 +2127,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         title={t('Tasks & band notes')}
         summary={tasksSummary}
       >
-        {taskTemplates.length > 0 && tasks.length === 0 && (
-          <div className="flex flex-col gap-2">
-            <FieldLabel>{t('Load a to-do list')}</FieldLabel>
-            <div className="flex flex-wrap gap-2">
-              {taskTemplates.map(tpl => (
-                <Selector
-                  key={tpl.id}
-                  size="sm"
-                  selected={false}
-                  onClick={() => {
-                    const loaded = tpl.tasks.map((tk: any) => ({
-                      uid: `t-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-                      title: tk.title,
-                      completed: false,
-                      templateId: tpl.id,
-                      dueOffset: tk.dueOffset ?? tk.due_offset,
-                    }));
-                    setTasks(loaded);
-                  }}
-                >
-                  <Folder className="w-3.5 h-3.5" />
-                  {tpl.name}
-                  <span className="opacity-60">({tpl.tasks.length})</span>
-                </Selector>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {renderTaskInput()}
-
-        {tasks.length > 0 && (
-          <div className="flex flex-col gap-2">
-            {tasks.map((task, idx) => (
-              <div
-                key={task.uid || idx}
-                className="flex items-center gap-3 rounded-[16px] bg-foreground/[0.08] pl-4 pr-1 py-1 min-h-11"
-              >
-                <span className="bw-body-md text-foreground truncate flex-1 min-w-0">{task.title}</span>
-                <IconButton
-                  label={t('Delete task')}
-                  variant="ghost"
-                  size="sm"
-                  icon={<X />}
-                  onClick={() => setTasks(tasks.filter((_, i) => i !== idx))}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {renderNotesField(t('Band notes'), t('Any details, directions, or notes for the band...'))}
+        {renderTasksEditor()}
       </EditAccordionCard>
     </div>
   );
@@ -2353,9 +2394,400 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     );
   }
 
+  // ── TABLET COMPOSER (Figma iPad · 04 "New gig") ─────────────
+  // Every step on one screen in numbered cards, and the gig as the band will
+  // see it beside them. Fields, drafts and save are the wizard's own.
+  const renderComposer = () => {
+    const landscape = composerLayout.landscape;
+    const money = (n: number) => `${currencySymbol}${n.toLocaleString(intlLocale('en-US'))}`;
+    const compactMoney = (n: number) =>
+      n >= 1000 ? `${currencySymbol}${(Math.round(n / 100) / 10).toString()}K` : `${currencySymbol}${Math.round(n)}`;
+    const venueSet = !!details.venue.trim() && details.venue !== 'TBD';
+    const feeSet = feeTbd || grandTotalFee > 0;
+    const doneEvent = !!eventType;
+    const doneDate = !!details.date;
+    const doneLineup = selectedMembers.length > 0;
+    const ready = [doneEvent, doneDate, venueSet, doneLineup, feeSet].filter(Boolean).length;
+    const canCreate = !!eventType && !!details.date;
+    const dateShort = details.date
+      ? new Date(details.date + 'T00:00:00').toLocaleDateString(intlLocale('en-GB'), {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+        })
+      : null;
+    const whenLine = [dateShort, details.startTime].filter(Boolean).join(', ');
+    const addressLine = [addressWithoutCity(details.address, details.city), details.city].filter(Boolean).join(', ');
+    const dayFree = details.date ? composerFree?.get(details.date) ?? null : null;
+    const feeLabel = feeTbd ? t('TBD') : grandTotalFee > 0 ? money(grandTotalFee) : null;
+
+    const typeChips = (
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t('Event type')}>
+        {EVENT_TYPE_OPTIONS.map(opt => (
+          <Selector
+            key={opt.value}
+            size="md"
+            selected={eventType === opt.value}
+            onClick={() => selectEventType(opt.value)}
+          >
+            {eventTypeLabels[opt.value]?.label ?? opt.label}
+          </Selector>
+        ))}
+      </div>
+    );
+
+    const eventCard = (
+      <ComposerCard n={1} title={t('Event')} done={doneEvent}>
+        {typeChips}
+        {renderTitleField()}
+        {renderClientField()}
+      </ComposerCard>
+    );
+
+    const dateCard = (
+      <ComposerCard n={2} title={t('Date & time')} done={doneDate}>
+        <InlineMonthCalendar
+          value={details.date}
+          onChange={d => setDetails(prev => ({ ...prev, date: d }))}
+          events={pickerEvents}
+          accent={activeAccentColor}
+          accentFg={activeAccentFg}
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-2 min-w-0">
+            <FieldLabel htmlFor="cmp-start-time">{t('Start time')}</FieldLabel>
+            <TimePicker
+              id="cmp-start-time"
+              value={details.startTime}
+              onChange={val => setDetails(prev => ({ ...prev, startTime: val }))}
+              accentColor={activeAccentColor}
+              textSize="text-lg"
+              className={PICKER_FIELD}
+              overline={timeOverline}
+            />
+          </div>
+          <div className="flex flex-col gap-2 min-w-0">
+            <FieldLabel
+              htmlFor="cmp-end-time"
+              trailing={<span className="bw-label-sm text-foreground">{calculatedDurationBadge}</span>}
+            >
+              {t('End time')}
+            </FieldLabel>
+            <TimePicker
+              id="cmp-end-time"
+              value={details.endTime}
+              onChange={val => setDetails(prev => ({ ...prev, endTime: val }))}
+              accentColor={activeAccentColor}
+              align="end"
+              textSize="text-lg"
+              className={PICKER_FIELD}
+              overline={timeOverline}
+            />
+          </div>
+        </div>
+        {dayFree && (
+          <p className={cn('bw-label-xs flex items-center gap-2', freeTone(dayFree))} aria-live="polite">
+            <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+            {heatLevel(dayFree) === 4
+              ? t('{free} of {total} free · no conflicts', { free: dayFree.free, total: dayFree.total })
+              : t('{free} of {total} free', { free: dayFree.free, total: dayFree.total })}
+          </p>
+        )}
+        {forecast && (
+          <p className="bw-label-xs text-muted-foreground" aria-live="polite">
+            {t('Forecast: {temp}° {sky}', { temp: forecast.temp, sky: skyLabel(forecast.sky) })}
+            {forecast.sunset ? ` · ${t('sunset {time}', { time: forecast.sunset })}` : ''}
+          </p>
+        )}
+      </ComposerCard>
+    );
+
+    const venueCard = (
+      <ComposerCard n={3} title={t('Venue')} done={venueSet}>
+        {renderVenueField(t('Search venue or location...'))}
+        {addressLine && <p className="bw-label-xs text-muted-foreground px-1 [overflow-wrap:anywhere]">{addressLine}</p>}
+      </ComposerCard>
+    );
+
+    const lineupCard = (
+      <ComposerCard n={4} title={t('Lineup')} done={doneLineup}>
+        <div className="flex flex-wrap gap-2">
+          {lineupPresets.map(preset => (
+            <Selector
+              key={preset.label}
+              size="md"
+              selected={selectedMembers.length === preset.count}
+              onClick={() => applyPerformancePreset(preset)}
+            >
+              {preset.label}
+            </Selector>
+          ))}
+        </div>
+        {renderRosterRows()}
+      </ComposerCard>
+    );
+
+    const feeCard = isAdmin ? (
+      <ComposerCard n={5} title={t('Fee')} done={feeSet}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex-1 min-w-0 h-[52px] rounded-full bg-field border border-border px-5 flex items-center">
+            <span className="bw-h2 tabular-nums truncate" aria-live="polite">
+              {feeTbd ? t('TBD') : money(grandTotalFee)}
+            </span>
+          </div>
+          <Segmented
+            label={t('Fee')}
+            value={feeTbd ? 'tbd' : 'fixed'}
+            onChange={v => setFeeTbd(v === 'tbd')}
+            options={[
+              { value: 'fixed', label: t('Fixed') },
+              { value: 'tbd', label: t('TBD') },
+            ]}
+            className="shrink-0 w-[150px]"
+          />
+        </div>
+        {feeTbd ? (
+          <p className="bw-body-sm text-muted-foreground">
+            {t('The gig is confirmed on the calendar; set the fees once the deal is closed.')}
+          </p>
+        ) : (
+          <>
+            <p className="bw-label-xs text-muted-foreground px-1">
+              {t('Musicians {amount}', { amount: money(totalPayout) })}
+              {parseFloat(extraBandFee) > 0 ? ` · ${t('Band {amount}', { amount: money(parseFloat(extraBandFee)) })}` : ''}
+            </p>
+            {renderExtraFee(false)}
+          </>
+        )}
+      </ComposerCard>
+    ) : null;
+
+    const extras: { key: 'setlist' | 'tasks' | 'logistics'; label: string; icon: React.ReactNode; count?: number }[] = [
+      { key: 'setlist', label: t('Setlist'), icon: <ListMusic className="w-4 h-4" />, count: totalSongCount },
+      { key: 'logistics', label: t('Logistics'), icon: <Truck className="w-4 h-4" /> },
+      { key: 'tasks', label: t('Tasks'), icon: <ListChecks className="w-4 h-4" />, count: tasks.length },
+    ];
+    const extraButtons = (
+      <div className={cn('gap-3', landscape ? 'flex flex-wrap' : 'grid grid-cols-3')}>
+        {extras.map(x => (
+          <PillButton
+            key={x.key}
+            variant="outline"
+            size="md"
+            fullWidth={!landscape}
+            icon={x.icon}
+            onClick={() => setComposerSheet(x.key)}
+          >
+            {x.label}
+            {x.count ? ` · ${x.count}` : ''}
+          </PillButton>
+        ))}
+      </div>
+    );
+
+    const createButton = (
+      <PillButton
+        variant="primary"
+        size="lg"
+        icon={<Check className="w-5 h-5" />}
+        onClick={handleCreate}
+        disabled={!canCreate}
+        loading={isSaving}
+        style={{ backgroundColor: activeAccentColor, color: activeAccentFg }}
+      >
+        {t('Create gig')}
+      </PillButton>
+    );
+
+    const lineupDots = (
+      <span aria-hidden className="flex flex-wrap gap-[5px] max-w-[96px]">
+        {MEMBERS.slice(0, 10).map((m, i) => (
+          <span
+            key={m.id}
+            className="w-2.5 h-2.5 rounded-full"
+            style={{ backgroundColor: i < selectedMembers.length ? 'currentColor' : 'color-mix(in srgb, currentColor 25%, transparent)' }}
+          />
+        ))}
+      </span>
+    );
+
+    const previewMetrics = (size: number) => (
+      <div className="flex items-end gap-6 flex-wrap">
+        <div className="flex flex-col gap-1.5">
+          {landscape && lineupDots}
+          <span className="bw-label-xs">{t('Lineup')}</span>
+          <DotText
+            text={`${selectedMembers.length}/${MEMBERS.length || selectedMembers.length}`}
+            size={size}
+            label={t('{count} of {total}', { count: selectedMembers.length, total: MEMBERS.length })}
+          />
+        </div>
+        {isAdmin && (
+          <div className="flex flex-col gap-1.5">
+            <span className="bw-label-xs">{t('Fee')}</span>
+            {feeTbd ? (
+              <DotText text="TBD" size={size} label={t('TBD')} />
+            ) : (
+              <DotText text={compactMoney(grandTotalFee)} size={size} label={money(grandTotalFee)} />
+            )}
+          </div>
+        )}
+      </div>
+    );
+
+    const checklist = (
+      <ul className="flex flex-col gap-2">
+        <ComposerCheck done={doneEvent}>
+          {t('Event & client')}
+          {details.clientName.trim() ? ` · ${details.clientName.trim()}` : ''}
+        </ComposerCheck>
+        <ComposerCheck done={doneDate}>
+          {doneDate ? `${t('Date')} · ${whenLine}` : t('Date TBD')}
+        </ComposerCheck>
+        <ComposerCheck done={venueSet}>{venueSet ? `${t('Venue')} · ${details.venue}` : t('Venue TBD')}</ComposerCheck>
+        <ComposerCheck done={doneLineup}>
+          {t('Lineup')} · {musiciansText(selectedMembers.length)}
+        </ComposerCheck>
+        {isAdmin && <ComposerCheck done={feeSet}>{`${t('Fee')} · ${feeLabel ?? '—'}`}</ComposerCheck>}
+      </ul>
+    );
+
+    const previewCard = (
+      <div
+        className="rounded-[28px] p-5 flex flex-col gap-4 min-w-0"
+        style={{ backgroundColor: activeAccentColor, color: activeAccentFg }}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <Calendar aria-hidden className="w-4 h-4 shrink-0" />
+          <span className="bw-label-xs">{t('Gig')}</span>
+          <span className="bw-label-xs rounded-full px-2 py-0.5 bg-black/10">{feeTbd ? t('TBD') : t('Confirmed')}</span>
+        </div>
+        <h3 className="bw-display-lg [overflow-wrap:anywhere]">{getEffectiveTitle()}</h3>
+        <p className="bw-label-xs [overflow-wrap:anywhere]">
+          {venueSet ? details.venue : t('Venue TBD')}
+          {addressLine ? <><br />{addressLine}</> : null}
+        </p>
+        {previewMetrics(30)}
+      </div>
+    );
+
+    const sheetTitle =
+      composerSheet === 'setlist' ? t('Setlist & songs') : composerSheet === 'tasks' ? t('Tasks & band notes') : t('Logistics, guests & setting');
+
+    return (
+      <>
+        <ComposerShell
+          kind={modalCategory}
+          title={t('New gig')}
+          subline={[draft ? t('Draft') : null, selectedBand?.name].filter(Boolean).join(' · ')}
+          closeLabel={t('Close gig wizard')}
+          onClose={requestClose}
+          ready={{ done: ready, total: 5 }}
+          onSaveDraft={landscape && draftsEnabled ? handleSaveDraft : undefined}
+          accent={activeAccentColor}
+          accentFg={activeAccentFg}
+        >
+          {landscape ? (
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.05fr)] gap-4 items-start">
+              <div className="flex flex-col gap-4 min-w-0">
+                {eventCard}
+                {venueCard}
+                {feeCard}
+              </div>
+              <div className="flex flex-col gap-4 min-w-0">
+                {dateCard}
+                {lineupCard}
+              </div>
+              <ComposerPreview
+                label={t('Live preview')}
+                caption={t('As the band sees it')}
+                className="sticky top-0 min-h-[min(720px,calc(100dvh-140px))]"
+                footer={createButton}
+              >
+                {previewCard}
+                {checklist}
+                <div className="flex flex-col gap-3">
+                  <span className="bw-label-xs text-muted-foreground">{t('Add now or later')}</span>
+                  {extraButtons}
+                </div>
+              </ComposerPreview>
+            </div>
+          ) : (
+            <>
+              <div
+                className="rounded-[28px] p-6 flex items-end gap-6 min-w-0"
+                style={{ backgroundColor: activeAccentColor, color: activeAccentFg }}
+                aria-live="polite"
+              >
+                <div className="flex flex-col gap-2 min-w-0 flex-1">
+                  <span className="bw-label-xs flex items-center gap-2">
+                    <Calendar aria-hidden className="w-4 h-4" />
+                    {t('Live preview')} · {t('Gig')}
+                  </span>
+                  <h3 className="bw-display-lg [overflow-wrap:anywhere]">{getEffectiveTitle()}</h3>
+                  <span className="bw-label-xs [overflow-wrap:anywhere]">
+                    {[whenLine || t('Date TBD'), venueSet ? details.venue : t('Venue TBD')].join(' · ')}
+                  </span>
+                </div>
+                <div className="shrink-0">{previewMetrics(26)}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 items-start">
+                <div className="flex flex-col gap-4 min-w-0">
+                  {eventCard}
+                  {venueCard}
+                  {feeCard}
+                </div>
+                <div className="flex flex-col gap-4 min-w-0">
+                  {dateCard}
+                  {lineupCard}
+                </div>
+              </div>
+              {extraButtons}
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.8fr)] gap-3 pt-4">
+                <PillButton variant="outline" size="lg" onClick={draftsEnabled ? handleSaveDraft : requestClose}>
+                  {draftsEnabled ? t('Save draft') : t('Cancel')}
+                </PillButton>
+                {createButton}
+              </div>
+            </>
+          )}
+        </ComposerShell>
+
+        <BwSheet
+          open={composerSheet !== null}
+          onClose={() => setComposerSheet(null)}
+          title={sheetTitle}
+          overline={getEffectiveTitle()}
+          tone="light"
+          zIndex={106}
+          footer={
+            <PillButton variant="primary" size="lg" onClick={() => setComposerSheet(null)}>
+              {t('Done')}
+            </PillButton>
+          }
+        >
+          <div className="flex flex-col gap-4">
+            {composerSheet === 'setlist' && renderSetlistEditor()}
+            {composerSheet === 'tasks' && renderTasksEditor()}
+            {composerSheet === 'logistics' && (
+              <>
+                {renderCallTimes()}
+                {renderSettingField()}
+                {renderGuestsField(t('Estimated guests'))}
+                {renderDurationField(t('Performance duration'), true)}
+              </>
+            )}
+          </div>
+        </BwSheet>
+      </>
+    );
+  };
+
   // ── CREATION MODE RENDER (3-ZONE SHELL) ─────────────────────
   return (
     <>
+      {composerOn && renderComposer()}
+      {!composerOn && (
       <motion.div
         data-modal-open="true"
         data-wizard-type={modalCategory}
@@ -2426,6 +2858,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           </div>
         </div>
       </motion.div>
+      )}
 
       {/* SongPicker overlay */}
       <AnimatePresence>
