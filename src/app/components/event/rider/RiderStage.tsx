@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { Download, Link, Pencil, Plus, ScrollText, Share2, Trash2 } from '@/app/components/icons';
+import { Check, Download, Link, Pencil, Plus, ScrollText, Share2, Trash2 } from '@/app/components/icons';
 import { BwSheet, IconButton, NavBackButton } from '@/app/components/bw/Screen';
 import { PillButton } from '@/app/components/bw/Form';
 import { cn } from '@/app/components/ui/utils';
@@ -25,6 +25,12 @@ interface RiderStageProps {
   people: string[];
   /** Tablets: the plot can be edited (canvas editing stays on iPad). */
   canEditPlot: boolean;
+  /**
+   * The gig is still being created (iPad composer): edits are kept until the
+   * gig is saved, there is nothing to share yet, and CREATE RIDER only marks
+   * the rider to create with the gig (`riderWanted`).
+   */
+  draft?: { riderWanted: boolean };
 }
 
 /** Width of an element, kept up to date. */
@@ -54,6 +60,7 @@ export const RiderStageContent: React.FC<RiderStageProps & { layout: 'stack' | '
   people,
   canEditPlot,
   layout,
+  draft,
 }) => {
   const t = useT();
   const { stage, rider, isSuggestion } = state;
@@ -104,9 +111,26 @@ export const RiderStageContent: React.FC<RiderStageProps & { layout: 'stack' | '
           <span className="bw-h3 normal-case">
             {rider ? t('Technical rider · v{version}', { version: rider.version }) : t('Technical rider')}
           </span>
-          <span className="bw-label-xs text-muted-foreground">{riderMeta(rider, t)}</span>
+          <span className="bw-label-xs text-muted-foreground">
+            {draft ? (draft.riderWanted ? t('CREATED WITH THE GIG') : t('NO RIDER LINKED YET')) : riderMeta(rider, t)}
+          </span>
         </span>
         <span className="flex items-center gap-2 shrink-0">
+          {draft ? (
+            isAdmin && (
+              <PillButton
+                size="sm"
+                fullWidth={false}
+                variant={draft.riderWanted ? 'outline' : 'dark'}
+                aria-pressed={draft.riderWanted}
+                onClick={() => run('create', state.createRider)}
+              >
+                {draft.riderWanted ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                {draft.riderWanted ? t('RIDER ADDED') : t('CREATE RIDER')}
+              </PillButton>
+            )
+          ) : (
+          <>
           {isAdmin && !rider && (
             <PillButton size="sm" fullWidth={false} variant="dark" loading={busy === 'create'} onClick={() => run('create', state.createRider)}>
               <Plus className="w-4 h-4" />
@@ -123,6 +147,8 @@ export const RiderStageContent: React.FC<RiderStageProps & { layout: 'stack' | '
             <Download className="w-4 h-4" />
             {t('PDF')}
           </PillButton>
+          </>
+          )}
         </span>
       </section>
     ) : (
@@ -270,7 +296,9 @@ export const RiderStageContent: React.FC<RiderStageProps & { layout: 'stack' | '
   const suggestionNote = isAdmin && isSuggestion && (
     <section className="rounded-[20px] border-[1.5px] border-dashed border-foreground/30 p-4 flex items-center gap-3 flex-wrap">
       <span className="flex-1 min-w-[180px] bw-body-sm text-muted-foreground">
-        {t('Suggested from the lineup. Check it and save it, then the band sees it.')}
+        {draft
+          ? t('Suggested from the lineup. Save it and it is added when you create the gig.')
+          : t('Suggested from the lineup. Check it and save it, then the band sees it.')}
       </span>
       <PillButton size="sm" fullWidth={false} loading={busy === 'save'} onClick={() => stage && run('save', () => save(stage))}>
         {t('SAVE')}
@@ -390,6 +418,7 @@ export const RiderStageContent: React.FC<RiderStageProps & { layout: 'stack' | '
         </div>
         {bringsCard}
       </section>
+      {!draft && (
       <div className={cn('grid gap-3', isAdmin ? 'grid-cols-[1fr_1.3fr]' : 'grid-cols-1')}>
         {isAdmin && (
           <PillButton variant="outline" size="lg" onClick={() => setEditingInputs(true)}>
@@ -402,6 +431,7 @@ export const RiderStageContent: React.FC<RiderStageProps & { layout: 'stack' | '
           {t('SHARE RIDER PDF')}
         </PillButton>
       </div>
+      )}
       {editors}
     </div>
   );

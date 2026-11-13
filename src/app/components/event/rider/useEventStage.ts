@@ -185,3 +185,45 @@ export function useEventStage({ eventId, bandId, eventTitle, eventDate, venueNam
 }
 
 export type EventStageState = ReturnType<typeof useEventStage>;
+
+/**
+ * Rider & stage while a gig is being created (iPad composer, Figma iPad · 04
+ * "New gig": Setlist · Rider & stage · Tasks). Nothing exists in the database
+ * yet, so edits stay here and are saved with the gig (persistComposerStage).
+ * `riderWanted`: also create the rider document when the gig is created.
+ */
+export function useDraftStage({ lineup, isAdmin }: { lineup: LineupPlayer[]; isAdmin: boolean }) {
+  const t = useT();
+  const [stage, setStage] = useState<StageData | null>(null);
+  const [riderWanted, setRiderWanted] = useState(false);
+  const lineupKey = lineup.map((p) => `${p.name}:${p.instrument ?? ''}`).join('|');
+  const suggestion = useMemo(
+    () => (isAdmin && !stage && lineup.length > 0 ? starterStage(lineup, t) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isAdmin, !!stage, lineupKey, t],
+  );
+  const shown = stage ?? suggestion;
+  const state: EventStageState = {
+    available: true,
+    loading: false,
+    error: null,
+    stage: shown,
+    saved: !!stage,
+    isSuggestion: !stage && !!suggestion,
+    rider: null,
+    save: async (next: StageData) => {
+      setStage(next);
+      return true;
+    },
+    reload: () => {},
+    createRider: async () => {
+      setRiderWanted((w) => !w);
+      return true;
+    },
+    shareRiderLink: async () => 'failed' as const,
+    shareRiderPdf: async () => {},
+  };
+  /** What to save with the gig: the edited stage, or the suggestion when a rider is wanted. */
+  const pending: StageData | null = stage ?? (riderWanted ? suggestion : null);
+  return { state, riderWanted, pending, edited: !!stage };
+}

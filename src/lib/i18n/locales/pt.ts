@@ -3674,6 +3674,10 @@ const dict: Dictionary = {
   "Paste from clipboard": "Colar da área de transferência",
   "or paste them here": "ou cole aqui",
   "Only your band sees the lyrics and charts you import. Import only what you have the right to use.": "Só a sua banda vê as letras e os acordes que você importa. Importe só o que você tem o direito de usar.",
+  "CREATED WITH THE GIG": "CRIADO COM O SHOW",
+  "RIDER ADDED": "RIDER ADICIONADO",
+  "Suggested from the lineup. Save it and it is added when you create the gig.": "Sugerido a partir da formação. Salve e ele será adicionado ao criar o show.",
+  "Event created, but the rider & stage were not saved.": "Evento criado, mas o rider e o palco não foram salvos.",
 };
 
 export default dict;
