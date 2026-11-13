@@ -88,10 +88,38 @@ const NavTab: React.FC<{
   onClick: () => void;
   isScrollingDown: boolean;
   badgeCount?: number;
-}> = ({ tabKey, label, icon: Icon, isActive, onClick, isScrollingDown, badgeCount }) => {
+  labelled?: boolean;
+}> = ({ tabKey, label, icon: Icon, isActive, onClick, isScrollingDown, badgeCount, labelled = false }) => {
   // Figma "Bottom Nav": icon-only tabs (24px in a 44px hit area); the active
   // tab is full opacity with a lime dot beneath it.
   void isScrollingDown;
+  const badge =
+    badgeCount !== undefined && badgeCount > 0 ? (
+      <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-destructive-solid text-white text-[9px] font-bold flex items-center justify-center leading-none pointer-events-none ring-2 ring-background">
+        {badgeCount > 99 ? '99+' : badgeCount}
+      </span>
+    ) : null;
+  if (labelled) {
+    // iPad "nav": icon + label pills; the active one is solid.
+    return (
+      <button
+        data-tab-key={tabKey}
+        onClick={onClick}
+        aria-current={isActive ? 'page' : undefined}
+        className={cn(
+          'relative z-10 outline-none shrink-0 h-12 px-[18px] rounded-full flex items-center gap-2 cursor-pointer transition-colors duration-150',
+          'bw-label-sm tracking-[0.06em] whitespace-nowrap',
+          isActive ? 'bg-foreground text-background' : 'text-foreground hover:bg-foreground/[0.06]',
+        )}
+      >
+        <span className="relative w-5 h-5 flex items-center justify-center">
+          <Icon color="currentColor" size={20} strokeWidth={isActive ? 2.2 : 2} />
+          {badge}
+        </span>
+        {label}
+      </button>
+    );
+  }
   return (
     <button
       data-tab-key={tabKey}
@@ -105,11 +133,7 @@ const NavTab: React.FC<{
     >
       <span className="relative w-6 h-6 flex items-center justify-center">
         <Icon color="currentColor" size={24} strokeWidth={isActive ? 2.2 : 2} />
-        {badgeCount !== undefined && badgeCount > 0 ? (
-          <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-destructive-solid text-white text-[9px] font-bold flex items-center justify-center leading-none pointer-events-none ring-2 ring-background">
-            {badgeCount > 99 ? '99+' : badgeCount}
-          </span>
-        ) : null}
+        {badge}
       </span>
       <span
         aria-hidden="true"
@@ -218,8 +242,17 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   const effectiveIsScrollingDown = (isScrollingDown || localScrollDown) && !forceOpen;
   // iPhone Duo: the side rail (Figma "Duo/Side Tab Bar" + "Duo/Side Actions")
   // replaces the bottom bar entirely.
-  const { rail } = useRailLayout();
+  const { rail, twoPane, wide } = useRailLayout();
+  // Tablet (iPad frames): a floating pill with labelled tabs.
+  const labelled = wide && !rail;
   const isShrunk = effectiveIsScrollingDown;
+
+  // Tablet: tell the detail panes to keep their content above the bar.
+  useEffect(() => {
+    const on = labelled && !isHidden;
+    document.documentElement.toggleAttribute('data-bw-tab-nav', on);
+    return () => document.documentElement.removeAttribute('data-bw-tab-nav');
+  }, [labelled, isHidden]);
 
   const handleTabClick = (tab: TabName) => {
     haptic.tap();
@@ -330,7 +363,10 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
         title={t('Create')}
         // Bottom bar: just under the bar (z-80). Duo rail: above the detail
         // panes, still under the rail (z-190).
-        zIndex={rail ? 150 : 79}
+        // Tablet: a popover above the create button; over the detail panes
+        // (z-90…101) in two panes, still under the bar (z-103).
+        zIndex={rail ? 150 : labelled && twoPane ? 102 : 79}
+        navAnchor={labelled}
       >
         <div className="flex flex-col gap-3">
           {createOptions.map((option) => (
@@ -365,7 +401,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           ))}
         </div>
         {/* Clearance for the floating bottom bar that stays above the sheet */}
-        {!rail && <div aria-hidden="true" className="h-[104px]" />}
+        {!rail && !labelled && <div aria-hidden="true" className="h-[104px]" />}
       </BwSheet>
 
       {rail ? (
@@ -389,8 +425,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
       ) : (
       /* Main Bar Centering Wrapper */
       <motion.div
-        className="fixed bottom-0 left-0 right-0 z-[80] flex justify-center pointer-events-none"
-        style={{ paddingBottom: 'calc(var(--safe-bottom) + 20px)' }}
+        className="bw-nav-bar fixed bottom-0 left-0 right-0 z-[80] flex justify-center pointer-events-none"
+        style={{ paddingBottom: labelled ? 'calc(var(--safe-bottom) + 24px)' : 'calc(var(--safe-bottom) + 20px)' }}
         animate={{ y: isHidden ? 200 : 0, opacity: isHidden ? 0 : 1 }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
       >
@@ -399,7 +435,9 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           className={cn(
             'pointer-events-auto relative flex items-center justify-between rounded-full origin-bottom',
             'bg-white/[0.86] dark:bg-[#1c1c1c]/[0.86] border border-border',
-            'h-[60px] w-[calc(100%-32px)] max-w-[420px] px-6',
+            labelled
+              ? 'h-16 px-2.5 gap-1 shadow-[0_10px_30px_rgba(0,0,0,0.10)]'
+              : 'h-[60px] w-[calc(100%-32px)] max-w-[420px] px-6',
           )}
           animate={{ scale: isShrunk ? 0.9 : 1 }}
           transition={SPRING}
@@ -410,10 +448,10 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           }}
         >
           {tabs.slice(0, 2).map((tab) => (
-            <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} badgeCount={tab.badgeCount} onClick={tab.onClick} isScrollingDown={isShrunk} />
+            <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} badgeCount={tab.badgeCount} onClick={tab.onClick} isScrollingDown={isShrunk} labelled={labelled} />
           ))}
 
-          <div className="relative z-10 w-[60px] h-11 flex items-center justify-center">
+          <div className={cn('relative z-10 h-11 flex items-center justify-center', labelled ? 'w-[76px]' : 'w-[60px]')}>
             <motion.button
               type="button"
               aria-label={isPlusMenuOpen ? t('Close create menu') : t('Create')}
@@ -425,7 +463,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
               }}
               className={cn(
                 'rounded-full flex items-center justify-center cursor-pointer transition-colors duration-200',
-                'absolute -top-[24px] w-[60px] h-[60px]',
+                labelled ? 'absolute -top-[20px] w-16 h-16' : 'absolute -top-[24px] w-[60px] h-[60px]',
                 isPlusMenuOpen ? 'bg-surface-inverse text-surface-inverse-foreground' : 'bg-accent text-accent-foreground',
               )}
               style={{ boxShadow: '0 12px 32px rgba(0,0,0,0.14)' }}
@@ -440,7 +478,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           </div>
 
           {tabs.slice(2).map((tab) => (
-            <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} badgeCount={tab.badgeCount} onClick={tab.onClick} isScrollingDown={isShrunk} />
+            <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} badgeCount={tab.badgeCount} onClick={tab.onClick} isScrollingDown={isShrunk} labelled={labelled} />
           ))}
         </motion.div>
       </motion.div>

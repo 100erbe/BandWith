@@ -106,6 +106,14 @@ export function postureInput(r: DeviceRegions, native: boolean, vw: number, vh: 
   };
 }
 
+/** Narrowest window that gets the tablet layout (iPad mini portrait is 744). */
+export const WIDE_MIN_W = 744;
+
+/** Width of the list column on a tablet in two-pane: 36% of the window, 320–420 px. */
+export function tabletListWidth(vw: number): number {
+  return Math.max(320, Math.min(420, Math.round(vw * 0.36)));
+}
+
 /**
  * Duo / foldable layout, applied to <html> whenever the regions, the viewport
  * or the device posture change.
@@ -138,6 +146,13 @@ export function installDuoLayout(): void {
         : 0;
     const fold = result.fold && result.fold.orientation === 'vertical' ? result.fold : null;
     const twoPane = result.twoPane;
+    // Tablet-sized window (iPad, Android tablet, desktop browser): no Duo
+    // system column. Drives the floating labelled nav and centred sheets;
+    // the Duo rules never see it.
+    // A top/bottom occlusion (an iPad status strip) is not a Duo column.
+    const sideColumn = !!s && s.edge !== 'top' && s.edge !== 'bottom';
+    const wide = !sideColumn && rail === 0 && vw >= WIDE_MIN_W;
+    root.toggleAttribute('data-bw-wide', wide);
     root.toggleAttribute('data-bw-rail', rail > 0);
     if (rail > 0 && railEdge) root.setAttribute('data-bw-rail-edge', railEdge);
     else root.removeAttribute('data-bw-rail-edge');
@@ -159,7 +174,14 @@ export function installDuoLayout(): void {
     if (twoPane) {
       const railLeft = railEdge === 'left' ? rail : 0;
       const railRight = railEdge === 'right' ? rail : 0;
-      const leading = fold ? Math.round(fold.x) : railLeft + Math.floor((vw - rail) / 2);
+      // Tablets (no system column, no fold): a list column of 320–420 px and
+      // the rest for the detail, as in the iPad frames. The Duo keeps the
+      // even split or its fold.
+      const leading = fold
+        ? Math.round(fold.x)
+        : wide
+          ? tabletListWidth(vw)
+          : railLeft + Math.floor((vw - rail) / 2);
       const trailingX = fold ? Math.round(fold.x + fold.w) : leading + 1;
       root.style.setProperty('--bw-pane-leading-w', `${leading}px`);
       root.style.setProperty('--bw-pane-trailing-x', `${trailingX}px`);
@@ -211,11 +233,12 @@ export function installDuoLayout(): void {
   update();
 }
 
-/** True while the vertical rail nav is active (Duo, either posture). */
-export function useRailLayout(): { rail: boolean; twoPane: boolean; railEdge: 'left' | 'right' } {
+/** Layout flags from <html>: Duo rail, two panes, tablet-sized window. */
+export function useRailLayout(): { rail: boolean; twoPane: boolean; wide: boolean; railEdge: 'left' | 'right' } {
   const read = () => ({
     rail: document.documentElement.hasAttribute('data-bw-rail'),
     twoPane: document.documentElement.hasAttribute('data-bw-two-pane'),
+    wide: document.documentElement.hasAttribute('data-bw-wide'),
     railEdge: (document.documentElement.getAttribute('data-bw-rail-edge') === 'left' ? 'left' : 'right') as
       | 'left'
       | 'right',
@@ -225,7 +248,10 @@ export function useRailLayout(): { rail: boolean; twoPane: boolean; railEdge: 'l
     const onChange = () =>
       setState((prev) => {
         const next = read();
-        return prev.rail === next.rail && prev.twoPane === next.twoPane && prev.railEdge === next.railEdge
+        return prev.rail === next.rail &&
+          prev.twoPane === next.twoPane &&
+          prev.wide === next.wide &&
+          prev.railEdge === next.railEdge
           ? prev
           : next;
       });

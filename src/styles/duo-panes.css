@@ -88,7 +88,7 @@
    | Band / Create band": the band list stays on the left while the new band
    is created on the right). */
 [data-bw-rail-host][data-bw-two-pane] .bw-rail-sheet.bw-leading-sheet,
-[data-bw-two-pane] .bw-rail-sheet.bw-leading-sheet {
+[data-bw-two-pane]:not([data-bw-wide]) .bw-rail-sheet.bw-leading-sheet {
   left: 0 !important;
   right: auto !important;
   width: var(--bw-pane-leading-w) !important;
@@ -133,7 +133,7 @@
    form itself is on the trailing page, it moves to the leading page while the
    picker is open (Figma "Open · New gig / 2 Date & venue | Picker / Date",
    "Picker / Time", "Songs library | Song picker"). */
-[data-bw-two-pane] body:has(.bw-picker[data-state="open"]) .bw-pane-detail {
+[data-bw-two-pane]:not([data-bw-wide]) body:has(.bw-picker[data-state="open"]) .bw-pane-detail {
   left: 0 !important;
   right: auto !important;
   width: var(--bw-pane-leading-w) !important;
