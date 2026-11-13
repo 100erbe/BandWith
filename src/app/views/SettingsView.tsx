@@ -37,6 +37,7 @@ import { useRailLayout } from '@/lib/deviceRegions';
 import { usePosture, useLaptopPoseEnabled, setLaptopPoseEnabled } from '@/lib/posture';
 import { setDistanceUnit, useDistanceUnit } from '@/lib/units';
 import { useT, useLocalePref, setLocalePref, getLocale, deviceLocale, formatList, LANGUAGES } from '@/lib/i18n';
+import { appLockSupported, authenticateDevice, setAppLockEnabled, useAppLockEnabled } from '@/lib/appLock';
 
 type SettingsSection = 'notifications' | 'appearance' | 'units' | 'privacy' | 'duo' | 'help' | 'about' | 'language';
 
@@ -96,6 +97,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const { detected: postureDetected } = usePosture();
   const laptopPoseEnabled = useLaptopPoseEnabled();
   const distanceUnit = useDistanceUnit();
+  const appLockAvailable = appLockSupported();
+  const appLockOn = useAppLockEnabled();
+  const [appLockBusy, setAppLockBusy] = useState(false);
+  // Turning the lock off asks for the same check as unlocking.
+  const handleToggleAppLock = async (on: boolean) => {
+    if (on) {
+      setAppLockEnabled(true);
+      return;
+    }
+    setAppLockBusy(true);
+    const result = await authenticateDevice(t('Turn off app lock'), { cancel: t('Cancel'), title: t('Turn off app lock') });
+    setAppLockBusy(false);
+    if (result === 'ok' || result === 'unavailable') setAppLockEnabled(false);
+  };
 
   const SECTIONS: {
     id: SettingsSection;
@@ -107,7 +122,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     { id: 'notifications', label: t('Notifications'), hint: t('Push and email'), icon: Bell },
     { id: 'appearance', label: t('Appearance'), hint: t('Light, dark or system'), value: themeLabel, icon: Sun },
     { id: 'units', label: t('Units'), hint: t('Distances in km or miles'), value: distanceUnit === 'mi' ? t('Miles') : t('Kilometres'), icon: Navigation },
-    { id: 'privacy', label: t('Privacy & account'), hint: t('Gig privacy, export, delete account'), icon: Lock },
+    { id: 'privacy', label: t('Privacy & account'), hint: appLockAvailable ? t('App lock, gig privacy, export, delete account') : t('Gig privacy, export, delete account'), icon: Lock },
     ...(postureDetected
       ? [{ id: 'duo' as const, label: 'iPhone Duo', hint: t('Laptop pose'), value: laptopPoseEnabled ? t('On') : t('Off'), icon: Smartphone }]
       : []),
@@ -445,6 +460,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const renderPrivacySection = () => (
     <div className="flex flex-col gap-3">
+      {appLockAvailable && (
+        <div className={cn(CARD, ROW)}>
+          <IconTile>
+            <Lock />
+          </IconTile>
+          <RowText
+            title={t('App lock')}
+            hint={t('When BandWith starts again after being closed, ask for Face ID, fingerprint or the device passcode')}
+          />
+          <Toggle
+            checked={appLockOn}
+            onCheckedChange={(on: boolean) => void handleToggleAppLock(on)}
+            disabled={appLockBusy}
+            aria-label={t('App lock')}
+          />
+        </div>
+      )}
       <div className={cn(CARD, 'p-4 flex flex-col gap-2')}>
         <div className="flex items-center gap-3">
           <IconTile>
