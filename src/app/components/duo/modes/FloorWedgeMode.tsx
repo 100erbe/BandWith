@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Minus, Plus } from '@/app/components/icons';
+import { ChevronLeft, ChevronRight, Minus, PanelLeft, Plus, X } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { haptic } from '@/lib/haptics';
 import { useKeepAwake } from '@/lib/posture';
@@ -7,6 +7,8 @@ import { FoldSplit } from '../FoldSplit';
 import { DeckButton, clock, durationSeconds } from './shared';
 import { LyricsText, useLyricsSize } from '@/app/components/ui/LyricsViewer';
 import { useT } from '@/lib/i18n';
+import { useRailLayout } from '@/lib/deviceRegions';
+import { useStageBarHidden } from '@/lib/stageChrome';
 
 /**
  * Floor wedge (Stage mode in Laptop pose): the phone stands on the stage
@@ -56,6 +58,11 @@ export interface FloorWedgeModeProps {
   startedAt?: Date | number;
   /** See FoldSplit. Default 125 (above Stage mode). */
   zIndex?: number;
+  /**
+   * Leaves Stage mode. Shown on the Deck only while the side bar is hidden
+   * (src/lib/stageChrome.ts); otherwise Exit is in the rail.
+   */
+  onClose?: () => void;
 }
 
 export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
@@ -69,8 +76,14 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
   follow,
   startedAt,
   zIndex,
+  onClose,
 }) => {
   const t = useT();
+  // Stage mode full screen hides the rail, which holds Exit and the toggle:
+  // the Deck shows them instead.
+  const { rail, twoPane } = useRailLayout();
+  const [barHidden, setBarHidden] = useStageBarHidden();
+  const ownChrome = !!onClose && barHidden && (rail || twoPane);
   useKeepAwake(true);
   const count = songs.length;
   const [ownIndex, setIndex] = useState(() => Math.min(Math.max(0, initialIndex), Math.max(0, count - 1)));
@@ -216,7 +229,7 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
 
   const deck = (
     <div className="min-h-full flex flex-col gap-3 px-4 pt-3 pb-3 text-white">
-      {(follow || hasLyrics) && (
+      {(follow || hasLyrics || ownChrome) && (
         <div className="flex items-center justify-between gap-3 min-h-11 shrink-0">
           {hasLyrics ? (
             <button
@@ -262,6 +275,34 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
               {follow.following ? (follow.leaderSeen ? t('Following leader') : t('Waiting for leader')) : t('Follow leader')}
               {follow.bluetooth === 'connected' ? ' · BT' : ''}
             </button>
+          )}
+          {ownChrome && (
+            <span className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                aria-label={t('Show sidebar')}
+                title={t('Show sidebar')}
+                onClick={() => {
+                  haptic.tap();
+                  setBarHidden(false);
+                }}
+                className="w-11 h-11 flex items-center justify-center rounded-full border border-white/40 text-white [&_svg]:w-5 [&_svg]:h-5"
+              >
+                <PanelLeft />
+              </button>
+              <button
+                type="button"
+                aria-label={t('Exit stage mode')}
+                title={t('Exit stage mode')}
+                onClick={() => {
+                  haptic.tap();
+                  onClose?.();
+                }}
+                className="w-11 h-11 flex items-center justify-center rounded-full border border-white text-white [&_svg]:w-5 [&_svg]:h-5"
+              >
+                <X />
+              </button>
+            </span>
           )}
         </div>
       )}

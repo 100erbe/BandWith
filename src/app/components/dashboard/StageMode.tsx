@@ -1,13 +1,16 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Minus, Plus, X } from '@/app/components/icons';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Minus, PanelLeft, Plus, X } from '@/app/components/icons';
 import { LyricsText, useLyricsSize } from '@/app/components/ui/LyricsViewer';
 import { durations, easings } from '@/styles/motion';
 import { haptic } from '@/lib/haptics';
 import { FIT, FitText } from '@/app/components/bw/FitText';
-import { HeaderAction } from '@/app/components/bw/Screen';
+import { HeaderAction, IconButton } from '@/app/components/bw/Screen';
 import { RailCover, useRailTone } from '@/lib/railActions';
 import { setStatusBarTone } from '@/lib/systemBars';
+import { useRailLayout } from '@/lib/deviceRegions';
+import { useStageBarHidden, useStageFullScreen } from '@/lib/stageChrome';
+import '@/styles/stage.css';
 import { useT } from '@/lib/i18n';
 import { timelineDates } from '@/lib/gigTiming';
 import { cn } from '@/app/components/ui/utils';
@@ -159,6 +162,55 @@ export const StageMode: React.FC<StageModeProps> = ({
   useEffect(() => setStatusBarTone('dark'), []);
   useRailTone('dark');
 
+  // Full screen: hide the side bar (the iPhone Duo rail, or the list pane on
+  // two-pane layouts). Offered only where there is such a bar; elsewhere
+  // Stage mode already has the whole screen.
+  const { rail, twoPane } = useRailLayout();
+  const hasBar = rail || twoPane;
+  const [barHidden, setBarHidden] = useStageBarHidden();
+  const full = hasBar && barHidden;
+  useStageFullScreen(full);
+  const toggleBar = () => {
+    haptic.tap();
+    setBarHidden(!barHidden);
+  };
+  const barLabel = full ? t('Show sidebar') : t('Hide sidebar');
+
+  // Full screen across two panes: times and steps on the leading pane, the
+  // setlist / lyrics on the trailing one, split at the panes' edge (the fold
+  // on the Duo) so nothing sits on the crease.
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const [split, setSplit] = useState<{ col: number; gap: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!full || !twoPane) {
+      setSplit(null);
+      return;
+    }
+    const measure = () => {
+      const el = contentRef.current;
+      if (!el) return;
+      const root = getComputedStyle(document.documentElement);
+      const leading = parseFloat(root.getPropertyValue('--bw-pane-leading-w'));
+      const trailingX = parseFloat(root.getPropertyValue('--bw-pane-trailing-x'));
+      const box = el.getBoundingClientRect();
+      const own = getComputedStyle(el);
+      const left = box.left + (parseFloat(own.paddingLeft) || 0);
+      const right = box.right - (parseFloat(own.paddingRight) || 0);
+      const col = Math.round(leading - 16 - left);
+      const gap = Math.round(trailingX - leading + 32);
+      // Both columns need room for the step cards and song titles.
+      const ok = Number.isFinite(col) && Number.isFinite(gap) && col >= 260 && right - left - col - gap >= 300;
+      setSplit((prev) => (ok ? (prev?.col === col && prev.gap === gap ? prev : { col, gap }) : null));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('bwlayout', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('bwlayout', measure);
+    };
+  }, [full, twoPane]);
+
   return (
     <motion.div
       role="dialog"
@@ -168,7 +220,7 @@ export const StageMode: React.FC<StageModeProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: durations.normal, ease: easings.standard }}
-      className="bw-pane-detail fixed inset-0 z-[120] flex flex-col bg-black text-white select-none"
+      className={cn('bw-stage bw-pane-detail fixed inset-0 z-[120] flex flex-col bg-black text-white select-none', full && 'bw-stage-full')}
       style={{
         paddingTop: 'calc(var(--safe-top) + 12px)',
         paddingBottom: 'calc(var(--safe-bottom) + 16px)',
@@ -177,13 +229,18 @@ export const StageMode: React.FC<StageModeProps> = ({
       {/* Short and wide (phone or closed Duo on its side): times and steps on
           the left, the setlist on the right. */}
       <div
+        ref={contentRef}
         className={cn(
           'flex flex-col flex-1 min-h-0 w-full max-w-[640px] mx-auto px-4 gap-6',
           '[@media(max-height:520px)_and_(min-width:600px)]:grid [@media(max-height:520px)_and_(min-width:600px)]:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] [@media(max-height:520px)_and_(min-width:600px)]:grid-rows-[auto_auto_1fr] [@media(max-height:520px)_and_(min-width:600px)]:max-w-[1100px] [@media(max-height:520px)_and_(min-width:600px)]:gap-x-6 [@media(max-height:520px)_and_(min-width:600px)]:gap-y-3',
+          // Full screen on two panes: the whole width, one column per pane.
+          full && twoPane && 'max-w-none [@media(max-height:520px)_and_(min-width:600px)]:max-w-none',
+          split && 'grid grid-rows-[auto_auto_1fr] gap-y-3',
         )}
+        style={split ? { gridTemplateColumns: `${split.col}px minmax(0,1fr)`, columnGap: split.gap } : undefined}
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 shrink-0 bw-status-clear-shift [@media(max-height:520px)_and_(min-width:600px)]:col-start-1 [@media(max-height:520px)_and_(min-width:600px)]:row-start-1">
+        <div className={cn('flex items-start justify-between gap-4 shrink-0 bw-status-clear-shift [@media(max-height:520px)_and_(min-width:600px)]:col-start-1 [@media(max-height:520px)_and_(min-width:600px)]:row-start-1', split && 'col-start-1 row-start-1')}>
           <div className="flex flex-col gap-2 min-w-0">
             <span className="flex items-center gap-2 bw-label-sm text-white">
               <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
@@ -197,7 +254,21 @@ export const StageMode: React.FC<StageModeProps> = ({
             )}
           </div>
           <RailCover pane />
-          <HeaderAction pane label={t('Exit stage mode')} variant="sheet" icon={<X />} onClick={handleClose} className="border-white text-white" />
+          {full ? (
+            // The rail is hidden: Exit and the toggle stay on screen here,
+            // stacked in the narrow column of the short-and-wide layout.
+            <span className="flex items-center gap-2 shrink-0 [@media(max-height:520px)_and_(min-width:600px)]:flex-col">
+              <IconButton label={barLabel} variant="sheet" icon={<PanelLeft />} onClick={toggleBar} className="border-white/40 text-white" />
+              <IconButton label={t('Exit stage mode')} variant="sheet" icon={<X />} onClick={handleClose} className="border-white text-white" />
+            </span>
+          ) : (
+            <span className="flex items-center gap-2 shrink-0">
+              {hasBar && (
+                <HeaderAction pane label={barLabel} variant="sheet" icon={<PanelLeft />} onClick={toggleBar} className="border-white/40 text-white" />
+              )}
+              <HeaderAction pane label={t('Exit stage mode')} variant="sheet" icon={<X />} onClick={handleClose} className="border-white text-white" />
+            </span>
+          )}
         </div>
 
         {/* Run of show (its own container: one row of four when short and wide enough) */}
@@ -205,7 +276,9 @@ export const StageMode: React.FC<StageModeProps> = ({
         <div
           className={cn(
             '@container shrink-0 [@media(max-height:520px)_and_(min-width:600px)]:col-start-1 [@media(max-height:520px)_and_(min-width:600px)]:row-start-2',
-            showLyrics && 'hidden',
+            split && 'col-start-1 row-start-2',
+            // Split across two panes the times keep their own column.
+            showLyrics && !split && 'hidden',
           )}
         >
         <ol
@@ -240,7 +313,7 @@ export const StageMode: React.FC<StageModeProps> = ({
         </div>
 
         {/* Setlist */}
-        <section className="flex flex-col flex-1 min-h-0 gap-1 [@media(max-height:520px)_and_(min-width:600px)]:col-start-2 [@media(max-height:520px)_and_(min-width:600px)]:row-start-1 [@media(max-height:520px)_and_(min-width:600px)]:row-span-3" aria-label={t('Setlist')}>
+        <section className={cn('flex flex-col flex-1 min-h-0 gap-1 [@media(max-height:520px)_and_(min-width:600px)]:col-start-2 [@media(max-height:520px)_and_(min-width:600px)]:row-start-1 [@media(max-height:520px)_and_(min-width:600px)]:row-span-3', split && 'col-start-2 row-start-1 row-span-3')} aria-label={t('Setlist')}>
           <div className="flex items-center justify-between gap-3 shrink-0 pb-2 min-h-11">
             {hasLyrics && !editing ? (
               <span className="flex items-center gap-1 min-w-0" role="tablist" aria-label={t('Setlist')}>
@@ -460,7 +533,7 @@ export const StageMode: React.FC<StageModeProps> = ({
 
         {/* Song steps: the leader's reach the whole band. */}
         {live && songs.length > 0 && !editing && (
-          <div className="grid grid-cols-2 gap-3 shrink-0 [@media(max-height:520px)_and_(min-width:600px)]:col-start-1 [@media(max-height:520px)_and_(min-width:600px)]:row-start-3 [@media(max-height:520px)_and_(min-width:600px)]:self-end">
+          <div className={cn('grid grid-cols-2 gap-3 shrink-0 [@media(max-height:520px)_and_(min-width:600px)]:col-start-1 [@media(max-height:520px)_and_(min-width:600px)]:row-start-3 [@media(max-height:520px)_and_(min-width:600px)]:self-end', split && 'col-start-1 row-start-3 self-end')}>
             <button
               type="button"
               disabled={current <= 0}
