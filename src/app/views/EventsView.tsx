@@ -28,7 +28,7 @@ import { FIT, FitText } from '@/app/components/bw/FitText';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { PlannerMode, type PlannerEvent } from '@/app/components/duo';
 import { keyboardSafeTap } from '@/lib/keyboardSafeTap';
-import { ALL_BANDS, PERSONAL, bandFilterShowsFees, feeForViewer, matchesBandFilter, type BandFilterOption } from '@/lib/bandFilter';
+import { ALL_BANDS, PERSONAL, bandFilterCanCreate, bandFilterShowsFees, feeForViewer, matchesBandFilter, type BandFilterOption } from '@/lib/bandFilter';
 
 interface EventsViewProps {
   loading?: boolean;
@@ -614,6 +614,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
   // where the user plays as a member shows no Fees (not "€0").
   const adminOfBand = useCallback((id: string) => (isAdminOfBand ? isAdminOfBand(id) : isAdmin), [isAdminOfBand, isAdmin]);
   const plannerShowsFees = bandFilterShowsFees(selectedBandPill, adminOfBand, isAdmin);
+  // "+ Gig / + Rehearsal / + Quote": not on a band where the user is a member.
+  const canCreate = bandFilterCanCreate(selectedBandPill, adminOfBand, isAdmin);
   const { plannerEvents, plannerSource } = useMemo(() => {
     const list: PlannerEvent[] = [];
     const source = new Map<string, EventData>();
@@ -1250,7 +1252,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <IconButton label={t('Dismiss date selection')} variant="sheet" size="sm" icon={<X />} onClick={() => setSelectedEmptyDate(null)} />
                             </div>
                           </div>
-                          {isAdmin && onCreateEvent ? (
+                          {canCreate && onCreateEvent ? (
                             <>
                               <p className="bw-body-md">{t('Nothing scheduled yet. Add something for the band:')}</p>
                               <div className="grid grid-cols-3 gap-2">
@@ -1340,7 +1342,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       {t('Show All Events')}
                     </PillButton>
                   )}
-                  {isAdmin && onCreateEvent && (
+                  {canCreate && onCreateEvent && (
                     <>
                       <PillButton size="sm" variant="dark" fullWidth={false} icon={<Plus className="w-3.5 h-3.5" />} onClick={() => onCreateEvent('gig')}>
                         {t('Gig')}
@@ -1539,8 +1541,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
             const ev = plannerSource.get(id);
             if (ev) onEventClick(ev);
           }}
-          onAddGig={isAdmin && onCreateEvent ? (date) => onCreateEvent('gig', date) : undefined}
-          onAddRehearsal={isAdmin && onCreateEvent ? (date) => onCreateEvent('rehearsal', date) : undefined}
+          onAddGig={canCreate && onCreateEvent ? (date) => onCreateEvent('gig', date) : undefined}
+          onAddRehearsal={canCreate && onCreateEvent ? (date) => onCreateEvent('rehearsal', date) : undefined}
           filters={bandPills}
         />
       )}

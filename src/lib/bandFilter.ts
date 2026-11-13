@@ -77,6 +77,30 @@ export function bandFilterShowsFees(
 }
 
 /**
+ * Whether "+ Gig / + Rehearsal / + Quote" show under `filter`: for one band,
+ * only to its admins; for All, as for the active band; never for Personal
+ * (those buttons make band events; personal gigs come from the Create menu).
+ */
+export function bandFilterCanCreate(
+  filter: BandFilter,
+  isAdminOfBand: (bandId: string) => boolean,
+  activeBandAdmin: boolean,
+): boolean {
+  if (filter === PERSONAL) return false;
+  if (filter === ALL_BANDS) return activeBandAdmin;
+  return isAdminOfBand(filter);
+}
+
+/**
+ * The band to make active before creating under `filter`, so a gig added
+ * while one band is shown lands in that band; null keeps the active band.
+ */
+export function bandToActivateForCreate(filter: BandFilter, activeBandId: string | null | undefined): string | null {
+  if (filter === ALL_BANDS || filter === PERSONAL) return null;
+  return filter === activeBandId ? null : filter;
+}
+
+/**
  * A gig's fee as the user may count it: band events only for that band's
  * admins (members see their own fee elsewhere), personal gigs always.
  */
