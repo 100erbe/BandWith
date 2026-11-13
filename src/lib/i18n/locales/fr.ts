@@ -3301,6 +3301,11 @@ const dict: Dictionary = {
   "App lock, gig privacy, export, delete account": "Verrouillage, confidentialité des concerts, export, suppression du compte",
   "App lock": "Verrouillage de l’app",
   "When BandWith starts again after being closed, ask for Face ID, fingerprint or the device passcode": "Quand BandWith redémarre après avoir été fermée, demander Face ID, l’empreinte digitale ou le code de l’appareil",
+  "Long-press a song and drag to reorder": "Appuyez longuement sur un morceau et faites-le glisser pour réorganiser",
+  "Long-press a song and drag it to change the order. With a keyboard, focus the grip and use the up and down arrow keys.": "Appuyez longuement sur un morceau et faites-le glisser pour changer l'ordre. Au clavier, placez le focus sur la poignée et utilisez les flèches haut et bas.",
+  "{title} moved to position {position} of {total}": "{title} déplacé en position {position} sur {total}",
+  "Picked up {title}": "{title} saisi pour être déplacé",
+  "Reordering cancelled: {title} stays where it was": "Réorganisation annulée : {title} reste à sa place",
 };
 
 export default dict;

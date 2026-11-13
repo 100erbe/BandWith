@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { currencySymbol as symbolFor } from '@/lib/currency';
-import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
   Plus,
@@ -22,7 +22,6 @@ import {
   Layers,
   User,
   ArrowUpRight,
-  GripVertical,
   LayoutTemplate,
 } from '@/app/components/icons';
 import { HeaderAction, IconButton, NavBackButton, Tag } from '@/app/components/bw/Screen';
@@ -42,6 +41,8 @@ import { RehearsalCreationWizard } from '@/app/components/rehearsal/RehearsalCre
 import { useBand } from '@/lib/BandContext';
 import { getSongs, getSetlists, getSetlist, type Song, type Setlist } from '@/lib/services/songs';
 import { removeSongsFromSets, setsFromSetlistSongs, setSongCount } from '@/lib/setlistSets';
+import { setStartNumbers, withSetSongs } from '@/lib/setlistOrder';
+import { SortableSongList } from '@/app/components/ui/SortableSongList';
 import { supabase } from '@/lib/supabase';
 import { listEventTasks } from '@/lib/services/eventTasks';
 import { getBandPricing, DEFAULT_BAND_PRICING, type BandPricingSettings } from '@/lib/services/pricing';
@@ -300,43 +301,6 @@ const PICKER_FIELD =
   'h-[52px] px-4 pb-0 gap-3 rounded-full bg-field border border-border text-foreground text-lg font-medium hover:border-foreground focus:border-2 focus:border-foreground';
 
 const capitalize = (s?: string | null) => (s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : '');
-
-/** One setlist song with a drag handle (Figma: reorder by grip). */
-const SortableSongRow: React.FC<{ song: any; index: number; onRemove: () => void }> = ({ song, index, onRemove }) => {
-  const controls = useDragControls();
-  const t = useT();
-  return (
-    <Reorder.Item
-      value={song}
-      dragListener={false}
-      dragControls={controls}
-      whileDrag={{ scale: 1.02 }}
-      className="relative flex items-center gap-2 min-w-0 rounded-[12px]"
-    >
-      <button
-        type="button"
-        aria-label={t('Reorder {title}', { title: song.title || t('song') })}
-        onPointerDown={e => controls.start(e)}
-        className="w-6 h-8 -ml-1 flex items-center justify-center shrink-0 text-muted-foreground cursor-grab active:cursor-grabbing touch-none"
-      >
-        <GripVertical className="w-4 h-4" />
-      </button>
-      <span className="bw-label-sm text-muted-foreground w-4 shrink-0">{index + 1}</span>
-      <div className="flex-1 min-w-0">
-        <span className="bw-body-md text-foreground truncate block">{song.title || t('Untitled song')}</span>
-        {song.artist && <span className="bw-body-sm text-muted-foreground truncate block">{song.artist}</span>}
-      </div>
-      <IconButton
-        label={t('Remove song')}
-        variant="ghost"
-        size="sm"
-        icon={<X />}
-        className="w-8 h-8 -my-1 -mr-1"
-        onClick={onRemove}
-      />
-    </Reorder.Item>
-  );
-};
 
 /* ── Forecast row (step 2) ───────────────────────────────────────────────
  * Same Open-Meteo source and 7-day window as WeatherWidget (whose fetchers
@@ -1302,6 +1266,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   // Plain values, not hooks: this code runs after the rehearsal passthrough.
   const totalSongCount = setlist.reduce((acc: number, s: any) => acc + (s.songs || []).length, 0);
+  // Play numbers (01, 02, …) run across sets, as on the gig detail and in Stage mode.
+  const setStarts = setStartNumbers(setlist);
+  const reorderHint =
+    isAdmin && totalSongCount > 1 ? (
+      <p className="bw-label-xs text-muted-foreground">{t('Long-press a song and drag to reorder')}</p>
+    ) : null;
 
   const handleAddNewTask = () => {
     if (!newTaskText.trim()) return;
@@ -1953,6 +1923,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           </div>
         )}
 
+        {setlist.length > 0 && reorderHint}
         {setlist.length > 0 ? (
           setlist.map((item, i) => (
             <div key={item.uid || i} className="rounded-[16px] bg-foreground/[0.08] p-3 flex flex-col gap-2">
@@ -1973,23 +1944,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               </div>
 
               {(item.songs || []).length > 0 && (
-                <Reorder.Group
-                  axis="y"
-                  values={item.songs}
-                  onReorder={(songs: any[]) =>
-                    setSetlist(prev => prev.map(s => (s.uid === item.uid ? { ...s, songs } : s)))
-                  }
-                  className="flex flex-col gap-1"
-                >
-                  {(item.songs || []).map((song: any, si: number) => (
-                    <SortableSongRow
-                      key={song.uid || si}
-                      song={song}
-                      index={si}
-                      onRemove={() => removeSongFromSet(item.uid, song.uid)}
-                    />
-                  ))}
-                </Reorder.Group>
+                <SortableSongList
+                  songs={item.songs}
+                  startNumber={setStarts[i]}
+                  canReorder={isAdmin}
+                  label={item.title || t('Set {n}', { n: i + 1 })}
+                  onReorder={songs => setSetlist(prev => withSetSongs(prev, item.uid, songs))}
+                  onRemove={songUid => removeSongFromSet(item.uid, songUid)}
+                />
               )}
               {(item.songs || []).length === 0 && (
                 <p className="bw-body-sm text-muted-foreground">{t('No songs in this set.')}</p>
@@ -2213,6 +2175,29 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             {t('Pick songs')}
           </PillButton>
         </div>
+
+        {/* Songs in play order; the admin reorders them (saved with the gig). */}
+        {isAdmin && totalSongCount > 0 && (
+          <div className="flex flex-col gap-2">
+            {reorderHint}
+            {setlist.map((item, i) =>
+              (item.songs || []).length > 0 ? (
+                <div key={item.uid || i} className="rounded-[16px] bg-foreground/[0.08] p-3 flex flex-col gap-1">
+                  {setlist.length > 1 && (
+                    <span className="bw-label-sm text-muted-foreground px-1">{item.title || t('Set {n}', { n: i + 1 })}</span>
+                  )}
+                  <SortableSongList
+                    songs={item.songs}
+                    startNumber={setStarts[i]}
+                    canReorder
+                    label={item.title || t('Set {n}', { n: i + 1 })}
+                    onReorder={songs => setSetlist(prev => withSetSongs(prev, item.uid, songs))}
+                  />
+                </div>
+              ) : null
+            )}
+          </div>
+        )}
 
         <div className="flex flex-col gap-2">
           <FieldLabel>{t('Tasks')}</FieldLabel>
