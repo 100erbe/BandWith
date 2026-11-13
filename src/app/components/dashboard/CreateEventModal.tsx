@@ -529,10 +529,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, modalCategory]);
 
-  if (!isAdmin && modalCategory === 'quote') {
-    return null;
-  }
-
   // --- Pricing Settings ---
   const [pricingSettings, setPricingSettings] = useState<BandPricingSettings>(DEFAULT_BAND_PRICING);
 
@@ -1056,6 +1052,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     !isEditing && step === 0 && eventType !== 'rehearsal'
   );
 
+  // Members never see quotes (the effect above closes the wizard). This sits
+  // after every hook above so the hook order never changes with the role.
+  if (!isAdmin && modalCategory === 'quote') {
+    return null;
+  }
+
   // --- Rehearsal passthrough ---
   if (eventType === 'rehearsal') {
     if (!isAdmin) return null; // redirected to ProposeRehearsalModal (effect above)
@@ -1238,10 +1240,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     );
   };
 
-  const totalSongCount = useMemo(
-    () => setlist.reduce((acc: number, s: any) => acc + (s.songs || []).length, 0),
-    [setlist]
-  );
+  // Plain values, not hooks: this code runs after the rehearsal passthrough.
+  const totalSongCount = setlist.reduce((acc: number, s: any) => acc + (s.songs || []).length, 0);
 
   const handleAddNewTask = () => {
     if (!newTaskText.trim()) return;
@@ -2196,7 +2196,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const isLastStep = step === STEPS.length - 1;
   const isFirstStep = step === 0;
 
-  const canProceed = useMemo(() => {
+  const canProceed = (() => {
     switch (step) {
       case 0:
         return eventType !== null;
@@ -2207,7 +2207,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       default:
         return true;
     }
-  }, [step, eventType, details.date]);
+  })();
 
   const rightButtonLabel = isLastStep
     ? modalCategory === 'quote'
