@@ -60,3 +60,29 @@ export function normalizeBandFilter(filter: BandFilter, options: ReadonlyArray<B
   if (filter === ALL_BANDS) return filter;
   return options.some((o) => o.id === filter) ? filter : ALL_BANDS;
 }
+
+/**
+ * Whether band money (gig fees, the month's Fees) shows under `filter`: for
+ * one band, only to its admins; for All and Personal, as for the active band.
+ */
+export function bandFilterShowsFees(
+  filter: BandFilter,
+  isAdminOfBand: (bandId: string) => boolean,
+  activeBandAdmin: boolean,
+): boolean {
+  if (filter === ALL_BANDS || filter === PERSONAL) return activeBandAdmin;
+  return isAdminOfBand(filter);
+}
+
+/**
+ * A gig's fee as the user may count it: band events only for that band's
+ * admins (members see their own fee elsewhere), personal gigs always.
+ */
+export function feeForViewer(
+  bandId: string | null | undefined,
+  fee: number | null,
+  isAdminOfBand: (bandId: string) => boolean,
+): number | null {
+  if (fee == null) return null;
+  return !bandId || isAdminOfBand(bandId) ? fee : null;
+}
