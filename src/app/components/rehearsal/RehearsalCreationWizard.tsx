@@ -44,7 +44,7 @@ import { toLocalDateString } from '../../../lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { personName, personInitials } from '@/lib/personName';
 import { parseGenres } from '@/lib/songGenres';
-import { t, useT } from '@/lib/i18n';
+import { t, useT, intlLocale } from '@/lib/i18n';
 
 interface TaskTemplateDB {
   id: string;
@@ -659,7 +659,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     if (!dateStr) return '';
     const parts = dateStr.split('-').map(Number);
     const d = new Date(parts[0], parts[1] - 1, parts[2]);
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return d.toLocaleDateString(intlLocale('en-GB'), { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const handleTypeChange = (newType: RehearsalType) => {

@@ -8,7 +8,7 @@ import {
   createMemberRehearsalProposal,
   type ProposalEligibility,
 } from '@/lib/services/rehearsalPolls';
-import { useT } from '@/lib/i18n';
+import { useT, intlLocale } from '@/lib/i18n';
 
 const DAYS_OF_WEEK = [
   { key: 'Mon', label: 'Mon' },
@@ -183,7 +183,7 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
                   <p className="bw-label-sm text-muted-foreground">{t('Next available proposal')}</p>
                   <div className="flex items-center justify-between gap-3">
                     <span className="bw-h3">
-                      {eligibility.nextAvailableDate.toLocaleDateString(undefined, {
+                      {eligibility.nextAvailableDate.toLocaleDateString(intlLocale(), {
                         weekday: 'long',
                         month: 'short',
                         day: 'numeric',

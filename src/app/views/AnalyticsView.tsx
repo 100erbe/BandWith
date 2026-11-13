@@ -9,7 +9,7 @@ import { ScreenHeader, Card } from '@/app/components/bw/Screen';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { supabase } from '@/lib/supabase';
 import { toLocalDateString } from '@/lib/dates';
-import { useT } from '@/lib/i18n';
+import { useT, dateName, intlLocale, localDecimal } from '@/lib/i18n';
 
 interface AnalyticsViewProps {
   onClose: () => void;
@@ -29,7 +29,6 @@ interface AnalyticsViewProps {
 
 /** Months shown in the breakdown, oldest first, current month last. */
 const MONTH_SPAN = 6;
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const LED_ROWS = 10;
 
 /** Figma "LED Column": 10 dots of 10pt, 4pt apart, filled from the bottom. */
@@ -76,7 +75,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
   const dashboardData = sharedData ?? fetchedData;
   const loading = !sharedData && fetching;
 
-  const fmt = (v: number) => (v >= 1000 ? `${sym()}${(v / 1000).toFixed(1)}k` : `${sym()}${v}`);
+  const fmt = (v: number) => (v >= 1000 ? `${sym()}${localDecimal((v / 1000).toFixed(1))}k` : `${sym()}${v}`);
 
   const totalRevenue = dashboardData?.eventStats?.totalRevenue || 0;
   const totalEvents = dashboardData?.eventStats?.totalEvents || 0;
@@ -128,9 +127,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
     const d = new Date(now.getFullYear(), now.getMonth() - offset, 1);
     const lit = fee > 0 && maxFee > 0 ? Math.max(1, Math.round((fee / maxFee) * LED_ROWS)) : 0;
     return {
-      month: MONTHS[d.getMonth()],
+      month: dateName(d, { month: 'short' }).toUpperCase(),
       yyyyMm: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
-      longLabel: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      longLabel: d.toLocaleDateString(intlLocale('en-US'), { month: 'long', year: 'numeric' }),
       fee,
       lit,
       current: offset === 0,
@@ -202,7 +201,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
                     initial: { opacity: 0, y: 6 },
                     animate: { opacity: 1, y: 0 },
                     transition: { delay: 0.25 + i * 0.04 },
-                    title: `${month}: ${sym()}${fee.toLocaleString('en-US')}`,
+                    title: `${month}: ${sym()}${fee.toLocaleString(intlLocale('en-US'))}`,
                   };
                   return onSelectMonth ? (
                     <motion.button
@@ -210,7 +209,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
                       type="button"
                       {...motionProps}
                       onClick={() => onSelectMonth(yyyyMm)}
-                      aria-label={t('{label}: {amount}. Open in calendar', { label: longLabel, amount: `${sym()}${fee.toLocaleString('en-US')}` })}
+                      aria-label={t('{label}: {amount}. Open in calendar', { label: longLabel, amount: `${sym()}${fee.toLocaleString(intlLocale('en-US'))}` })}
                       className="flex flex-col items-center gap-2 rounded-[12px] p-1 -m-1 cursor-pointer active:scale-[0.97] transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
                     >
                       {bar}
@@ -224,7 +223,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="bw-body-lg text-muted-foreground">{t('Total earnings {year}', { year: now.getFullYear() })}</span>
-                <span className="bw-label-md shrink-0">{sym()}{totalRevenue.toLocaleString('en-US')}</span>
+                <span className="bw-label-md shrink-0">{sym()}{totalRevenue.toLocaleString(intlLocale('en-US'))}</span>
               </div>
             </Card>
 

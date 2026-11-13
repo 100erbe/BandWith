@@ -1,5 +1,5 @@
 import React from 'react';
-import { t } from '@/lib/i18n';
+import { t, intlLocale } from '@/lib/i18n';
 import { cn } from '@/app/components/ui/utils';
 import { parseLocalDate } from '@/lib/dates';
 
@@ -11,7 +11,7 @@ const validDate = (d: Date) => !Number.isNaN(d.getTime());
 export function dayLabel(date: string | null | undefined, opts: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' }): string {
   if (!date) return '';
   const d = parseLocalDate(date);
-  return validDate(d) ? d.toLocaleDateString('en-US', opts) : date;
+  return validDate(d) ? d.toLocaleDateString(intlLocale('en-US'), opts) : date;
 }
 
 /** Whole days from today to `date` (negative in the past), or null. */

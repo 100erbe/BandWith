@@ -12,6 +12,7 @@
  */
 import { useSyncExternalStore } from 'react';
 
+import { intlLocale, localDecimal } from '@/lib/i18n';
 export type CurrencyCode = 'EUR' | 'USD' | 'GBP' | 'CHF';
 
 export const CURRENCIES: { code: CurrencyCode; symbol: string; label: string }[] = [
@@ -104,7 +105,7 @@ export const money = (value: number | string | null | undefined, decimals: 0 | 2
   const n = Number(value) || 0;
   const abs = Math.abs(n);
   const digits = decimals === 'auto' ? (Number.isInteger(abs) ? 0 : 2) : decimals;
-  return `${sign(n)}${getActiveSymbol()}${abs.toLocaleString('en-US', {
+  return `${sign(n)}${getActiveSymbol()}${abs.toLocaleString(intlLocale('en-US'), {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   })}`;
@@ -116,7 +117,7 @@ export const moneyShort = (value: number | string | null | undefined, suffix: 'k
   const abs = Math.abs(n);
   if (abs >= 1000) {
     const k = abs / 1000;
-    return `${sign(n)}${getActiveSymbol()}${k.toFixed(abs % 1000 === 0 ? 0 : 1).replace(/\.0$/, '')}${suffix}`;
+    return `${sign(n)}${getActiveSymbol()}${localDecimal(k.toFixed(abs % 1000 === 0 ? 0 : 1).replace(/\.0$/, ''))}${suffix}`;
   }
-  return `${sign(n)}${getActiveSymbol()}${abs.toLocaleString('en-US')}`;
+  return `${sign(n)}${getActiveSymbol()}${abs.toLocaleString(intlLocale('en-US'))}`;
 };

@@ -17,7 +17,7 @@ import type { BandWithMembers } from '@/lib/services/bands';
 import type { Event } from '@/lib/services/events';
 import { personName, personFirstName, personInitials } from '@/lib/personName';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
-import { useT } from '@/lib/i18n';
+import { useT, intlLocale } from '@/lib/i18n';
 
 interface NewChatModalProps {
   onClose: () => void;
@@ -167,7 +167,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
 
   const formatEventDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString(intlLocale('en-US'), { 
       day: 'numeric', 
       month: 'short',
       year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined

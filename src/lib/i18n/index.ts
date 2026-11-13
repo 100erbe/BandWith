@@ -133,6 +133,44 @@ export const formatList = (items: string[], type: 'conjunction' | 'disjunction' 
   }
 };
 
+// ── Dates & numbers on screen ───────────────────────────────────
+// Portuguese is Brazilian in the dictionary ("Equipe", "Aprendendo").
+const INTL_TAGS: Record<Exclude<Locale, 'en'>, string> = { it: 'it-IT', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', pt: 'pt-BR' };
+
+/**
+ * Locale tag for `toLocaleDateString` / `toLocaleString` on screen.
+ * English returns the tag the call already used (`undefined` = device default),
+ * so English output stays exactly as it was; other languages use their own
+ * day/month names, order and separators.
+ * Client-facing text (quote share/PDF, contracts, emails) keeps its fixed tag.
+ */
+export const intlLocale = (en?: string): string | undefined => {
+  const l = getLocale();
+  return l === 'en' ? en : INTL_TAGS[l];
+};
+
+/**
+ * A month or weekday name on its own ("Mar", "Tue"), e.g. in a date tile.
+ * Other languages drop the abbreviation dot ("janv." → "janv", "Di." → "Di").
+ */
+export const dateName = (d: Date, opts: Intl.DateTimeFormatOptions, en = 'en-US'): string => {
+  const s = d.toLocaleDateString(intlLocale(en), opts);
+  return getLocale() === 'en' ? s : s.replace(/\.$/, '');
+};
+
+/** Monday-first weekday initials for calendar headers (English: M T W T F S S). 2024-01-01 is a Monday. */
+export const weekdayInitials = (): string[] =>
+  getLocale() === 'en'
+    ? ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+    : Array.from({ length: 7 }, (_, i) => new Date(2024, 0, 1 + i).toLocaleDateString(intlLocale(), { weekday: 'narrow' }).toUpperCase());
+
+/** "1.5" → "1,5" where the language writes a decimal comma (short amounts like "€1.5k"). */
+export const localDecimal = (s: string): string => {
+  if (getLocale() === 'en') return s;
+  const sep = (1.5).toLocaleString(intlLocale()).charAt(1);
+  return sep === '.' ? s : s.replace('.', sep);
+};
+
 const subscribe = (cb: () => void) => {
   window.addEventListener(CHANGED, cb);
   return () => window.removeEventListener(CHANGED, cb);

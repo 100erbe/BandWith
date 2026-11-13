@@ -29,7 +29,7 @@ import { setActiveChat } from '@/lib/services/activeChatTracker';
 import { useAuth } from '@/lib/AuthContext';
 import { useOnlinePresence } from '@/lib/services/presence';
 import { Capacitor } from '@capacitor/core';
-import { useT } from '@/lib/i18n';
+import { useT, intlLocale } from '@/lib/i18n';
 
 /**
  * Chat keyboard: it stays up while you read and tap around the chat. It
@@ -446,7 +446,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString(intlLocale('en-US'), { hour: '2-digit', minute: '2-digit' });
   };
 
   const formatDate = (dateString: string) => {
@@ -456,7 +456,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
     yesterday.setDate(yesterday.getDate() - 1);
     if (date.toDateString() === today.toDateString()) return t('Today');
     if (date.toDateString() === yesterday.toDateString()) return t('Yesterday');
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(intlLocale('en-US'), { month: 'short', day: 'numeric' });
   };
 
   const groupMessagesByDate = (msgs: Message[]) => {

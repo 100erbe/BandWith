@@ -4,7 +4,7 @@ import { BwSheet } from '@/app/components/bw/Screen';
 import { listEventTasks, syncEventTasks } from '@/lib/services/eventTasks';
 import { saveEventDraft, useEventDrafts, type EventDraft } from '@/lib/wizardDrafts';
 import type { TaskTemplate } from '@/lib/services/taskTemplates';
-import { t, useT } from '@/lib/i18n';
+import { t, useT, intlLocale } from '@/lib/i18n';
 
 export type TemplateTargetKind = 'gig' | 'rehearsal' | 'quote';
 
@@ -20,7 +20,7 @@ export interface TemplateTargetEvent {
 const shortDate = (d: string) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || '');
   if (!m) return t('No date');
-  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('en-GB', {
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(intlLocale('en-GB'), {
     weekday: 'short',
     day: 'numeric',
     month: 'short',

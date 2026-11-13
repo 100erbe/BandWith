@@ -14,7 +14,7 @@ import { cn } from '@/app/components/ui/utils';
 import { IconButton, NavBackButton, Tag, Card } from '@/app/components/bw/Screen';
 import { PillButton } from '@/app/components/bw/Form';
 import { OnlineDepositLinks } from '@/app/components/quotes/OnlineDeposit';
-import { useT } from '@/lib/i18n';
+import { useT, dateName, intlLocale } from '@/lib/i18n';
 
 interface QuoteDetailModalProps {
   quote: Quote;
@@ -61,7 +61,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const [isShareOpen, setIsShareOpen] = useState(false);
   const canEdit = quote.status === 'DRAFT' || quote.status === 'SENT';
   const sym = getCurrencySym(quote.currency);
-  const money = (n: number) => formatQuoteMoney(n, sym);
+  const money = (n: number) => formatQuoteMoney(n, sym, intlLocale('en-US'));
 
   const eventDate = quote.eventDate ? parseLocalDate(quote.eventDate) : null;
   const hasDate = !!eventDate && !isNaN(eventDate.getTime());
@@ -89,10 +89,10 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const venueAddress = [quote.venueAddress, quote.venueName ? quote.venueCity : ''].filter(Boolean).join(', ');
 
   const heroDay = hasDate ? String(eventDate!.getDate()).padStart(2, '0') : '--';
-  const heroMonth = hasDate ? eventDate!.toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : t('TBD');
+  const heroMonth = hasDate ? dateName(eventDate!, { month: 'short' }).toUpperCase() : t('TBD');
   const heroDateTime = [
     hasDate
-      ? eventDate!.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+      ? eventDate!.toLocaleDateString(intlLocale('en-US'), { weekday: 'short', month: 'short', day: 'numeric' })
       : t('Date TBD'),
     quote.eventTimeStart ? (quote.eventTimeEnd ? `${quote.eventTimeStart} – ${quote.eventTimeEnd}` : quote.eventTimeStart) : '',
   ]
@@ -143,9 +143,9 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           quote.clientEmail
             ? t('Sent to {email} on {date}', {
                 email: quote.clientEmail,
-                date: sentAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                date: sentAt.toLocaleDateString(intlLocale('en-US'), { month: 'short', day: 'numeric' }),
               })
-            : t('Sent on {date}', { date: sentAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) })
+            : t('Sent on {date}', { date: sentAt.toLocaleDateString(intlLocale('en-US'), { month: 'short', day: 'numeric' }) })
         }${quote.viewedAt ? ` · ${t('opened')}` : ''}`
       : quote.status === 'DRAFT'
         ? t('Draft · not sent yet')

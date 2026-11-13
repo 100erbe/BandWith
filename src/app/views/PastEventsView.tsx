@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { cn } from '@/app/components/ui/utils';
 import { EventData } from '@/app/components/dashboard/EventCard';
-import { useT } from '@/lib/i18n';
+import { useT, dateName, intlLocale, localDecimal } from '@/lib/i18n';
 import { parseLocalDate } from '@/lib/dates';
 import { Metric } from '@/app/components/bw';
 import { BackButton, Selector } from '@/app/components/bw/Form';
@@ -37,7 +37,7 @@ const parseFee = (price?: string) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-const shortEuro = (v: number) => (v >= 1000 ? `${sym()}${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `${sym()}${v.toLocaleString('en-US')}`);
+const shortEuro = (v: number) => (v >= 1000 ? `${sym()}${localDecimal((v / 1000).toFixed(v % 1000 === 0 ? 0 : 1))}k` : `${sym()}${v.toLocaleString(intlLocale('en-US'))}`);
 
 /** Rehearsals, quotes and drafts are not billable; they never carry a payment state. */
 const isBillable = (e: EventData) => {
@@ -119,7 +119,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
 
     const formattedRevenue =
       totalRevenue >= 1000
-        ? `${sym()}${(totalRevenue / 1000).toFixed(totalRevenue % 1000 === 0 ? 0 : 1)}K`
+        ? `${sym()}${localDecimal((totalRevenue / 1000).toFixed(totalRevenue % 1000 === 0 ? 0 : 1))}K`
         : `${sym()}${totalRevenue}`;
 
     return { gigsCount, totalRevenue, formattedRevenue };
@@ -134,7 +134,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
       let label = t('Date TBD');
       if (norm) {
         const d = parseLocalDate(norm);
-        if (!isNaN(d.getTime())) label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        if (!isNaN(d.getTime())) label = d.toLocaleDateString(intlLocale('en-US'), { month: 'long', year: 'numeric' });
       }
       const last = out[out.length - 1];
       if (last && last.key === key) last.events.push(event);
@@ -210,7 +210,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
                 const d = norm ? parseLocalDate(norm) : null;
                 const valid = d && !isNaN(d.getTime());
                 const day = valid ? String(d!.getDate()).padStart(2, '0') : '--';
-                const mon = valid ? d!.toLocaleDateString('en-US', { month: 'short' }) : t('TBD');
+                const mon = valid ? dateName(d!, { month: 'short' }) : t('TBD');
                 const fee = isGig ? feeFor(event) : 0;
                 const meta = [
                   !isAdmin && bands.length > 1 ? event.band_name : null,

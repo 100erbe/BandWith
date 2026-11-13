@@ -137,7 +137,7 @@ import { usePushNotifications } from "@/app/hooks/usePushNotifications";
 import { parseLocalDate } from '@/lib/dates';
 import { MapsChooserHost } from '@/app/components/ui/MapsLink';
 import { personName, personFirstName, personInitials } from "@/lib/personName";
-import { t, useLocale } from "@/lib/i18n";
+import { t, useLocale, dateName, intlLocale } from "@/lib/i18n";
 import { syncEventTasks, type EventTaskDraft } from "@/lib/services/eventTasks";
 import { getEventMemberMoney, moneyLookup, saveEventLineup, type LineupRow } from "@/lib/services/eventMemberMoney";
 
@@ -866,7 +866,7 @@ export default function AuthenticatedApp() {
     const dayOf = (d?: string | null) => {
       const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || '');
       return m
-        ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+        ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(intlLocale('en-GB'), { weekday: 'short', day: 'numeric', month: 'short' })
         : null;
     };
     if (!row) {
@@ -1094,10 +1094,10 @@ export default function AuthenticatedApp() {
       const diffMins = Math.floor(diffMs / 60000);
       const diffHours = Math.floor(diffMs / 3600000);
       const diffDays = Math.floor(diffMs / 86400000);
-      let timeStr = "now";
-      if (diffDays > 0) timeStr = `${diffDays}d ago`;
-      else if (diffHours > 0) timeStr = `${diffHours}h ago`;
-      else if (diffMins > 0) timeStr = `${diffMins}m ago`;
+      let timeStr = t("now");
+      if (diffDays > 0) timeStr = t("{count}d ago", { count: diffDays });
+      else if (diffHours > 0) timeStr = t("{count}h ago", { count: diffHours });
+      else if (diffMins > 0) timeStr = t("{count}m ago", { count: diffMins });
 
       const chatId = (n.data as any)?.chat_id || (n.data as any)?.chatId;
 
@@ -1112,7 +1112,8 @@ export default function AuthenticatedApp() {
         chatId,
       };
     }) as NotificationItem[];
-  }, [realNotifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `locale` re-labels the relative times
+  }, [realNotifications, locale]);
 
   const setNotifications = setLocalNotifications;
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -1327,10 +1328,10 @@ export default function AuthenticatedApp() {
       const diffDays = Math.floor(diffMs / 86400000);
 
       let timeStr = t("now");
-      if (diffDays > 7) timeStr = lastTime.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      else if (diffDays > 1) timeStr = lastTime.toLocaleDateString("en-US", { weekday: "short" });
+      if (diffDays > 7) timeStr = lastTime.toLocaleDateString(intlLocale('en-US'), { month: "short", day: "numeric" });
+      else if (diffDays > 1) timeStr = dateName(lastTime, { weekday: 'short' });
       else if (diffDays === 1) timeStr = t("Yesterday");
-      else if (diffHours > 0) timeStr = lastTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+      else if (diffHours > 0) timeStr = lastTime.toLocaleTimeString(intlLocale('en-US'), { hour: "2-digit", minute: "2-digit" });
       else if (diffMins > 0) timeStr = t("{count}m", { count: diffMins });
 
       const bandName = currentBandName || "";
@@ -1354,7 +1355,7 @@ export default function AuthenticatedApp() {
       if (type === "event" && chat.created_at) {
         const d = new Date(chat.created_at);
         eventDateStr = d.getDate().toString();
-        eventMonthStr = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
+        eventMonthStr = dateName(d, { month: 'short' }).toUpperCase();
       }
 
       // Presence is the source of truth once it has synced (our own id is in

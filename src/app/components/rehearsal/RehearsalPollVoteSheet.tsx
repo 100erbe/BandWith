@@ -26,7 +26,7 @@ import { ErrorState } from '@/app/components/ui/ErrorState';
 import { FindADateMode } from '@/app/components/duo';
 import { personName } from '@/lib/personName';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
-import { useT } from '@/lib/i18n';
+import { useT, dateName, intlLocale } from '@/lib/i18n';
 
 interface RehearsalPollVoteSheetProps {
   notification?: Notification | null;
@@ -247,7 +247,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
     if (!raw) return null;
     const d = new Date(String(raw).slice(0, 10) + 'T12:00:00');
     if (isNaN(d.getTime())) return null;
-    return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    return d.toLocaleDateString(intlLocale('en-GB'), { weekday: 'short', day: 'numeric', month: 'short' });
   }, [poll]);
 
   const handleDone = () => {
@@ -431,7 +431,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                         onDark
                         selected={!!option.has_voted}
                         disabled={votingOptionId === option.id}
-                        day={d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
+                        day={dateName(d, { weekday: 'short' }).toUpperCase()}
                         date={d.getDate()}
                         time={`${(option.start_time || '').slice(0, 5)}${option.end_time ? `–${option.end_time.slice(0, 5)}` : ''}`}
                         votes={Array.from({ length: slots }, (_, i) => i < count)}
@@ -464,7 +464,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                           <div className="flex-1 min-w-0 flex flex-col gap-1">
                             <span className="flex items-center gap-2 flex-wrap">
                               <span className="bw-body-lg">
-                                {parsedDate.toLocaleDateString(undefined, {
+                                {parsedDate.toLocaleDateString(intlLocale(), {
                                   weekday: 'short',
                                   month: 'short',
                                   day: 'numeric',

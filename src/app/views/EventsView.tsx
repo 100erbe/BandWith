@@ -18,7 +18,7 @@ import { useRailOwnsChrome, useRailSearch } from '@/lib/railActions';
 import { PillButton, Selector } from '@/app/components/bw/Form';
 import { cn } from '@/app/components/ui/utils';
 import { EventData } from '@/app/components/dashboard/EventCard';
-import { t, useT } from '@/lib/i18n';
+import { t, useT, dateName, intlLocale, localDecimal, weekdayInitials, getLocale } from '@/lib/i18n';
 import { RehearsalPollCard } from '@/app/components/rehearsal/RehearsalPollCard';
 import type { RehearsalPoll } from '@/lib/services/rehearsalPolls';
 import { EventsSkeleton } from '@/app/components/ui/EventsSkeleton';
@@ -148,7 +148,9 @@ const normalizeDateStr = (rawDate: string | undefined): string | null => {
 const formatEventDate = (dateStr: string): string => {
   if (!dateStr) return t('TBD');
   const d = parseLocalDate(dateStr);
-  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  // Other languages put the day first ("20 MAR"); English stays "MAR 20".
+  if (getLocale() !== 'en') return d.toLocaleDateString(intlLocale(), { day: 'numeric', month: 'short' }).toUpperCase();
+  const month = dateName(d, { month: 'short' }).toUpperCase();
   const day = d.getDate();
   return `${month} ${day}`;
 };
@@ -179,7 +181,7 @@ const formatBandTotal = (price: string): string => {
   if (!price) return `${sym()}0`;
   const num = parseFloat(price.replace(/[^0-9.]/g, ''));
   if (isNaN(num)) return price;
-  if (num >= 1000) return `${sym()}${(num / 1000).toFixed(num % 1000 === 0 ? 0 : 1)}K`;
+  if (num >= 1000) return `${sym()}${localDecimal((num / 1000).toFixed(num % 1000 === 0 ? 0 : 1))}K`;
   return `${sym()}${num}`;
 };
 
@@ -513,7 +515,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
     const month = d.getMonth();
     const days = new Date(year, month + 1, 0).getDate();
     const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
-    const name = d.toLocaleDateString('en-US', { month: 'long' }).toUpperCase();
+    const name = d.toLocaleDateString(intlLocale('en-US'), { month: 'long' }).toUpperCase();
     const totalCells = firstDay + days;
     const numRows = Math.ceil(totalCells / 7);
     return { offset, year, month, daysInMonth: days, firstDayOfWeek: firstDay, monthName: name, numRows };
@@ -1098,7 +1100,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
             <div className="flex flex-col gap-2">
               {/* Day Labels (M T W T F S S) */}
               <div className="rounded-full flex h-5 items-center bg-foreground/[0.08]">
-                {['M','T','W','T','F','S','S'].map((d, i) => (
+                {weekdayInitials().map((d, i) => (
                   <div key={i} className="flex-1 text-center">
                     <span className="bw-label-xs text-muted-foreground">{d}</span>
                   </div>
@@ -1163,10 +1165,10 @@ export const EventsView: React.FC<EventsViewProps> = ({
                         <div className="dark mt-4 rounded-[24px] bg-sheet text-sheet-foreground p-5 flex flex-col gap-4">
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex flex-col gap-1">
-                              <span className="bw-label-sm">{sel.toLocaleDateString('en-US', { weekday: 'long' })}</span>
+                              <span className="bw-label-sm">{sel.toLocaleDateString(intlLocale('en-US'), { weekday: 'long' })}</span>
                               <span className="flex items-end gap-1.5">
                                 <DotText text={dd} size={24} />
-                                <span className="bw-body-lg leading-none">{sel.toLocaleDateString('en-US', { month: 'long' })}</span>
+                                <span className="bw-body-lg leading-none">{sel.toLocaleDateString(intlLocale('en-US'), { month: 'long' })}</span>
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -1225,10 +1227,10 @@ export const EventsView: React.FC<EventsViewProps> = ({
                         <div className="dark mt-4 rounded-[24px] bg-sheet text-sheet-foreground p-5 flex flex-col gap-4">
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex flex-col gap-1">
-                              <span className="bw-label-sm">{sel.toLocaleDateString('en-US', { weekday: 'long' })}</span>
+                              <span className="bw-label-sm">{sel.toLocaleDateString(intlLocale('en-US'), { weekday: 'long' })}</span>
                               <span className="flex items-end gap-1.5">
                                 <DotText text={dd} size={24} />
-                                <span className="bw-body-lg leading-none">{sel.toLocaleDateString('en-US', { month: 'long' })}</span>
+                                <span className="bw-body-lg leading-none">{sel.toLocaleDateString(intlLocale('en-US'), { month: 'long' })}</span>
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -1479,7 +1481,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                   style={{ backgroundColor: `var(--accent-${kind})`, color: `var(--accent-${kind}-fg)` }}
                                 >
                                   <span className="bw-num">{valid ? String(d!.getDate()).padStart(2, '0') : '–'}</span>
-                                  <span className="bw-label-xs">{valid ? d!.toLocaleDateString('en-US', { month: 'short' }) : t('TBD')}</span>
+                                  <span className="bw-label-xs">{valid ? dateName(d!, { month: 'short' }) : t('TBD')}</span>
                                 </span>
                                 <span className="flex-1 min-w-0 flex flex-col gap-1">
                                   <span className="bw-label-xs text-muted-foreground truncate">{over}</span>

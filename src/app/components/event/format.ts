@@ -4,6 +4,7 @@
  */
 import { parseLocalDate } from '@/lib/dates';
 
+import { dateName, intlLocale } from '@/lib/i18n';
 const pad = (n: number) => String(n).padStart(2, '0');
 
 /** "19:30:00" / "7:30" → "19:30" (24h). Empty string when there is no time. */
@@ -36,15 +37,15 @@ const validDate = (dateStr?: string | null): Date | null => {
 export const formatDayShort = (dateStr?: string | null): string => {
   const d = validDate(dateStr);
   if (!d) return '';
-  const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
-  const month = d.toLocaleDateString('en-US', { month: 'short' });
+  const weekday = dateName(d, { weekday: 'short' });
+  const month = dateName(d, { month: 'short' });
   return `${weekday} ${d.getDate()} ${month}`;
 };
 
 /** "2026-12-19" → "SATURDAY". */
 export const weekdayLong = (dateStr?: string | null): string => {
   const d = validDate(dateStr);
-  return d ? d.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase() : '';
+  return d ? d.toLocaleDateString(intlLocale('en-US'), { weekday: 'long' }).toUpperCase() : '';
 };
 
 /** The calendar day before `dateStr`, as YYYY-MM-DD ('' when unknown). */
@@ -60,7 +61,7 @@ export const formatStampShort = (iso?: string | null): string => {
   if (!iso) return '';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString(intlLocale('en-US'), { month: 'short', day: 'numeric' });
 };
 
 /** "€1,250" / "1250" / 1250 → 1250 (0 when not a number). */

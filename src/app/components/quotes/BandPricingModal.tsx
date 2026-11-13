@@ -48,7 +48,7 @@ import {
   type BandMarkupType,
 } from '@/lib/services/pricing';
 import { ONLINE_DEPOSITS_ENABLED } from '@/lib/services/pricing';
-import { t, useT } from '@/lib/i18n';
+import { t, useT, intlLocale } from '@/lib/i18n';
 
 export type PricingModalTabType = 'branding' | 'rates' | 'production' | 'services' | 'commercial';
 
@@ -679,7 +679,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
     settings.pricing_mode === 'flat_packages'
       ? `${activeFullPackage?.name || t('Full band')} · ${sampleMusiciansCount === 1 ? t('{count} musician', { count: sampleMusiciansCount }) : t('{count} musicians', { count: sampleMusiciansCount })} · ${formatDistance(80, distanceUnit)}`
       : `${sampleMusiciansCount === 1 ? t('{count} musician', { count: sampleMusiciansCount }) : t('{count} musicians', { count: sampleMusiciansCount })} · ${formatDistance(80, distanceUnit)}`;
-  const sampleNet = `${currencySymbol}${sampleQuote.netTotal.toLocaleString()}`;
+  const sampleNet = `${currencySymbol}${sampleQuote.netTotal.toLocaleString(intlLocale())}`;
 
   // Portaled above everything (z-130), so it also opens on top of a quote
   // detail / PDF sheet when reached from "Complete your band branding".
@@ -713,12 +713,12 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
               <span className="bw-body-sm truncate">{sampleLabel}</span>
               <span className="bw-label-xs opacity-60 [overflow-wrap:anywhere]">
                 {t('Lineup')} {currencySymbol}
-                {sampleQuote.coreMusiciansCost.toLocaleString()}
-                {sampleQuote.bandMarkupCost > 0 ? ` + ${t('markup {amount}', { amount: `${currencySymbol}${sampleQuote.bandMarkupCost.toLocaleString()}` })}` : ''}
+                {sampleQuote.coreMusiciansCost.toLocaleString(intlLocale())}
+                {sampleQuote.bandMarkupCost > 0 ? ` + ${t('markup {amount}', { amount: `${currencySymbol}${sampleQuote.bandMarkupCost.toLocaleString(intlLocale())}` })}` : ''}
                 {' · PA '}
-                {sampleQuote.productionCost > 0 ? `${currencySymbol}${sampleQuote.productionCost.toLocaleString()}` : t('incl.')}
+                {sampleQuote.productionCost > 0 ? `${currencySymbol}${sampleQuote.productionCost.toLocaleString(intlLocale())}` : t('incl.')}
                 {` · ${t('Travel')} `}
-                {sampleQuote.travelCost > 0 ? `${currencySymbol}${sampleQuote.travelCost.toLocaleString()}` : t('incl.')}
+                {sampleQuote.travelCost > 0 ? `${currencySymbol}${sampleQuote.travelCost.toLocaleString(intlLocale())}` : t('incl.')}
               </span>
             </div>
             <div
@@ -728,7 +728,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
               <DotText text={sampleNet} size={28} showGrid label={t('Net {amount}', { amount: sampleNet })} />
               <span className="bw-label-xs opacity-60 whitespace-nowrap">
                 {t('Incl. {rate}% VAT', { rate: settings.default_vat_rate })} {currencySymbol}
-                {sampleQuote.totalWithVat.toLocaleString()}
+                {sampleQuote.totalWithVat.toLocaleString(intlLocale())}
               </span>
             </div>
           </div>
@@ -1039,7 +1039,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                     hint={
                       settings.band_markup_type === 'fixed'
                         ? t('Adds {amount} to every quote base fee', { amount: `${currencySymbol}${settings.band_markup_value}` })
-                        : t('Adds +{percent}% ({amount} on the sample quote)', { percent: settings.band_markup_value, amount: `${currencySymbol}${sampleQuote.bandMarkupCost.toLocaleString()}` })
+                        : t('Adds +{percent}% ({amount} on the sample quote)', { percent: settings.band_markup_value, amount: `${currencySymbol}${sampleQuote.bandMarkupCost.toLocaleString(intlLocale())}` })
                     }
                   >
                     <NumberPill

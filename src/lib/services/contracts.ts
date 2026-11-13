@@ -260,11 +260,12 @@ export const STATUS_LABEL: Record<ContractStatus, string> = {
   expired: 'Expired',
 };
 
-export const formatContractDate = (value?: string | null): string => {
+/** `tag` defaults to English for the generated documents/emails; screens pass `intlLocale('en-GB')`. */
+export const formatContractDate = (value?: string | null, tag: string | undefined = 'en-GB'): string => {
   if (!value) return '';
   const d = parseLocalDate(dateOnly(value) || value);
   if (isNaN(d.getTime())) return value;
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString(tag, { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
 export const contractFileName = (c: Pick<Contract, 'title' | 'type'>) => {

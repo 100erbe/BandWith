@@ -16,7 +16,7 @@ import type { Transaction } from '@/lib/services/transactions';
 import { todayLocal } from '../../../../lib/dates';
 import { parseLocalDate } from '@/lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
-import { useT } from '@/lib/i18n';
+import { useT, intlLocale, localDecimal } from '@/lib/i18n';
 
 interface FinanceExpandedProps {
   bandId: string;
@@ -103,7 +103,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
           id:
             uuidToNumericId(tr.id),
           title: tr.title,
-          date: parseLocalDate(tr.date).toLocaleDateString('en-US', {
+          date: parseLocalDate(tr.date).toLocaleDateString(intlLocale('en-US'), {
             month: 'short',
             day: 'numeric',
           }),
@@ -116,7 +116,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
         }))
       : [];
 
-  const fmt = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0));
+  const fmt = (v: number) => (v >= 1000 ? `${localDecimal((v / 1000).toFixed(1))}k` : v.toFixed(0));
 
   const income = Math.max(0, stats.totalIncome);
   const expenses = Math.abs(stats.totalExpenses);

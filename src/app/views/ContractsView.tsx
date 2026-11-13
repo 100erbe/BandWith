@@ -46,7 +46,7 @@ import {
 import { DotText } from '@/app/components/bw';
 import { ScreenHeader, IconButton, SearchField, Card, BwSheet } from '@/app/components/bw/Screen';
 import { PillButton, PillField, Selector, FormError } from '@/app/components/bw/Form';
-import { useT } from '@/lib/i18n';
+import { useT, intlLocale } from '@/lib/i18n';
 
 interface ContractsViewProps {
   onBack: () => void;
@@ -543,7 +543,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
               const meta = [
                 contract.client_name,
                 showEventName ? contract.event_name : null,
-                contract.event_date ? t('Event date {date}', { date: formatContractDate(contract.event_date) }) : null,
+                contract.event_date ? t('Event date {date}', { date: formatContractDate(contract.event_date, intlLocale('en-GB')) }) : null,
               ]
                 .filter(Boolean)
                 .join(' · ');
@@ -689,7 +689,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                     {linkableEvents.map((ev) => (
                       <Selector key={ev.id} size="md" selected={formEventId === ev.id} onClick={() => linkEvent(ev)} className="shrink-0 max-w-[260px]">
                         <span className="truncate">{ev.title}</span>
-                        {ev.event_date && <span className="opacity-60 shrink-0">{formatContractDate(ev.event_date)}</span>}
+                        {ev.event_date && <span className="opacity-60 shrink-0">{formatContractDate(ev.event_date, intlLocale('en-GB'))}</span>}
                       </Selector>
                     ))}
                   </div>
@@ -834,13 +834,13 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
             {viewingContract.event_name && <SheetInfo label={t('Event')}>{viewingContract.event_name}</SheetInfo>}
             <div className="grid grid-cols-2 gap-2">
               <SheetInfo label={t('Client')} className="[&>div:last-child]:truncate">{viewingContract.client_name || '—'}</SheetInfo>
-              <SheetInfo label={t('Event date')}>{formatContractDate(viewingContract.event_date) || '—'}</SheetInfo>
+              <SheetInfo label={t('Event date')}>{formatContractDate(viewingContract.event_date, intlLocale('en-GB')) || '—'}</SheetInfo>
             </div>
             {viewingContract.client_email && <SheetInfo label={t('Client email')}>{viewingContract.client_email}</SheetInfo>}
             <SheetInfo label={t('Document type')}>{isRider(viewingContract) ? t('Rider') : t('Contract')}</SheetInfo>
-            {viewingContract.expires_at && <SheetInfo label={t('Valid until')}>{formatContractDate(viewingContract.expires_at)}</SheetInfo>}
-            {viewingContract.sent_at && <SheetInfo label={t('Sent')}>{formatContractDate(viewingContract.sent_at)}</SheetInfo>}
-            {viewingContract.signed_at && <SheetInfo label={t('Signed')}>{formatContractDate(viewingContract.signed_at)}</SheetInfo>}
+            {viewingContract.expires_at && <SheetInfo label={t('Valid until')}>{formatContractDate(viewingContract.expires_at, intlLocale('en-GB'))}</SheetInfo>}
+            {viewingContract.sent_at && <SheetInfo label={t('Sent')}>{formatContractDate(viewingContract.sent_at, intlLocale('en-GB'))}</SheetInfo>}
+            {viewingContract.signed_at && <SheetInfo label={t('Signed')}>{formatContractDate(viewingContract.signed_at, intlLocale('en-GB'))}</SheetInfo>}
             {viewingContract.content && (
               <SheetInfo label={isRider(viewingContract) ? t('Requirements & notes') : t('Notes & terms')}>
                 <p className="whitespace-pre-wrap bw-body-md">{viewingContract.content}</p>

@@ -72,7 +72,7 @@ import { formatDistance, fromUnit, ratePerUnit, toUnit, useDistanceUnit } from '
 import { QuoteDeskMode, quoteDeskLinesFromQuote, useLeadingCompanion, type QuoteDeskLine } from '@/app/components/duo';
 import { LiveQuotePreview } from '@/app/components/duo/previews/LiveQuotePreview';
 import { personName } from '@/lib/personName';
-import { t, useT } from '@/lib/i18n';
+import { t, useT, intlLocale } from '@/lib/i18n';
 
 export interface QuoteBandMember {
   id: string;
@@ -1084,7 +1084,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
     if (!eventDate) return t('DATE TBD');
     const d = new Date(eventDate + 'T00:00:00');
     if (isNaN(d.getTime())) return eventDate;
-    return d.toLocaleDateString('en-US', {
+    return d.toLocaleDateString(intlLocale('en-US'), {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
@@ -1568,7 +1568,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                     {pkg.name}
                     <span className="opacity-60">
                       {currencySymbol}
-                      {pkg.flatPrice.toLocaleString()}
+                      {pkg.flatPrice.toLocaleString(intlLocale())}
                     </span>
                   </Chip>
                 );
@@ -1681,7 +1681,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           </span>
           <span className="bw-label-md text-foreground shrink-0">
             {currencySymbol}
-            {lineupBaseAmount.toLocaleString()}
+            {lineupBaseAmount.toLocaleString(intlLocale())}
           </span>
         </div>
       </div>
@@ -1694,7 +1694,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             {customItemsTotal > 0 && (
               <span className="bw-label-sm text-foreground">
                 +{currencySymbol}
-                {customItemsTotal.toLocaleString()}
+                {customItemsTotal.toLocaleString(intlLocale())}
               </span>
             )}
           </div>
@@ -1709,7 +1709,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                   <span className="truncate max-w-[180px]">{srv.name}</span>
                   <span className={cn(!isAdded && 'opacity-70')}>
                     · {currencySymbol}
-                    {lineTotal.toLocaleString()}
+                    {lineTotal.toLocaleString(intlLocale())}
                   </span>
                 </Chip>
               );
@@ -2037,7 +2037,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           <span className="bw-body-sm text-muted-foreground">
             {pricingSettings.pricing_mode === 'flat_packages'
               ? t('Package lineup fee')
-              : t('Musicians sum: {amount}', { amount: `${currencySymbol}${musiciansTotal.toLocaleString()}` })}
+              : t('Musicians sum: {amount}', { amount: `${currencySymbol}${musiciansTotal.toLocaleString(intlLocale())}` })}
           </span>
         </div>
         <MiniNumber
@@ -2443,7 +2443,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               <div key={opt.id} className="p-4 rounded-[16px] bg-background flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="bw-label-sm text-foreground">
-                    {t('Option {number} · incl. VAT {amount}', { number: String(idx + 1).padStart(2, '0'), amount: formatQuoteMoney(opt.totalWithVat, currencySymbol) })}
+                    {t('Option {number} · incl. VAT {amount}', { number: String(idx + 1).padStart(2, '0'), amount: formatQuoteMoney(opt.totalWithVat, currencySymbol, intlLocale('en-US')) })}
                   </span>
                   {quoteOptions.length > 1 && (
                     <IconButton size="sm" variant="ghost" label={t('Remove option {number}', { number: idx + 1 })} icon={<Trash2 />} onClick={() => removePackageOption(opt.id)} />
@@ -2596,7 +2596,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
     vatExempt || reverseCharge ? t('VAT exempt') : t('{rate}% VAT', { rate: vatRate }),
     depositRequired && depositPercentage > 0 ? t('{percent}% deposit', { percent: depositPercentage }) : t('No deposit'),
     t('valid {count} days', { count: validityDays }),
-    totals.discountAmount > 0 ? `−${formatQuoteMoney(totals.discountAmount, currencySymbol)}` : null,
+    totals.discountAmount > 0 ? `−${formatQuoteMoney(totals.discountAmount, currencySymbol, intlLocale('en-US'))}` : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -2709,29 +2709,29 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         <span className="bw-label-sm text-muted-foreground">{t('Breakdown')}</span>
         <LedgerRow
           label={t('Lineup base ({sets} × {minutes} min)', { sets: numberOfSets, minutes: setDuration })}
-          value={`${currencySymbol}${Math.round(lineupBaseAmount).toLocaleString()}`}
+          value={`${currencySymbol}${Math.round(lineupBaseAmount).toLocaleString(intlLocale())}`}
         />
         <LedgerRow
           label={`${t('Sets & extras')}${customItems.length > 0 ? ` (${customItems.length})` : ''}`}
-          value={`${currencySymbol}${Math.round(setsAndExtrasAmount).toLocaleString()}`}
+          value={`${currencySymbol}${Math.round(setsAndExtrasAmount).toLocaleString(intlLocale())}`}
         />
         <LedgerRow
           label={t('Travel & production')}
-          value={travelAndProductionAmount > 0 ? `${currencySymbol}${Math.round(travelAndProductionAmount).toLocaleString()}` : t('Included')}
+          value={travelAndProductionAmount > 0 ? `${currencySymbol}${Math.round(travelAndProductionAmount).toLocaleString(intlLocale())}` : t('Included')}
         />
         {totals.discountAmount > 0 && (
-          <LedgerRow label={t('Discount')} value={`−${formatQuoteMoney(totals.discountAmount, currencySymbol)}`} tone="success" />
+          <LedgerRow label={t('Discount')} value={`−${formatQuoteMoney(totals.discountAmount, currencySymbol, intlLocale('en-US'))}`} tone="success" />
         )}
         <LedgerRow
           label={t('VAT {rate}', { rate: vatExempt || reverseCharge ? t('0% (exempt)') : `${vatRate}%` })}
-          value={formatQuoteMoney(totals.vatAmount, currencySymbol)}
+          value={formatQuoteMoney(totals.vatAmount, currencySymbol, intlLocale('en-US'))}
         />
         <hr className="border-0 h-px bg-border" />
         <div className="flex items-baseline justify-between gap-3">
           <span className="bw-label-sm text-foreground">
             {t('Total')}{depositRequired && depositPercentage > 0 ? ` · ${t('{percent}% deposit', { percent: depositPercentage })}` : ''}
           </span>
-          <span className="bw-value-md text-foreground shrink-0">{formatQuoteMoney(totals.total, currencySymbol)}</span>
+          <span className="bw-value-md text-foreground shrink-0">{formatQuoteMoney(totals.total, currencySymbol, intlLocale('en-US'))}</span>
         </div>
       </section>
 
@@ -2831,7 +2831,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             : t('{count} musicians', { count: selectedMusicians.length })
         } · ${
           customItems.length === 1 ? t('{count} extra', { count: customItems.length }) : t('{count} extras', { count: customItems.length })
-        } · ${currencySymbol}${(lineupBaseAmount + setsAndExtrasAmount).toLocaleString()}`}
+        } · ${currencySymbol}${(lineupBaseAmount + setsAndExtrasAmount).toLocaleString(intlLocale())}`}
       >
         {renderLineupAndExtraSetsSection()}
       </QuoteAccordionCard>
@@ -2843,9 +2843,9 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         stepNumber="04"
         title={t('Pricing, logistics & billing')}
         summary={t('Net {net} · VAT {rate}% · total {total}', {
-          net: formatQuoteMoney(totals.netAmount, currencySymbol),
+          net: formatQuoteMoney(totals.netAmount, currencySymbol, intlLocale('en-US')),
           rate: vatRate,
-          total: formatQuoteMoney(totals.total, currencySymbol),
+          total: formatQuoteMoney(totals.total, currencySymbol, intlLocale('en-US')),
         })}
       >
         {renderBillingControls()}
@@ -2876,12 +2876,12 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         }`
       : !isEditing && step === 1
         ? `${travelMode === 'included' ? t('Incl. travel') : travelMode === 'separate' ? t('Travel +{amount}', { amount: `${currencySymbol}${travelFee}` }) : t('Travel by client')} · ${numberOfSets} × ${setDuration} min`
-        : `${t('Net {amount}', { amount: formatQuoteMoney(totals.netAmount, currencySymbol) })} · ${
+        : `${t('Net {amount}', { amount: formatQuoteMoney(totals.netAmount, currencySymbol, intlLocale('en-US')) })} · ${
             vatExempt || reverseCharge
               ? t('VAT exempt')
-              : t('VAT {rate}% {amount}', { rate: vatRate, amount: formatQuoteMoney(totals.vatAmount, currencySymbol) })
+              : t('VAT {rate}% {amount}', { rate: vatRate, amount: formatQuoteMoney(totals.vatAmount, currencySymbol, intlLocale('en-US')) })
           }`;
-  const totalLabel = formatQuoteMoney(totals.total, currencySymbol);
+  const totalLabel = formatQuoteMoney(totals.total, currencySymbol, intlLocale('en-US'));
 
   const renderLiveEstimateBar = () => (
     <div className="bg-surface-inverse text-surface-inverse-foreground px-4 py-3">
@@ -3002,24 +3002,24 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       lineup={`${PERFORMANCE_LABEL[performanceType] || t('Lineup')} (${previewMusicians}) · ${numberOfSets} × ${setDuration} min`}
       lineupNames={selectedMusicians.map(m => m.name).filter(Boolean)}
       rows={[
-        { label: t('Lineup base ({sets} × {minutes} min)', { sets: numberOfSets, minutes: setDuration }), value: formatQuoteMoney(lineupBaseAmount, currencySymbol) },
+        { label: t('Lineup base ({sets} × {minutes} min)', { sets: numberOfSets, minutes: setDuration }), value: formatQuoteMoney(lineupBaseAmount, currencySymbol, intlLocale('en-US')) },
         {
           label: `${t('Sets & extras')}${customItems.length > 0 ? ` (${customItems.length})` : ''}`,
-          value: formatQuoteMoney(setsAndExtrasAmount, currencySymbol),
+          value: formatQuoteMoney(setsAndExtrasAmount, currencySymbol, intlLocale('en-US')),
         },
         {
           label: t('Travel & production'),
-          value: travelAndProductionAmount > 0 ? formatQuoteMoney(travelAndProductionAmount, currencySymbol) : t('Included'),
+          value: travelAndProductionAmount > 0 ? formatQuoteMoney(travelAndProductionAmount, currencySymbol, intlLocale('en-US')) : t('Included'),
         },
         ...(totals.discountAmount > 0
-          ? [{ label: t('Discount'), value: `−${formatQuoteMoney(totals.discountAmount, currencySymbol)}`, tone: 'success' as const }]
+          ? [{ label: t('Discount'), value: `−${formatQuoteMoney(totals.discountAmount, currencySymbol, intlLocale('en-US'))}`, tone: 'success' as const }]
           : []),
         {
           label: t('VAT {rate}', { rate: vatExempt || reverseCharge ? t('0% (exempt)') : `${vatRate}%` }),
-          value: formatQuoteMoney(totals.vatAmount, currencySymbol),
+          value: formatQuoteMoney(totals.vatAmount, currencySymbol, intlLocale('en-US')),
         },
       ]}
-      total={formatQuoteMoney(totals.total, currencySymbol)}
+      total={formatQuoteMoney(totals.total, currencySymbol, intlLocale('en-US'))}
       totalLabel={`${t('Total')}${depositRequired && depositPercentage > 0 ? ` · ${t('{percent}% deposit', { percent: depositPercentage })}` : ''}`}
     />,
     !isEditing && step < 2

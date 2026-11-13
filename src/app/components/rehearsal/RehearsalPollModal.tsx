@@ -12,7 +12,7 @@ import {
 } from '@/lib/services/rehearsalPolls';
 import { toLocalDateString } from '../../../lib/dates';
 import { personName } from '@/lib/personName';
-import { useT } from '@/lib/i18n';
+import { useT, intlLocale } from '@/lib/i18n';
 
 interface TimeSlotDraft {
   id: string;
@@ -245,7 +245,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
 
   const slotLabel = (slot: TimeSlotDraft) => {
     const parsedDate = new Date(slot.proposed_date + 'T12:00:00');
-    const day = parsedDate.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    const day = parsedDate.toLocaleDateString(intlLocale(), { weekday: 'short', day: 'numeric', month: 'short' });
     return `${day} · ${slot.start_time}${slot.end_time ? ` – ${slot.end_time}` : ''}`;
   };
 

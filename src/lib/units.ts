@@ -12,6 +12,7 @@
  */
 import { useSyncExternalStore } from 'react';
 
+import { intlLocale } from '@/lib/i18n';
 export type DistanceUnit = 'km' | 'mi';
 
 export const KM_PER_MILE = 1.609344;
@@ -102,7 +103,7 @@ export const fromUnit = (value: number | null | undefined, unit: DistanceUnit = 
 
 /** "80 km" / "50 mi". */
 export const formatDistance = (km: number | null | undefined, unit: DistanceUnit = getDistanceUnit()) =>
-  `${toUnit(km, unit).toLocaleString('en-US')} ${unit}`;
+  `${toUnit(km, unit).toLocaleString(intlLocale('en-US'))} ${unit}`;
 
 /** A price per km → per chosen unit (2 decimals). */
 export const ratePerUnit = (perKm: number | null | undefined, unit: DistanceUnit = getDistanceUnit()) => {

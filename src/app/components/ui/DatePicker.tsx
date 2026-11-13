@@ -7,7 +7,7 @@ import { cn } from './utils';
 import { IconButton } from '@/app/components/bw/Screen';
 import { RailSheet } from '@/lib/railActions';
 import { PillButton } from '@/app/components/bw/Form';
-import { t, useT } from '@/lib/i18n';
+import { t, useT, intlLocale, weekdayInitials } from '@/lib/i18n';
 
 export type DatePickerEventKind = 'gig' | 'rehearsal' | 'personal' | 'quote';
 
@@ -110,7 +110,7 @@ export const formatDisplayDate = (dateStr: string): string => {
   const todayStr = getTodayStr();
   const tomorrowStr = getTomorrowStr();
 
-  const formatted = d.toLocaleDateString('en-US', {
+  const formatted = d.toLocaleDateString(intlLocale('en-US'), {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -331,7 +331,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   for (let i = 1; i <= daysInMonth; i++) cells.push({ day: i, inMonth: true });
   for (let i = 1; cells.length % 7 !== 0; i++) cells.push({ day: i, inMonth: false });
 
-  const calMonthName = new Date(calYear, calMonth, 1).toLocaleDateString('en-US', { month: 'long' });
+  const calMonthName = new Date(calYear, calMonth, 1).toLocaleDateString(intlLocale('en-US'), { month: 'long' });
 
   // A busy day keeps the sheet open so the conflict hint is visible.
   const handleSelectDay = (day: number) => {
@@ -363,7 +363,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       }
     }
     const short = (key: string) =>
-      new Date(key + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      new Date(key + 'T00:00:00').toLocaleDateString(intlLocale('en-US'), { month: 'short', day: 'numeric' });
     return { day: short(value), kind: kinds[0], nextFree, nextFreeLabel: nextFree ? short(nextFree) : null };
   }, [value, eventsByDay]);
 
@@ -371,7 +371,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     if (!value) return '';
     const d = new Date(value + 'T00:00:00');
     if (isNaN(d.getTime())) return value;
-    return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    return d.toLocaleDateString(intlLocale('en-GB'), { weekday: 'short', day: 'numeric', month: 'short' });
   }, [value]);
 
   const shortcuts: { label: string; date: string }[] = [
@@ -459,7 +459,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
         {/* Weekdays */}
         <div className="grid grid-cols-7 gap-x-1 py-1 rounded-full bg-foreground/[0.08]" aria-hidden>
-          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+          {weekdayInitials().map((d, i) => (
             <span key={i} className="text-center bw-label-xs text-muted-foreground">
               {d}
             </span>
@@ -491,7 +491,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                 onClick={() => handleSelectDay(day)}
                 aria-pressed={isSelected}
                 aria-current={isToday ? 'date' : undefined}
-                aria-label={`${new Date(calYear, calMonth, day).toLocaleDateString('en-GB', {
+                aria-label={`${new Date(calYear, calMonth, day).toLocaleDateString(intlLocale('en-GB'), {
                   weekday: 'long',
                   day: 'numeric',
                   month: 'long',
