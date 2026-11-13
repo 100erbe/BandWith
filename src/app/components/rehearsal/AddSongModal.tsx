@@ -38,6 +38,8 @@ import { genresOf, joinGenres, parseGenres } from '@/lib/songGenres';
 import { useT } from '@/lib/i18n';
 import { asSongChart, keyLabel, type SongChart } from '@/lib/ireal';
 import { IrealImportField } from './IrealImportField';
+import { ChordImportSheet } from './ChordImportSheet';
+import type { ImportedSong } from '@/lib/songImport';
 
 interface AddSongModalProps {
   isOpen: boolean;
@@ -92,6 +94,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
   const [chordsUrl, setChordsUrl] = useState('');
   const [notes, setNotes] = useState('');
   const [lyrics, setLyrics] = useState('');
+  const [lyricsImportOpen, setLyricsImportOpen] = useState(false);
   // Chord chart pasted from iReal Pro (songs.chord_chart); saved only when changed here.
   const [chordChart, setChordChart] = useState<SongChart | null>(null);
   const [chordChartTouched, setChordChartTouched] = useState(false);
@@ -319,6 +322,16 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     if (!bpm && c.bpm) setBpm(String(c.bpm).slice(0, 3));
   };
 
+  // Imported chords and/or lyrics (the sheet shows lyrics in a preview first).
+  const handleImport = (song: ImportedSong) => {
+    if (song.chart) handleChordChart(song.chart);
+    if (song.lyrics) setLyrics(song.lyrics);
+    if (!title.trim() && song.title) setTitle(song.title);
+    if (!artist.trim() && song.artist) setArtist(song.artist);
+    if (!key.trim() && song.key) setKey(song.key.slice(0, 8));
+    if (!bpm && song.bpm) setBpm(String(song.bpm).slice(0, 3));
+  };
+
   const nextStep = () => {
     if (step === 'details') setStep('more');
     else if (step === 'more') setStep('extras');
@@ -410,7 +423,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                 enterKeyHint="next"
               />
               <PillField label={t('Original artist')} value={artist} onChange={(e) => setArtist(e.target.value)} placeholder={t('e.g. Stevie Wonder')} />
-              <IrealImportField chart={chordChart} onChange={handleChordChart} title={title} />
+              <IrealImportField chart={chordChart} onChange={handleChordChart} onImport={handleImport} title={title} hasLyrics={!!lyrics.trim()} />
               {!isEdit && !isAdmin && (
                 <p className="bw-body-sm text-muted-foreground">
                   {suggestedBefore}<span className="text-foreground">{t('Suggested')}</span>{suggestedAfter}
@@ -610,6 +623,17 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                 />
                 <span className="bw-body-sm text-muted-foreground">{t('Read them in the app from the song menu or the player.')}</span>
               </label>
+              <PillButton size="sm" variant="outline" fullWidth={false} className="self-start -mt-2" icon={<FileText className="w-4 h-4" />} onClick={() => setLyricsImportOpen(true)}>
+                {t('Paste or import lyrics')}
+              </PillButton>
+              <ChordImportSheet
+                open={lyricsImportOpen}
+                onClose={() => setLyricsImportOpen(false)}
+                onPick={handleImport}
+                title={title}
+                hasLyrics={!!lyrics.trim()}
+                initialTab="lyrics"
+              />
 
               {error && <FormError>{error}</FormError>}
             </motion.div>

@@ -5,10 +5,11 @@
  * iReal Pro exports a chart with Share › Export › MusicXML; other notation
  * apps export the same format. Only the chord symbols (<harmony>) and the
  * form are read: measures, rehearsal marks, repeats, endings, segno/coda,
- * time and key. Notes, melody and lyrics (<lyric>) are skipped and never
- * stored, even when the file has them.
+ * time and key. Notes and melody are skipped. Lyrics (<lyric>) are read
+ * only by parseMusicXmlSong, for the song's own lyrics field, when the
+ * musician imports a score that has them (e.g. a MuseScore export).
  */
-import type { ChartBar, ChartSection, SongChart } from './ireal';
+import { chordLabel, type ChartBar, type ChartSection, type SongChart } from './ireal';
 
 export type MusicXmlError = 'not-musicxml' | 'no-chords' | 'too-large';
 
@@ -278,3 +279,142 @@ export async function readMusicXml(bytes: Uint8Array, fileName?: string): Promis
 
 /** Files the "From file" import accepts, by name. */
 export const isMusicXmlName = (name: string) => /\.(musicxml|mxl|xml)$/i.test(name);
+
+// ── Lyrics ──
+
+/** iReal chord token → the plain spelling used inside lyrics ("C^7" → "Cmaj7", "A-7" → "Am7"). */
+const plainChord = (token: string) => chordLabel(token).replace(/♭/g, 'b').replace(/♯/g, '#');
+
+/** Section names used when a score names none, in the user's language. */
+export interface LyricSectionNames {
+  verse: string;
+}
+
+/**
+ * The lyrics of a score, with its chord symbols inline ("[Am]Hel-lo" → "[Am]Hello"):
+ * verse 1 carries the chords and the rehearsal marks as sections; further
+ * verses follow as their own blocks. Lines break where the score starts a
+ * new system, or every 4 measures. Returns '' when the score has no lyrics.
+ */
+export function musicXmlLyrics(doc: Document, names: LyricSectionNames): string {
+  const parts = Array.from(doc.getElementsByTagName('part'));
+  const part = parts.find((p) => p.getElementsByTagName('lyric').length > 0);
+  if (!part) return '';
+  const measures = Array.from(part.children).filter((c) => c.nodeName === 'measure');
+  const hasSystems = measures.some((m) => Array.from(m.getElementsByTagName('print')).some((p) => p.getAttribute('new-system') === 'yes' || p.getAttribute('new-page') === 'yes'));
+
+  // verse number → lines; verse 1 also gets chords and sections.
+  const verses = new Map<string, string[]>();
+  const current = new Map<string, { text: string; words: boolean; chords: string[] }>();
+  const lineOf = (v: string) => {
+    if (!current.has(v)) current.set(v, { text: '', words: false, chords: [] });
+    return current.get(v)!;
+  };
+  const linesOf = (v: string) => {
+    if (!verses.has(v)) verses.set(v, []);
+    return verses.get(v)!;
+  };
+  const flush = (v: string) => {
+    const l = current.get(v);
+    if (!l) return;
+    const t = l.text.replace(/\s+/g, ' ').trim();
+    if (l.words && t) linesOf(v).push(t);
+    else if (l.chords.length) linesOf(v).push(`♪ ${l.chords.map((c) => `[${c}]`).join(' ')}`);
+    current.delete(v);
+  };
+  const flushAll = () => {
+    for (const v of [...current.keys()]) flush(v);
+  };
+  let pendingChord: string | null = null;
+  let measuresInLine = 0;
+  /** The waiting chord goes into verse 1 here, before the next syllable or alone. */
+  const placeChord = () => {
+    if (!pendingChord) return;
+    const l = lineOf('1');
+    l.chords.push(pendingChord);
+    l.text += `[${pendingChord}]`;
+    pendingChord = null;
+  };
+
+  for (const m of measures) {
+    const newSystem = Array.from(m.getElementsByTagName('print')).some((p) => p.getAttribute('new-system') === 'yes' || p.getAttribute('new-page') === 'yes');
+    if ((hasSystems && newSystem) || (!hasSystems && measuresInLine >= 4)) {
+      placeChord();
+      flushAll();
+      measuresInLine = 0;
+    }
+    measuresInLine++;
+    for (const el of Array.from(m.getElementsByTagName('*'))) {
+      if (el.nodeName === 'rehearsal') {
+        const mark = el.textContent?.trim();
+        if (!mark) continue;
+        flushAll();
+        measuresInLine = 1;
+        const lines = linesOf('1');
+        if (lines.length) lines.push('');
+        lines.push(`# ${mark.slice(0, MAX_TEXT)}`);
+      } else if (el.nodeName === 'harmony') {
+        const tok = harmonyToken(el);
+        if (!tok) continue;
+        // Two chords before a syllable: the first stands alone.
+        placeChord();
+        pendingChord = plainChord(tok);
+      } else if (el.nodeName === 'lyric') {
+        const v = el.getAttribute('number') || '1';
+        const texts = Array.from(el.getElementsByTagName('text')).map((x) => x.textContent ?? '');
+        if (!texts.join('').trim()) continue;
+        const syllabic = el.getElementsByTagName('syllabic')[0]?.textContent?.trim() || 'single';
+        if (v === '1') placeChord();
+        const l = lineOf(v);
+        l.text += texts.join(' ') + (syllabic === 'begin' || syllabic === 'middle' ? '' : ' ');
+        l.words = true;
+        if (el.getElementsByTagName('end-line').length || el.getElementsByTagName('end-paragraph').length) {
+          flush(v);
+          if (el.getElementsByTagName('end-paragraph').length) linesOf(v).push('');
+        }
+      } else if (el.nodeName === 'note' && pendingChord && !el.getElementsByTagName('lyric').length && !el.getElementsByTagName('rest').length) {
+        // A chord on a note without words (a held note, an instrumental bar).
+        placeChord();
+      }
+    }
+  }
+  placeChord();
+  flushAll();
+
+  const blocks: string[] = [];
+  const order = [...verses.keys()].sort((a, b) => (parseInt(a, 10) || 99) - (parseInt(b, 10) || 99));
+  for (const v of order) {
+    const lines = verses.get(v)!;
+    if (!lines.some((x) => x && !x.startsWith('♪') && !x.startsWith('#'))) continue;
+    if (order.length > 1 && v !== '1') blocks.push(`# ${names.verse} ${v}`);
+    blocks.push(lines.join('\n').trim(), '');
+  }
+  return blocks.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/** A picked file → its chord chart and/or its lyrics. Throws 'not-musicxml', 'no-chords' (neither) or 'too-large'. */
+export async function parseMusicXmlSong(
+  bytes: Uint8Array,
+  fileName: string,
+  names: LyricSectionNames,
+): Promise<{ chart?: SongChart; lyrics?: string; title?: string; composer?: string }> {
+  if (bytes.length > MAX_BYTES) throw new Error('too-large');
+  const xml = isZip(bytes) ? await mxlScore(bytes) : new TextDecoder().decode(bytes);
+  let chart: SongChart | undefined;
+  try {
+    chart = parseMusicXml(xml, fileName);
+  } catch (e) {
+    if ((e as Error).message !== 'no-chords') throw e;
+  }
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  const lyrics = musicXmlLyrics(doc, names);
+  if (!chart && !lyrics) throw new Error('no-chords');
+  const creator = Array.from(doc.getElementsByTagName('creator')).find((c) => c.getAttribute('type') === 'composer');
+  const title = text(doc.documentElement, 'work-title') || text(doc.documentElement, 'movement-title') || fileName.replace(/\.(musicxml|mxl|xml)$/i, '');
+  return {
+    ...(chart ? { chart } : {}),
+    ...(lyrics ? { lyrics } : {}),
+    ...(title ? { title: clip(title) } : {}),
+    ...(creator?.textContent?.trim() ? { composer: creator.textContent.trim() } : {}),
+  };
+}
