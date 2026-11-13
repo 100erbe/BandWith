@@ -3271,13 +3271,13 @@ const dict: Dictionary = {
   "{band} calls you as a deputy. Create an account or sign in: your gigs with them will be in the app.": "{band} chama você como substituto. Crie uma conta ou entre: seus shows com eles estarão no app.",
   "Open deputy gigs": "Abrir shows como substituto",
   // Deputy unlink (087)
-  "Could not unlink. Try again.": "Não foi possível desvincular. Tenta novamente.",
-  "Unlinked. Send the next request by message: its new link lets them join again from the app.": "Desvinculado. Envia o próximo pedido por mensagem: com o novo link pode voltar a ligar-se pela app.",
+  "Could not unlink. Try again.": "Não foi possível desvincular. Tente novamente.",
+  "Unlinked. Send the next request by message: its new link lets them join again from the app.": "Desvinculado. Envie o próximo pedido por mensagem: com o novo link a pessoa pode se conectar de novo pelo app.",
   "Unlink BandWith account?": "Desvincular a conta BandWith?",
   "Unlink": "Desvincular",
-  "{name}'s account stops getting requests in the app and no longer sees this band's gigs.": "A conta de {name} deixa de receber pedidos na app e já não vê os concertos desta banda.",
-  "Links already sent stop working. Send the next request by message: opening its new link from the app links the right account.": "Os links já enviados deixam de funcionar. Envia o próximo pedido por mensagem: ao abrir o novo link na app, liga-se a conta certa.",
-  "{name} answers in the app: requests and changes reach them as notifications.": "{name} responde na app: os pedidos e as alterações chegam-lhe como notificações.",
+  "{name}'s account stops getting requests in the app and no longer sees this band's gigs.": "A conta de {name} deixa de receber pedidos no app e não vê mais os shows desta banda.",
+  "Links already sent stop working. Send the next request by message: opening its new link from the app links the right account.": "Os links já enviados param de funcionar. Envie o próximo pedido por mensagem: ao abrir o novo link no app, a conta certa é vinculada.",
+  "{name} answers in the app: requests and changes reach them as notifications.": "{name} responde no app: pedidos e mudanças chegam como notificações.",
   "Unlink account": "Desvincular conta",
 };
 
