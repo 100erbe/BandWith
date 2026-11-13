@@ -21,6 +21,8 @@ export default defineConfig(({ mode }) => ({
         unsubscribe: path.resolve(__dirname, 'unsubscribe.html'),
         // Third page: /deputy.html (deputy reply link, migration 084).
         deputy: path.resolve(__dirname, 'deputy.html'),
+        // Fourth page: /rider.html (the venue's read-only rider link, migration 093).
+        rider: path.resolve(__dirname, 'rider.html'),
       },
     },
   },

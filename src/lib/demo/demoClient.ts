@@ -853,6 +853,43 @@ const rpc = (fn: string, args: Row = {}) => {
       persist();
       break;
     }
+    // One musician paid / not paid (093).
+    case 'bw_set_member_paid': {
+      const row = table('event_members').find(
+        (r) => r.event_id === args.p_event_id && r.user_id === args.p_user_id && r.status !== 'declined',
+      );
+      if (!row) {
+        error = { message: 'No such musician on this event', code: 'P0002' };
+        break;
+      }
+      row.paid_at = args.p_paid ? row.paid_at || new Date().toISOString() : null;
+      persist();
+      data = [{ user_id: row.user_id, paid_at: row.paid_at }];
+      break;
+    }
+    // Rider linked to a gig (093): latest version, members read it too.
+    case 'bw_event_rider': {
+      const r = table('contracts')
+        .filter((c) => c.event_id === args.p_event_id && c.type === 'rider')
+        .sort((a, b) => (b.version ?? 1) - (a.version ?? 1))[0];
+      data = r
+        ? [{ id: r.id, title: r.title, version: r.version ?? 1, status: r.status, sent_at: r.sent_at ?? null, viewed_at: r.viewed_at ?? null }]
+        : [];
+      break;
+    }
+    case 'bw_rider_share_link': {
+      const r = table('contracts').find((c) => c.id === args.p_contract_id && c.type === 'rider');
+      if (!r) {
+        error = { message: 'Only riders have a web link', code: '22023' };
+        break;
+      }
+      if (!r.view_token) {
+        r.view_token = (uuid() + uuid()).replace(/-/g, '').slice(0, 64);
+        persist();
+      }
+      data = r.view_token;
+      break;
+    }
     case 'bw_mark_chat_read': {
       const now = new Date().toISOString();
       table('chat_participants')

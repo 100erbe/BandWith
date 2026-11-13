@@ -76,6 +76,10 @@ import {
   shortPlace,
 } from '@/app/components/event/format';
 import { asSongChart, type SongChart } from '@/lib/ireal';
+import { useEventStage } from '@/app/components/event/rider/useEventStage';
+import { RiderStageCard } from '@/app/components/event/rider/RiderParts';
+import { RiderStageScreen } from '@/app/components/event/rider/RiderStage';
+import { useRailLayout } from '@/lib/deviceRegions';
 
 interface EventDetailProps {
   event: EventData;
@@ -296,6 +300,9 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [confirmDrop, setConfirmDrop] = useState(false);
   const [isStageOpen, setIsStageOpen] = useState(false);
+  /** The Rider & stage screen is open (phone, iPhone Duo). */
+  const [riderOpen, setRiderOpen] = useState(false);
+  const { rail, wide } = useRailLayout();
 
   const isPending = userResponse === 'pending';
   const eventType = getEventType(event.status);
@@ -466,6 +473,30 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     if (activeSheet === 'lineup' || activeSheet === null) void loadDeputyRequests();
   }, [activeSheet, loadDeputyRequests]);
   const activeMembers = resolvedMembers.filter((m) => m.status !== 'declined');
+
+  // Rider & stage (092/093): upcoming and past band gigs, not quotes or rehearsals.
+  const hasRiderStage = eventType === 'gig' && !isPersonalGig && !!event.band_id;
+  const stageLineup = useMemo(
+    () => activeMembers.map((m) => ({ name: m.name, instrument: m.role })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dbMembers],
+  );
+  const riderStage = useEventStage({
+    eventId: event.eventId,
+    bandId: event.band_id,
+    eventTitle: event.title,
+    eventDate: event.date,
+    venueName: event.venueName || event.location?.split(',')[0]?.trim(),
+    lineup: stageLineup,
+    isAdmin,
+    disabled: !hasRiderStage,
+  });
+  const showRiderStage = hasRiderStage && riderStage.available;
+  const lineupFirstNames = useMemo(
+    () => [...new Set(activeMembers.map((m) => m.name.split(/\s+/)[0]).filter(Boolean))],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dbMembers],
+  );
 
   const myResolvedFee = useMemo(() => {
     if (memberFee != null) return memberFee;
@@ -1373,6 +1404,22 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 </section>
               )}
 
+              {/* ─── RIDER & STAGE (band gig) ─── */}
+              {showRiderStage && (
+                <section className="flex flex-col gap-6">
+                  <SectionTitle title={t('RIDER & STAGE')} actionLabel={t('OPEN')} onAction={() => setRiderOpen(true)} />
+                  <RiderStageCard
+                    rider={riderStage.rider}
+                    stage={riderStage.stage}
+                    thumb={rail}
+                    onOpen={() => {
+                      haptic.tap();
+                      setRiderOpen(true);
+                    }}
+                  />
+                </section>
+              )}
+
               {/* ─── STUDIO COST (rehearsal) ─── */}
               {showStudioCost && (
                 <section className="flex flex-col gap-6">
@@ -2150,6 +2197,20 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         onClose={() => setIsShareQuoteOpen(false)}
         onOpenBandSettings={onOpenBandSettings}
       />
+
+      <AnimatePresence>
+        {riderOpen && showRiderStage && (
+          <RiderStageScreen
+            state={riderStage}
+            isAdmin={isAdmin}
+            eventTitle={event.title}
+            dateLabel={hasHeroDate ? formatEventDateShort(event.date) : undefined}
+            people={lineupFirstNames}
+            canEditPlot={wide && !rail}
+            onClose={() => setRiderOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {isStageOpen && (

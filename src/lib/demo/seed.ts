@@ -239,7 +239,37 @@ export const buildSeed = (): DemoDB => {
   ];
   const contracts: Row[] = [
     { id: id(1700), band_id: IDS.band, event_id: id(602), title: 'Wedding performance agreement', type: 'performance', status: 'signed', event_name: 'Giulia & Marco — Wedding', event_date: day(5), client_name: 'Giulia Bianchi', client_email: 'giulia@example.com', signed_at: ago(60 * 24 * 34), created_by: IDS.me, created_at: created, updated_at: created },
+    // Rider linked to the wedding (093): v3, sent, seen by the venue.
+    { id: id(1702), band_id: IDS.band, event_id: id(602), title: 'Stage & tech rider — Wedding', type: 'rider', version: 3, status: 'viewed', event_name: 'Giulia & Marco — Wedding', event_date: day(5), client_name: 'Villa Necchi', client_email: 'events@villanecchi.example', content: 'Power: 2 × 16 A within 10 m of the stage.\nStage: 6 × 4 m, flat and covered if outdoors.\nChanging room and dinner for 6.', sent_at: ago(60 * 24 * 12), viewed_at: ago(60 * 24 * 11), signed_at: null, created_by: IDS.me, created_at: created, updated_at: created },
     { id: id(1701), band_id: IDS.band, event_id: null, title: 'Year-end gala agreement', type: 'performance', status: 'sent', event_name: 'Year-end gala', event_date: day(52), client_name: 'Northwind Conferences', client_email: 'ops@northwind.example', signed_at: null, created_by: IDS.me, created_at: created, updated_at: created },
+  ];
+  // Rider & stage (092): the wedding has a saved plot (full band + trio);
+  // the other gigs start from the lineup suggestion.
+  const P = (code: string, label: string, x: number, y: number, lead?: boolean) => ({ id: `p-${code}-${x}`, kind: 'player', code, label, x, y, ...(lead ? { lead: true } : {}) });
+  const W = (x: number, y: number) => ({ id: `w-${x}-${y}`, kind: 'wedge', x, y });
+  const event_stage: Row[] = [
+    {
+      event_id: id(602), band_id: IDS.band, mixer: 'XR18', venue_agreed: true, updated_by: IDS.me, created_at: created, updated_at: created,
+      plots: [
+        { id: 'plot-full', name: 'Full band', width_m: 6, depth_m: 4, items: [
+          P('DR', 'Drums · riser', 0.5, 0.2), P('BS', 'Bass amp', 0.25, 0.32), P('GT', 'Guitar amp', 0.75, 0.32),
+          P('KY', 'Keys', 0.2, 0.66), P('VX', 'Lead vox', 0.5, 0.68, true), P('GT', 'Gtr / bvx', 0.8, 0.66),
+          W(0.2, 0.9), W(0.5, 0.92), W(0.8, 0.9),
+          { id: 's-l', kind: 'speaker', x: 0.03, y: 0.8 }, { id: 's-r', kind: 'speaker', x: 0.97, y: 0.8 },
+        ] },
+        { id: 'plot-trio', name: 'Trio', width_m: 4, depth_m: 3, items: [
+          P('KY', 'Keys', 0.25, 0.5), P('VX', 'Lead vox', 0.5, 0.62, true), P('GT', 'Guitar', 0.75, 0.5),
+          W(0.5, 0.9), { id: 's-l', kind: 'speaker', x: 0.03, y: 0.8 }, { id: 's-r', kind: 'speaker', x: 0.97, y: 0.8 },
+        ] },
+      ],
+      inputs: [
+        ['Kick', 'Beta 52', 'Marta'], ['Snare', 'SM57', 'Marta'], ['OH L', 'C414', 'Marta'], ['OH R', 'C414', 'Marta'],
+        ['Bass', 'DI', 'Jonah'], ['Guitar', 'SM57', 'Sam'], ['Keys L', 'DI', 'Lena'], ['Keys R', 'DI', 'Lena'],
+        ['Lead vox', 'Beta 58', 'Alex'], ['Bvx 1', 'SM58', 'Sam'], ['Bvx 2', 'SM58', 'Lena'], ['Playback', 'DI', 'Lena'], ['Spare vox', 'SM58', 'Guest'],
+      ].map(([source, mic, who], i) => ({ id: `ch-${i}`, source, mic, kind: mic === 'DI' ? 'di' : 'mic', who })),
+      band_brings: ['PA 2× 12" + sub', 'Mixer XR18', 'Backline', 'Lights'],
+      venue_provides: ['Power 2× 16A', 'Stage 6 × 4 m', 'Changing room', 'Dinner × 6'],
+    },
   ];
   const inventory: Row[] = [
     { id: id(1800), band_id: IDS.band, name: 'Nord Stage 4', category: 'keys', quantity: 1, status: 'available', location: 'Lena', created_at: created, updated_at: created },
@@ -335,7 +365,7 @@ export const buildSeed = (): DemoDB => {
     profiles, bands, band_members, songs, song_folders: [], setlists, setlist_songs, events, event_members,
     rehearsal_setlist, rehearsal_tasks, song_proposals, proposal_votes: [], quotes, quote_musicians: [],
     transactions, chats, chat_participants, messages, notifications, rehearsal_polls, rehearsal_poll_options,
-    rehearsal_poll_votes, task_templates, contracts, inventory, gear_kits, gear_kit_items, event_gear_kits, onboarding_progress, member_invites: [],
+    rehearsal_poll_votes, task_templates, contracts, event_stage, inventory, gear_kits, gear_kit_items, event_gear_kits, onboarding_progress, member_invites: [],
     push_tokens: [], avatars: [],
   };
 };
