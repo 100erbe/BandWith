@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, 
@@ -30,6 +30,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useOnlinePresence } from '@/lib/services/presence';
 import { Capacitor } from '@capacitor/core';
 import { useT, intlLocale } from '@/lib/i18n';
+import { CHAT_PAGE_SIZE, mergeLatestPage, prependOlder, normalizeChatType, type ChatKind } from '@/lib/chatMessages';
 
 /**
  * Chat keyboard: it stays up while you read and tap around the chat. It
@@ -130,6 +131,17 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
   const onlineUserIds = useOnlinePresence(user?.id);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Push and notification opens don't know the chat type: getChat corrects it.
+  const [chatType, setChatType] = useState<ChatKind>(chat.type);
+  const chatTypeRef = useRef<ChatKind>(chat.type);
+  const typeResolvedRef = useRef(false);
+  // History: the first request brings the last CHAT_PAGE_SIZE messages.
+  const [hasOlder, setHasOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const nearBottomRef = useRef(true);
+  const lastIdRef = useRef<string | null>(null);
+  const prependAnchorRef = useRef<{ height: number; top: number } | null>(null);
 
   useEffect(() => {
     if (chat.name && chat.name !== 'New Chat') {
@@ -203,7 +215,9 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
         }))
       );
       
-      if (chat.type === 'direct' && otherParticipants.length > 0) {
+      // Only once getChat confirmed the type: a band chat opened from a push or a
+      // notification arrives as "direct" and must not take a member's name.
+      if (typeResolvedRef.current && chatTypeRef.current === 'direct' && otherParticipants.length > 0) {
         const otherProfile = (otherParticipants[0] as any)?.profile;
         const otherName = personName(otherProfile, '');
         if (otherName) {
@@ -221,6 +235,11 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
   };
 
   useEffect(() => {
+    setChatType(chat.type);
+    chatTypeRef.current = chat.type;
+    typeResolvedRef.current = false;
+    lastIdRef.current = null;
+    nearBottomRef.current = true;
     setActiveChat(chat.id);
     loadMessages();
     loadParticipants();
@@ -231,6 +250,12 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
     (async () => {
       const { data: fullChat } = await getChat(chat.id);
       if (fullChat) {
+        const kind = normalizeChatType(fullChat.type);
+        if (kind) {
+          chatTypeRef.current = kind;
+          setChatType(kind);
+        }
+        typeResolvedRef.current = true;
         if (fullChat.type === 'direct') {
           const other = fullChat.participants.find(p => p.user_id !== user?.id);
           const name = personName(other?.profile, '');
@@ -374,14 +399,8 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
     });
 
     const pollInterval = setInterval(async () => {
-      const { data } = await getMessages(chat.id, { limit: 50 });
-      if (data) {
-        setMessages(prev => {
-          const optimistic = prev.filter(m => m.id.startsWith('temp-'));
-          const newMessages = data.filter(d => !optimistic.some(o => o.content === d.content));
-          return [...newMessages, ...optimistic];
-        });
-      }
+      const { data } = await getMessages(chat.id, { limit: CHAT_PAGE_SIZE });
+      if (data) setMessages(prev => mergeLatestPage(prev, data));
       loadParticipants();
     }, 3000);
 
@@ -393,15 +412,49 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
     };
   }, [chat.id, user?.id]);
 
+  // Scroll to the bottom only when a message arrives at the bottom and the reader
+  // is already there (or sent it), never because the poll refreshed the list.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const last = messages[messages.length - 1];
+    const lastId = last?.id ?? null;
+    if (lastId === lastIdRef.current) return;
+    const firstLoad = lastIdRef.current === null;
+    lastIdRef.current = lastId;
+    if (!last) return;
+    const mine = last.sender_id === user?.id || last.id.startsWith('temp-');
+    if (firstLoad || mine || nearBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: firstLoad ? 'auto' : 'smooth' });
+    }
+  }, [messages, user?.id]);
+
+  // Older messages go above: keep the ones on screen where they were.
+  useLayoutEffect(() => {
+    const anchor = prependAnchorRef.current;
+    const el = scrollRef.current;
+    if (!anchor || !el) return;
+    prependAnchorRef.current = null;
+    el.scrollTop = anchor.top + (el.scrollHeight - anchor.height);
   }, [messages]);
 
   const loadMessages = async () => {
     setLoading(true);
-    const { data } = await getMessages(chat.id, { limit: 50 });
+    const { data } = await getMessages(chat.id, { limit: CHAT_PAGE_SIZE });
     if (data) setMessages(data);
+    setHasOlder((data?.length ?? 0) >= CHAT_PAGE_SIZE);
     setLoading(false);
+  };
+
+  const loadOlder = async () => {
+    const oldest = messages.find(m => !m.id.startsWith('temp-'));
+    if (!oldest || loadingOlder) return;
+    setLoadingOlder(true);
+    const { data } = await getMessages(chat.id, { limit: CHAT_PAGE_SIZE, before: oldest.created_at });
+    setLoadingOlder(false);
+    if (!data) return;
+    setHasOlder(data.length >= CHAT_PAGE_SIZE);
+    const el = scrollRef.current;
+    if (el) prependAnchorRef.current = { height: el.scrollHeight, top: el.scrollTop };
+    setMessages(prev => prependOlder(prev, data));
   };
 
   const handleSend = async () => {
@@ -475,7 +528,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
   };
 
   const messageGroups = groupMessagesByDate(messages);
-  const chatTypeLabel = chat.type === 'direct' ? t('DM') : chat.type === 'band' ? t('BAND') : t('EVENT');
+  const chatTypeLabel = chatType === 'direct' ? t('DM') : chatType === 'band' ? t('BAND') : t('EVENT');
   // Group chats: "N members · N online". Online comes from realtime presence and is
   // only shown once presence has synced (our own id is tracked) and participants are loaded.
   const memberCount = chatParticipants.length > 0 ? chatParticipants.length + 1 : chat.members;
@@ -492,7 +545,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
       : !!chat.isOnline;
   const eventKind = eventKindOf({ eventType: chat.eventType });
   const EventIcon = EVENT_ICON[eventKind];
-  const displayTitle = toTitleCase(chatName || (chat.name && chat.name !== 'New Chat' ? chat.name : '') || (chat.type === 'direct' ? t('Member') : chat.type === 'band' ? t('Band Chat') : t('Event Chat')));
+  const displayTitle = toTitleCase(chatName || (chat.name && chat.name !== 'New Chat' ? chat.name : '') || (chatType === 'direct' ? t('Member') : chatType === 'band' ? t('Band Chat') : t('Event Chat')));
 
   return (
     <motion.div
@@ -514,7 +567,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
 
         <div className="flex-1 flex items-center gap-3 min-w-0">
           <div className="relative shrink-0">
-            {chat.type === 'event' ? (
+            {chatType === 'event' ? (
               <div
                 className="w-11 h-11 rounded-full flex items-center justify-center"
                 style={{ backgroundColor: `var(--accent-${eventKind})`, color: `var(--accent-${eventKind}-fg)` }}
@@ -524,7 +577,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
             ) : (
               <div className={cn(
                 "w-11 h-11 rounded-full flex items-center justify-center overflow-hidden",
-                chat.type === 'band'
+                chatType === 'band'
                   ? "bg-surface-inverse text-surface-inverse-foreground"
                   : "bg-white text-black border-[1.5px] border-border"
               )}>
@@ -539,7 +592,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                   />
                 ) : (
                   <span className="bw-h3">
-                    {chatInitials || (chat.initials && chat.initials !== 'NC' ? chat.initials : chat.type === 'band' ? 'B' : 'U')}
+                    {chatInitials || (chat.initials && chat.initials !== 'NC' ? chat.initials : chatType === 'band' ? 'B' : 'U')}
                   </span>
                 )}
               </div>
@@ -555,7 +608,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
             </h3>
             <p className="bw-body-sm text-muted-foreground truncate flex items-center gap-1.5">
               <span className="sr-only">{chatTypeLabel} · </span>
-              {chat.type === 'direct' ? (
+              {chatType === 'direct' ? (
                 isOtherOnline ? (
                   <>
                     <span className="w-2 h-2 rounded-full bg-success inline-block shrink-0" />
@@ -566,7 +619,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                 )
               ) : memberCount ? (
                 `${memberCount === 1 ? t('{count} member', { count: memberCount }) : t('{count} members', { count: memberCount })}${onlineCount !== null ? ` · ${t('{count} online', { count: onlineCount })}` : ''}`
-              ) : chat.type === 'band' ? (
+              ) : chatType === 'band' ? (
                 t('Band chat')
               ) : (
                 t('Event chat')
@@ -581,7 +634,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
 
       <DeleteChatSheet
         open={showDeleteConfirm}
-        chatName={chat.type === 'direct' ? displayTitle : undefined}
+        chatName={chatType === 'direct' ? displayTitle : undefined}
         deleting={deleting}
         onCancel={() => setShowDeleteConfirm(false)}
         onConfirm={handleDeleteChat}
@@ -589,7 +642,12 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
 
       {/* ── Messages ── (swipe down to hide the keyboard) */}
       <div
+        ref={scrollRef}
         className="flex-1 overflow-y-auto px-4 pt-2 pb-4 bg-background"
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+        }}
         onTouchStart={(e) => {
           swipeStartY.current = e.touches[0]?.clientY ?? null;
         }}
@@ -611,7 +669,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center gap-4">
-            {chat.type === 'event' ? (
+            {chatType === 'event' ? (
               <div
                 className="w-16 h-16 rounded-full flex items-center justify-center"
                 style={{ backgroundColor: `var(--accent-${eventKind})`, color: `var(--accent-${eventKind}-fg)` }}
@@ -620,7 +678,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
               </div>
             ) : (
               <div className="w-16 h-16 rounded-full border-[1.5px] border-foreground flex items-center justify-center text-foreground">
-                {chat.type === 'band' ? (
+                {chatType === 'band' ? (
                   <Users className="w-7 h-7" />
                 ) : (
                   <ArrowUpRight className="w-7 h-7" />
@@ -636,6 +694,19 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
           </div>
         ) : (
           <div className="flex flex-col gap-3">
+            {hasOlder && (
+              <div className="flex justify-center">
+                <PillButton
+                  variant="outline"
+                  size="sm"
+                  fullWidth={false}
+                  loading={loadingOlder}
+                  onClick={loadOlder}
+                >
+                  {t('Load earlier messages')}
+                </PillButton>
+              </div>
+            )}
             {messageGroups.map((group, groupIndex) => (
               <div key={groupIndex} className="flex flex-col gap-3">
                 {/* Date separator */}
@@ -673,7 +744,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                         "flex flex-col gap-1 min-w-0 max-w-[78%]",
                         isMe ? "items-end" : "items-start"
                       )}>
-                        {!isMe && (chat.type === 'band' || chat.type === 'event') && (
+                        {!isMe && (chatType === 'band' || chatType === 'event') && (
                           <p className="bw-label-xs text-muted-foreground">
                             {personName(message.sender, t('Member'))}
                             {bandAdminIds.has(message.sender_id) ? ' · ' + t('Admin') : ''}

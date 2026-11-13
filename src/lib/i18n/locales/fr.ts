@@ -1742,6 +1742,7 @@ const dict: Dictionary = {
   // Chat
   "now": "à l’instant",
   "No messages yet": "Pas encore de messages",
+  "Load earlier messages": "Charger les messages précédents",
   "Someone": "Quelqu’un",
   "{count}m": "{count} min",
   "Band Chat": "Discussion du groupe",

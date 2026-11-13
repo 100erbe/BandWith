@@ -1050,7 +1050,9 @@ export default function AuthenticatedApp() {
       if (d.screen === "chat" && d.chatId) {
         setActiveTab("Chat");
         setTimeout(() => {
-          setSelectedChat({ id: Date.now(), uuid: d.chatId, type: "direct", name: "Chat", initials: "CH", lastMessage: "", time: "now", unread: 0, status: "received" });
+          // A chat already in the inbox opens with its real type and name; otherwise the chat screen looks it up.
+          const known = convertedChatsRef.current.find((c) => c.uuid === String(d.chatId));
+          setSelectedChat(known ? { ...known, unread: 0 } : { id: Date.now(), uuid: d.chatId, type: "direct", name: "Chat", initials: "CH", lastMessage: "", time: "now", unread: 0, status: "received" });
         }, 100);
       } else if (d.screen === "event" && d.eventId) {
         navigateToEvent(d.eventId);
@@ -1422,6 +1424,8 @@ export default function AuthenticatedApp() {
       };
     }) as ChatItem[];
   }, [realChats, realBand?.name, realBand?.logo_url, realBands, user?.id, onlineUserIds, locale]);
+  const convertedChatsRef = useRef(convertedChats);
+  convertedChatsRef.current = convertedChats;
 
   const filteredChats = useMemo(() => {
     return convertedChats
@@ -1689,7 +1693,8 @@ export default function AuthenticatedApp() {
         setTimeout(() => {
           setActiveTab("Chat");
           const sn = (realNotif?.data as any)?.senderName || realNotif?.title?.replace("💬 ", "") || "Chat";
-          setSelectedChat({ id: Date.now(), uuid: String(chatId), type: "direct", name: sn, initials: sn.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(), lastMessage: "", time: "now", unread: 0, status: "received" });
+          const known = convertedChatsRef.current.find((c) => c.uuid === String(chatId));
+          setSelectedChat(known ? { ...known, unread: 0 } : { id: Date.now(), uuid: String(chatId), type: "direct", name: sn, initials: sn.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(), lastMessage: "", time: "now", unread: 0, status: "received" });
         }, 300);
         return;
       }
