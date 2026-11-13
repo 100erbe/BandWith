@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from './utils';
+import { useT } from '@/lib/i18n';
 
 /**
  * Figma "State / Loading skeleton" for Home:
@@ -33,8 +34,9 @@ const CardSkeleton: React.FC<{ titleWidth: string; metaWidth: string }> = ({ tit
 );
 
 export const HomeSkeleton: React.FC = () => {
+  const tr = useT();
   return (
-    <div className="flex flex-col gap-8 relative z-10" aria-busy="true" aria-label="Loading dashboard" role="status">
+    <div className="flex flex-col gap-8 relative z-10" aria-busy="true" aria-label={tr('Loading dashboard')} role="status">
       <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-8 gap-y-8">
         <MetricSkeleton labelWidth="w-24" valueWidth="w-14" />
         <MetricSkeleton labelWidth="w-28" valueWidth="w-14" />

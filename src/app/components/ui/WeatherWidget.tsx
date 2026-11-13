@@ -11,6 +11,7 @@ import {
 import { cn } from './utils';
 import { parseLocalDate } from '@/lib/dates';
 import { formatSpeed, useDistanceUnit } from '@/lib/units';
+import { useT } from '@/lib/i18n';
 
 export type WeatherCondition = 'sun' | 'cloud' | 'rain';
 
@@ -175,6 +176,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
   className,
 }) => {
   const distanceUnit = useDistanceUnit();
+  const tr = useT();
   const [state, setState] = useState<WidgetState>({ status: 'loading' });
 
   useEffect(() => {
@@ -272,7 +274,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
       style={textColor ? { color: textColor } : undefined}
     >
       {state.status === 'loading' && (
-        <div className="flex items-center gap-2.5 w-full animate-pulse" aria-label="Loading forecast">
+        <div className="flex items-center gap-2.5 w-full animate-pulse" aria-label={tr('Loading forecast')}>
           <div className="w-9 h-9 rounded-full bg-current opacity-10 shrink-0" />
           <div className="flex flex-col gap-1.5 flex-1">
             <div className="h-4 w-8 rounded-full bg-current opacity-10" />
@@ -284,7 +286,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
       {state.status === 'available' && (
         <div
           className="flex items-center gap-2.5 w-full text-current"
-          title={state.data.city ? `Forecast for ${state.data.city}` : 'Daily forecast'}
+          title={state.data.city ? tr('Forecast for {city}', { city: state.data.city }) : tr('Daily forecast')}
         >
           <div className="shrink-0 flex items-center justify-center w-9 h-9 [&_svg]:w-8 [&_svg]:h-8">
             {state.data.condition === 'sun' && <Sun strokeWidth={1.5} />}
@@ -304,13 +306,13 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
         </div>
       )}
 
-      {state.status === 'too_early' && note(<Calendar strokeWidth={1.5} />, 'Available 7 days prior', 'Forecast')}
+      {state.status === 'too_early' && note(<Calendar strokeWidth={1.5} />, tr('Available 7 days prior'), tr('Forecast'))}
 
-      {state.status === 'missing_location' && note(<MapPin strokeWidth={1.5} />, 'Location missing', 'Forecast')}
+      {state.status === 'missing_location' && note(<MapPin strokeWidth={1.5} />, tr('Location missing'), tr('Forecast'))}
 
-      {state.status === 'past' && note(<Calendar strokeWidth={1.5} />, 'Past event')}
+      {state.status === 'past' && note(<Calendar strokeWidth={1.5} />, tr('Past event'))}
 
-      {state.status === 'error' && note(<Cloud strokeWidth={1.5} />, state.message)}
+      {state.status === 'error' && note(<Cloud strokeWidth={1.5} />, state.message === 'Location not found' ? tr('Location not found') : tr('Forecast unavailable'))}
     </div>
   );
 };

@@ -2,7 +2,7 @@ import React from 'react';
 import { AlertCircle, ArrowLeft, Loader2 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { useRailBack } from '@/lib/railActions';
-import { t } from '@/lib/i18n';
+import { t, useT } from '@/lib/i18n';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Form building blocks from the Figma design system (Button, Input, Top Bar,
@@ -189,13 +189,16 @@ export const PillField = React.forwardRef<HTMLInputElement, PillFieldProps>(
 PillField.displayName = 'PillField';
 
 /** "— OR —" divider. */
-export const OrDivider: React.FC<{ label?: string; className?: string }> = ({ label = 'or', className }) => (
-  <div className={cn('flex items-center gap-3 w-full', className)} role="separator">
-    <span className="flex-1 h-px bg-border" />
-    <span className="bw-label-sm text-muted-foreground">{label}</span>
-    <span className="flex-1 h-px bg-border" />
-  </div>
-);
+export const OrDivider: React.FC<{ label?: string; className?: string }> = ({ label, className }) => {
+  const tr = useT();
+  return (
+    <div className={cn('flex items-center gap-3 w-full', className)} role="separator">
+      <span className="flex-1 h-px bg-border" />
+      <span className="bw-label-sm text-muted-foreground">{label ?? tr('or')}</span>
+      <span className="flex-1 h-px bg-border" />
+    </div>
+  );
+};
 
 /** Inline error banner for form-level errors (wrong password, network…). */
 export const FormError: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
