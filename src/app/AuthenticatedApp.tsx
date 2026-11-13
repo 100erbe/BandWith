@@ -1,6 +1,7 @@
 import { handleBackFromStack } from '@/lib/backStack';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { uuidToNumericId } from '@/lib/numericId';
+import { useCurrentKey } from '@/lib/useCurrentKey';
 import { AnimatePresence, motion } from "motion/react";
 import { Loader2, MessageSquare, Music, ChevronLeft, Plus, CheckCircle2, AlertCircle, Info, X, XCircle, EyeOff } from '@/app/components/icons';
 import { cn } from "@/app/components/ui/utils";
@@ -344,6 +345,11 @@ export default function AuthenticatedApp() {
   const [localEvents, setLocalEvents] = useState<EventItem[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
   const [selectedEventMembership, setSelectedEventMembership] = useState<EventMember | null>(null);
+  // RSVP answers arrive late: they only apply if their event is still open.
+  const eventKeyOf = (e: EventData) => e.eventId || e.id?.toString() || null;
+  const { isCurrent: isOpenEvent, markCurrent: markOpenEvent } = useCurrentKey(
+    selectedEvent ? eventKeyOf(selectedEvent) : null,
+  );
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
   const [createEventType, setCreateEventType] = useState<CreateEventType>(null);
   const [createEventInitialDate, setCreateEventInitialDate] = useState<string | null>(null);
@@ -2363,10 +2369,13 @@ export default function AuthenticatedApp() {
     }
     setSelectedEvent(event);
     setSelectedEventMembership(null);
+    const key = eventKeyOf(event);
+    markOpenEvent(key);
     if (user?.id && event.eventId) {
       const { data: membership } = await getUserEventMembership(event.eventId, user.id);
-      // If membership exists, use it; otherwise null (which hides accept/decline buttons)
-      setSelectedEventMembership(membership);
+      // If membership exists, use it; otherwise null (which hides accept/decline buttons).
+      // Another event opened meanwhile: this answer is not for it.
+      if (isOpenEvent(key)) setSelectedEventMembership(membership);
     }
   };
   handleEventCardClickRef.current = handleEventCardClick;
@@ -2396,6 +2405,7 @@ export default function AuthenticatedApp() {
     // UI Dismissal: Snap modal closed
     setSelectedEvent(null);
     setSelectedEventMembership(null);
+    markOpenEvent(null);
 
     // Optimistically mark membership confirmed in eventMembersMap so the event stays visible
     if (eventId && user?.id) {
@@ -2442,7 +2452,8 @@ export default function AuthenticatedApp() {
     // ═══════════════════════════════════════════════════════════════
     // STEP E — Quiet Background Sync (realign DB cache behind scenes)
     // ═══════════════════════════════════════════════════════════════
-    setSelectedEventMembership(updated);
+    // Only if this event was opened again meanwhile, never on another one.
+    if (isOpenEvent(eventId)) setSelectedEventMembership(updated);
     setMembersRefreshKey(prev => prev + 1);
     if (refetchEvents) await refetchEvents();
     if (refetchNotifications) await refetchNotifications();
@@ -2456,7 +2467,7 @@ export default function AuthenticatedApp() {
     if (error || !updated) {
       throw new Error(error?.message || "Couldn't save your answer. Try again.");
     }
-    setSelectedEventMembership((prev: any) => (prev ? { ...prev, status: "maybe" } : prev));
+    if (isOpenEvent(eventId)) setSelectedEventMembership((prev: any) => (prev ? { ...prev, status: "maybe" } : prev));
     if (eventId && user?.id) {
       setEventMembersMap(prev => {
         const list = prev[eventId] || [];
@@ -2508,6 +2519,7 @@ export default function AuthenticatedApp() {
     // ═══════════════════════════════════════════════════════════════
     setSelectedEvent(null);
     setSelectedEventMembership(null);
+    markOpenEvent(null);
 
     // ═══════════════════════════════════════════════════════════════
     // STEP C — DB Payload Processing (runs in background)
@@ -2550,7 +2562,8 @@ export default function AuthenticatedApp() {
     // ═══════════════════════════════════════════════════════════════
     // STEP E — Quiet Background Sync (realign DB cache behind scenes)
     // ═══════════════════════════════════════════════════════════════
-    setSelectedEventMembership(updated);
+    // Only if this event was opened again meanwhile, never on another one.
+    if (isOpenEvent(eventIdToHide)) setSelectedEventMembership(updated);
     setMembersRefreshKey(prev => prev + 1);
     if (refetchEvents) await refetchEvents();
     if (refetchNotifications) await refetchNotifications();
