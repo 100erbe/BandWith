@@ -10,7 +10,7 @@ import { EventItem } from '@/app/data/events';
 import { Band } from '@/app/data/bands';
 import { ExpandedCardType } from '@/app/types';
 import { useBand } from '@/lib/BandContext';
-import { useT, dateName, intlLocale, localDecimal } from '@/lib/i18n';
+import { useT, dateName, intlLocale, localDecimal, getLocale } from '@/lib/i18n';
 import { RehearsalPollCard } from '@/app/components/rehearsal/RehearsalPollCard';
 import type { RehearsalPoll } from '@/lib/services/rehearsalPolls';
 import { parseLocalDate } from '@/lib/dates';
@@ -89,6 +89,8 @@ const formatEventTime = (timeStr?: string): string => {
   if (match) {
     let h = parseInt(match[1]);
     const m = parseInt(match[2]);
+    // 24-hour clock outside English ("21:00"); English keeps "9 PM".
+    if (getLocale() !== 'en') return `${String(h).padStart(2, '0')}:${match[2]}`;
     const ampm = h >= 12 ? 'PM' : 'AM';
     if (h > 12) h -= 12;
     if (h === 0) h = 12;
@@ -706,9 +708,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
             let suffix = '';
             if (m) {
               let h = parseInt(m[1], 10);
-              suffix = h >= 12 ? 'PM' : 'AM';
-              h = h % 12 || 12;
-              value = `${h}:${m[2]}`;
+              if (getLocale() !== 'en') {
+                // 24-hour clock, no suffix ("17:30")
+                value = `${String(h).padStart(2, '0')}:${m[2]}`;
+              } else {
+                suffix = h >= 12 ? 'PM' : 'AM';
+                h = h % 12 || 12;
+                value = `${h}:${m[2]}`;
+              }
             }
             const mapQuery = [nextMemberGig?.venue_address, nextMemberGig?.venue_name, nextMemberGig?.venue_city]
               .filter(Boolean)
