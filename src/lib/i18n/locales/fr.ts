@@ -1870,6 +1870,8 @@ const dict: Dictionary = {
   "Go back": "Retour",
   "Synced {count} offline updates": "{count} modifications hors ligne synchronisées",
   "Synced {count} offline update": "{count} modification hors ligne synchronisée",
+  "Couldn't save {count} offline change": "Impossible d'enregistrer {count} modification hors ligne",
+  "Couldn't save {count} offline changes": "Impossible d'enregistrer {count} modifications hors ligne",
   "Open chat": "Ouvrir la discussion",
   "Open event": "Ouvrir l’événement",
   "Open calendar": "Ouvrir le calendrier",

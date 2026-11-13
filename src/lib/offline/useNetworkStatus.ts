@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { processSyncQueue, subscribeToSyncQueue, type SyncResult } from './syncQueue';
+import { processSyncQueue, subscribeToSyncQueue, type DroppedMutation, type SyncResult } from './syncQueue';
 
 export { isOfflineError } from './networkErrors';
 
@@ -7,8 +7,12 @@ export interface NetworkStatus {
   isOnline: boolean;
   wasOffline: boolean;
   pendingSyncCount: number;
+  /** Manual sync: retries rejected changes straight away. */
   triggerSync: () => Promise<SyncResult>;
 }
+
+/** While online with changes waiting, look again this often (each mutation keeps its own backoff). */
+const PENDING_RECHECK_MS = 60_000;
 
 type NetworkListener = (online: boolean) => void;
 const networkListeners = new Set<NetworkListener>();
@@ -24,7 +28,10 @@ export const reportNetworkStatus = (online: boolean) => {
   networkListeners.forEach((cb) => cb(online));
 };
 
-export const useNetworkStatus = (onSyncSuccess?: (msg: string) => void): NetworkStatus => {
+export const useNetworkStatus = (
+  onSyncSuccess?: (msg: string) => void,
+  onSyncDropped?: (dropped: DroppedMutation[]) => void
+): NetworkStatus => {
   const [isOnline, setIsOnline] = useState<boolean>(() => {
     return typeof navigator !== 'undefined' ? navigator.onLine : true;
   });
@@ -32,9 +39,23 @@ export const useNetworkStatus = (onSyncSuccess?: (msg: string) => void): Network
   const [pendingSyncCount, setPendingSyncCount] = useState<number>(0);
   const isInitialMount = useRef(true);
 
-  const triggerSync = useCallback(async () => {
-    return await processSyncQueue(onSyncSuccess);
-  }, [onSyncSuccess]);
+  // Callers pass inline callbacks: keep the latest ones in refs so the sync
+  // triggers stay stable and only run on mount, reconnect, timer or tap.
+  const onSyncSuccessRef = useRef(onSyncSuccess);
+  const onSyncDroppedRef = useRef(onSyncDropped);
+  onSyncSuccessRef.current = onSyncSuccess;
+  onSyncDroppedRef.current = onSyncDropped;
+
+  const runSync = useCallback(async (force: boolean) => {
+    const result = await processSyncQueue(
+      (msg) => onSyncSuccessRef.current?.(msg),
+      force ? { force: true } : undefined
+    );
+    if (result.droppedMutations.length > 0) onSyncDroppedRef.current?.(result.droppedMutations);
+    return result;
+  }, []);
+
+  const triggerSync = useCallback(() => runSync(true), [runSync]);
 
   // Subscribe to pending queue mutations
   useEffect(() => {
@@ -60,7 +81,7 @@ export const useNetworkStatus = (onSyncSuccess?: (msg: string) => void): Network
       if (!isInitialMount.current) {
         setWasOffline(true);
         // Process offline mutation queue automatically on reconnect
-        await triggerSync();
+        await runSync(false);
       }
     };
 
@@ -75,7 +96,7 @@ export const useNetworkStatus = (onSyncSuccess?: (msg: string) => void): Network
 
     // Initial sync check if starting online with pending mutations
     if (navigator.onLine) {
-      triggerSync();
+      void runSync(false);
     }
     isInitialMount.current = false;
 
@@ -84,7 +105,14 @@ export const useNetworkStatus = (onSyncSuccess?: (msg: string) => void): Network
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [triggerSync]);
+  }, [runSync]);
+
+  // Rejected changes wait in backoff; look again periodically while there is work.
+  useEffect(() => {
+    if (!isOnline || pendingSyncCount === 0) return;
+    const id = setInterval(() => { void runSync(false); }, PENDING_RECHECK_MS);
+    return () => clearInterval(id);
+  }, [isOnline, pendingSyncCount, runSync]);
 
   return {
     isOnline,

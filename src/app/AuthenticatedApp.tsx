@@ -403,6 +403,17 @@ export default function AuthenticatedApp() {
     setSaveToast({ message: msg, type: 'success' });
     refetchEvents();
     if (refetchDashboard) refetchDashboard();
+  }, (dropped) => {
+    // The server kept rejecting these offline changes: say so and show the real data again.
+    setSaveToast({
+      message: dropped.length > 1
+        ? t("Couldn't save {count} offline changes", { count: dropped.length })
+        : t("Couldn't save {count} offline change", { count: dropped.length }),
+      type: 'error',
+      duration: 8000,
+    });
+    refetchEvents();
+    if (refetchDashboard) refetchDashboard();
   });
 
   const [chatFilter, setChatFilter] = useState<ChatFilterType>("all");
