@@ -3135,6 +3135,11 @@ const dict: Dictionary = {
   "Payouts ({count})": "Pagamentos ({count})",
   "Your payouts ({count})": "Seus pagamentos ({count})",
   "Payouts due · {count} · {amount}": "Pagamentos pendentes · {count} · {amount}",
+  "Total due: {amount}": "Total a pagar: {amount}",
+  "Who is owed": "A quem se deve",
+  "Could not mark the payouts as paid. Try again.": "Não foi possível marcar os pagamentos como feitos. Tente de novo.",
+  "Where it comes from": "De onde vem",
+  "Money": "Dinheiro",
   // Calendar band filter
   "All bands": "Todas as bandas",
   "Filter by band": "Filtrar por banda",
