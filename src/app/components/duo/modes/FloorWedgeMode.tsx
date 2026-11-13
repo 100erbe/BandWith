@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight } from '@/app/components/icons';
+import { ChevronLeft, ChevronRight, Minus, Plus } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { haptic } from '@/lib/haptics';
 import { useKeepAwake } from '@/lib/posture';
 import { FoldSplit } from '../FoldSplit';
 import { DeckButton, clock, durationSeconds } from './shared';
+import { LyricsText, useLyricsSize } from '@/app/components/ui/LyricsViewer';
 import { useT } from '@/lib/i18n';
 
 /**
@@ -26,6 +27,8 @@ export interface WedgeSong {
   bpm?: number | null;
   /** "3:45" or seconds. */
   duration?: string | number | null;
+  /** songs.lyrics: the display can show them instead of the big title. */
+  lyrics?: string | null;
 }
 
 export interface FloorWedgeModeProps {
@@ -36,7 +39,17 @@ export interface FloorWedgeModeProps {
   setLabel?: string;
   songsLoading?: boolean;
   initialIndex?: number;
+  /** Current song when Stage mode is live (useStageLive); omitted = own counter. */
+  index?: number;
   onIndexChange?: (index: number) => void;
+  /** Live follow state: members get a "follow leader" switch, the admin a status. */
+  follow?: {
+    isLeader: boolean;
+    following: boolean;
+    leaderSeen: boolean;
+    connected: boolean;
+    onToggle: (on: boolean) => void;
+  };
   /** When the set started (elapsed time); defaults to when the mode mounted. */
   startedAt?: Date | number;
   /** See FoldSplit. Default 125 (above Stage mode). */
@@ -49,14 +62,17 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
   setLabel,
   songsLoading,
   initialIndex = 0,
+  index: controlledIndex,
   onIndexChange,
+  follow,
   startedAt,
   zIndex,
 }) => {
   const t = useT();
   useKeepAwake(true);
   const count = songs.length;
-  const [index, setIndex] = useState(() => Math.min(Math.max(0, initialIndex), Math.max(0, count - 1)));
+  const [ownIndex, setIndex] = useState(() => Math.min(Math.max(0, initialIndex), Math.max(0, count - 1)));
+  const index = controlledIndex ?? ownIndex;
   const [mountedAt] = useState(() => Date.now());
   const [now, setNow] = useState(() => Date.now());
 
@@ -67,8 +83,8 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
 
   // A shorter setlist (reload) must not leave the counter past its end.
   useEffect(() => {
-    if (count > 0 && index > count - 1) setIndex(count - 1);
-  }, [count, index]);
+    if (controlledIndex === undefined && count > 0 && ownIndex > count - 1) setIndex(count - 1);
+  }, [count, ownIndex, controlledIndex]);
 
   const go = useCallback(
     (delta: number) => {
@@ -98,6 +114,14 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
   }, [go]);
 
   const song = count > 0 ? songs[index] : null;
+  const hasLyrics = songs.some((s) => !!s.lyrics?.trim());
+  const [lyricsOn, setLyricsOn] = useState(false);
+  const showLyrics = lyricsOn && hasLyrics && !!song;
+  const lyricsSize = useLyricsSize();
+  const lyricsRef = React.useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    lyricsRef.current?.scrollTo?.({ top: 0 });
+  }, [index, showLyrics]);
   const next = index + 1 < count ? songs[index + 1] : null;
   const start = startedAt !== undefined ? new Date(startedAt).getTime() : mountedAt;
   const elapsed = clock(Math.max(0, (now - start) / 1000));
@@ -109,13 +133,44 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
     : null;
 
   const display = (
-    <div className="bw-fold-pad min-h-full flex flex-col gap-3 pt-3 pb-4 bg-black text-white select-none">
+    <div className={cn('bw-fold-pad flex flex-col gap-3 pt-3 pb-4 bg-black text-white select-none', showLyrics ? 'h-full' : 'min-h-full')}>
       <div className="flex items-baseline justify-between gap-4 bw-label-md uppercase text-white/60">
         <span className="truncate">{[setLabel, title].filter(Boolean).join(' · ') || t('Stage')}</span>
         <span className="shrink-0 tabular-nums" aria-label={t('Elapsed {time}', { time: elapsed })}>{elapsed}</span>
       </div>
       {!song ? (
         <p className="bw-display-lg text-white/70">{songsLoading ? t('Loading setlist…') : t('No setlist')}</p>
+      ) : showLyrics ? (
+        <>
+          <div className="flex items-center gap-3 min-w-0">
+            <p className="bw-value-lg tabular-nums shrink-0" aria-live="polite">
+              {index + 1}
+              <span className="text-white/40"> / {count}</span>
+            </p>
+            <h1 className="flex-1 min-w-0 bw-h2 truncate text-accent">{song.title}</h1>
+            <button
+              type="button"
+              disabled={lyricsSize.min}
+              onClick={() => lyricsSize.step(-1)}
+              aria-label={t('Smaller text')}
+              className="w-11 h-11 flex items-center justify-center rounded-full border border-white/30 shrink-0 disabled:opacity-30"
+            >
+              <Minus className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              disabled={lyricsSize.max}
+              onClick={() => lyricsSize.step(1)}
+              aria-label={t('Bigger text')}
+              className="w-11 h-11 flex items-center justify-center rounded-full border border-white/30 shrink-0 disabled:opacity-30"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
+          <div ref={lyricsRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain" aria-label={t('Lyrics · {title}', { title: song.title })}>
+            <LyricsText lyrics={song.lyrics} size={lyricsSize.size} muted="text-white/60" className="w-full flex flex-col gap-6 pb-4 text-white" />
+          </div>
+        </>
       ) : (
         <>
           <p className="bw-value-lg tabular-nums" aria-live="polite">
@@ -159,6 +214,50 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
 
   const deck = (
     <div className="min-h-full flex flex-col gap-3 px-4 pt-3 pb-3 text-white">
+      {(follow || hasLyrics) && (
+        <div className="flex items-center justify-between gap-3 min-h-11 shrink-0">
+          {hasLyrics ? (
+            <button
+              type="button"
+              aria-pressed={lyricsOn}
+              onClick={() => {
+                haptic.tap();
+                setLyricsOn((v) => !v);
+              }}
+              className={cn(
+                'flex items-center gap-2 min-h-11 px-4 rounded-full bw-label-md uppercase border',
+                lyricsOn ? 'bg-white text-black border-white' : 'border-white/40 text-white',
+              )}
+            >
+              {t('Lyrics')}
+            </button>
+          ) : (
+            <span />
+          )}
+          {!follow ? null : follow.isLeader ? (
+            <span className="flex items-center gap-2 bw-label-md uppercase text-white/70" role="status">
+              <span aria-hidden className={cn('w-2 h-2 rounded-full', follow.connected ? 'bg-accent' : 'border border-white/60')} />
+              {follow.connected ? t('Band follows you') : t('Offline')}
+            </span>
+          ) : (
+            <button
+              type="button"
+              aria-pressed={follow.following}
+              onClick={() => {
+                haptic.tap();
+                follow.onToggle(!follow.following);
+              }}
+              className={cn(
+                'flex items-center gap-2 min-h-11 px-4 rounded-full bw-label-md uppercase border',
+                follow.following ? 'bg-accent text-accent-foreground border-transparent' : 'border-white/40 text-white',
+              )}
+            >
+              <span aria-hidden className={cn('w-2 h-2 rounded-full', follow.following ? 'bg-accent-foreground' : 'border border-white')} />
+              {follow.following ? (follow.leaderSeen ? t('Following leader') : t('Waiting for leader')) : t('Follow leader')}
+            </button>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3 flex-1 min-h-[88px]">
         <DeckButton
           size="pad"

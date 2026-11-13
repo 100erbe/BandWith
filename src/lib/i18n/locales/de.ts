@@ -3198,6 +3198,17 @@ const dict: Dictionary = {
   "for {name}": "für {name}",
   "Changed after their answer · send the update": "Nach der Antwort geändert · Update senden",
   "date to be confirmed": "Datum noch offen",
+  // Stage mode live sync
+  "Band follows you": "Die Band folgt dir",
+  "Following leader": "Mit dem Leader",
+  "Waiting for leader": "Warte auf Leader",
+  "Follow leader": "Leader folgen",
+  "Reorder": "Sortieren",
+  "Now playing: {title}": "Läuft: {title}",
+  "Go to {title}": "Zu {title} wechseln",
+  "Move {title} up": "{title} nach oben",
+  "Move {title} down": "{title} nach unten",
+  "Not saved": "Nicht gespeichert",
 };
 
 export default dict;

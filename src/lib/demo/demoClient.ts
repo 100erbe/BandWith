@@ -610,17 +610,56 @@ const auth = {
 
 // ---------------------------------------------------- realtime / storage --
 
+/**
+ * Demo channels: database changes never arrive, but broadcast and presence
+ * reach the other tabs of the same demo (BroadcastChannel), so two tabs can
+ * try live features such as Stage mode's "follow the leader".
+ */
 const makeChannel = (name: string) => {
+  const handlers: { type: string; event?: string; cb: (msg: any) => void }[] = [];
+  let bc: BroadcastChannel | null = null;
+  const key = Math.random().toString(36).slice(2);
+  const open = () => {
+    if (bc || typeof BroadcastChannel === 'undefined') return bc;
+    bc = new BroadcastChannel(`bw-demo-rt:${name}`);
+    bc.onmessage = (e: MessageEvent) => {
+      const m = e.data || {};
+      for (const h of handlers) {
+        if (m.kind === 'broadcast' && h.type === 'broadcast' && (!h.event || h.event === '*' || h.event === m.event)) {
+          h.cb({ type: 'broadcast', event: m.event, payload: m.payload });
+        } else if (m.kind === 'join' && h.type === 'presence' && h.event === 'join') {
+          h.cb({ event: 'join', key: m.key, newPresences: [m.meta], currentPresences: [] });
+        }
+      }
+    };
+    return bc;
+  };
   const ch: any = {
     topic: name,
-    on: () => ch,
+    on: (type: string, filter: { event?: string } | undefined, cb: (msg: any) => void) => {
+      if ((type === 'broadcast' || type === 'presence') && typeof cb === 'function') {
+        handlers.push({ type, event: filter?.event, cb });
+      }
+      return ch;
+    },
     subscribe: (cb?: (status: string) => void) => {
+      if (handlers.length > 0) open();
       setTimeout(() => cb?.('SUBSCRIBED'), 0);
       return ch;
     },
-    unsubscribe: async () => 'ok',
-    send: async () => 'ok',
-    track: async () => 'ok',
+    unsubscribe: async () => {
+      bc?.close();
+      bc = null;
+      return 'ok';
+    },
+    send: async (msg: { type?: string; event?: string; payload?: unknown }) => {
+      if (msg?.type === 'broadcast') open()?.postMessage({ kind: 'broadcast', event: msg.event, payload: msg.payload });
+      return 'ok';
+    },
+    track: async (meta?: unknown) => {
+      open()?.postMessage({ kind: 'join', key, meta: meta ?? {} });
+      return 'ok';
+    },
     untrack: async () => 'ok',
     presenceState: () => ({}),
   };
@@ -852,9 +891,11 @@ export const createDemoClient = () => {
     },
     removeChannel: async (ch: any) => {
       channels.delete(ch);
+      await ch?.unsubscribe?.();
       return 'ok';
     },
     removeAllChannels: async () => {
+      await Promise.all([...channels].map((ch) => ch?.unsubscribe?.()));
       channels.clear();
       return [];
     },

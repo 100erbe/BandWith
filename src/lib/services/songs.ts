@@ -617,3 +617,27 @@ export const replaceSetlistSongs = async (
     return { error };
   }
 };
+
+/**
+ * Save a new song order for a setlist in one request (one transaction), so
+ * band members' apps reload it once, already in the new order. `rows` come
+ * from reorderRows (src/lib/stageLive.ts). Admins only (RLS, migration 074).
+ */
+export const saveSetlistOrder = async (
+  rows: { id: string; setlist_id: string; song_id: string; position: number; set_number: number }[]
+): Promise<{ error: Error | null }> => {
+  if (rows.length === 0) return { error: null };
+  try {
+    const { data, error } = await supabase
+      .from('setlist_songs')
+      .upsert(rows, { onConflict: 'id', defaultToNull: false })
+      .select('id');
+    if (error) throw error;
+    if (!data || data.length !== rows.length) {
+      throw new Error('The new order could not be saved. You may not have permission.');
+    }
+    return { error: null };
+  } catch (error: any) {
+    return { error };
+  }
+};
