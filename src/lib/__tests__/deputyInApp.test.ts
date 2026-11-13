@@ -11,7 +11,7 @@ import {
   savePendingDeputyToken,
 } from '../deputyClaim';
 import { notificationTarget } from '../notificationRouting';
-import { listMyDeputyGigs, type DeputyGig } from '../services/deputies';
+import { listMyDeputyGigs, unlinkDeputy, type DeputyGig } from '../services/deputies';
 import { deputyClaimMessage } from '@/app/components/deputy/DeputyGigsScreen';
 import { sortDeputyGigs } from '@/app/components/deputy/DeputyGigsList';
 
@@ -75,6 +75,12 @@ describe('deputy link → app', () => {
     expect(a.data.gigs).toHaveLength(1);
     rpc.mockResolvedValueOnce({ data: null, error: null });
     expect((await listMyDeputyGigs()).data).toEqual({ bands: [], gigs: [] });
+  });
+
+  it('an admin unlinks the deputy account', async () => {
+    rpc.mockResolvedValueOnce({ data: 'unlinked', error: null });
+    expect((await unlinkDeputy('d1')).data).toBe('unlinked');
+    expect(rpc).toHaveBeenLastCalledWith('bw_deputy_unlink', { p_deputy_id: 'd1' });
   });
 
   it('puts open requests first and the closed ones last, newest first', () => {

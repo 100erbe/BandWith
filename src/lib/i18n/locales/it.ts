@@ -3270,6 +3270,15 @@ const dict: Dictionary = {
   "Requests from {count} bands": "Richieste da {count} band",
   "{band} calls you as a deputy. Create an account or sign in: your gigs with them will be in the app.": "{band} ti chiama come sostituto. Crea un account o accedi: le tue date con loro saranno nell'app.",
   "Open deputy gigs": "Apri date da sostituto",
+  // Deputy unlink (087)
+  "Could not unlink. Try again.": "Scollegamento non riuscito. Riprova.",
+  "Unlinked. Send the next request by message: its new link lets them join again from the app.": "Scollegato. Manda la prossima richiesta via messaggio: con il nuovo link potrà ricollegarsi dall'app.",
+  "Unlink BandWith account?": "Scollegare l'account BandWith?",
+  "Unlink": "Scollega",
+  "{name}'s account stops getting requests in the app and no longer sees this band's gigs.": "L'account di {name} non riceve più richieste nell'app e non vede più i gig di questa band.",
+  "Links already sent stop working. Send the next request by message: opening its new link from the app links the right account.": "I link già inviati smettono di funzionare. Manda la prossima richiesta via messaggio: aprendo il nuovo link dall'app si collega l'account giusto.",
+  "{name} answers in the app: requests and changes reach them as notifications.": "{name} risponde nell'app: richieste e modifiche gli arrivano come notifiche.",
+  "Unlink account": "Scollega account",
 };
 
 export default dict;

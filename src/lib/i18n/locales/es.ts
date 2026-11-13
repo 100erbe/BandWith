@@ -3270,6 +3270,15 @@ const dict: Dictionary = {
   "Requests from {count} bands": "Solicitudes de {count} bandas",
   "{band} calls you as a deputy. Create an account or sign in: your gigs with them will be in the app.": "{band} te llama como sustituto. Crea una cuenta o inicia sesión: tus bolos con ellos estarán en la app.",
   "Open deputy gigs": "Abrir bolos como sustituto",
+  // Deputy unlink (087)
+  "Could not unlink. Try again.": "No se pudo desvincular. Inténtalo de nuevo.",
+  "Unlinked. Send the next request by message: its new link lets them join again from the app.": "Desvinculado. Envía la próxima solicitud por mensaje: con el nuevo enlace podrá volver a vincularse desde la app.",
+  "Unlink BandWith account?": "¿Desvincular la cuenta de BandWith?",
+  "Unlink": "Desvincular",
+  "{name}'s account stops getting requests in the app and no longer sees this band's gigs.": "La cuenta de {name} deja de recibir solicitudes en la app y ya no ve los conciertos de esta banda.",
+  "Links already sent stop working. Send the next request by message: opening its new link from the app links the right account.": "Los enlaces ya enviados dejan de funcionar. Envía la próxima solicitud por mensaje: al abrir el nuevo enlace desde la app se vincula la cuenta correcta.",
+  "{name} answers in the app: requests and changes reach them as notifications.": "{name} responde en la app: las solicitudes y los cambios le llegan como notificaciones.",
+  "Unlink account": "Desvincular cuenta",
 };
 
 export default dict;

@@ -243,6 +243,15 @@ export async function pingDeputyRequest(requestId: string) {
   return { data: (data as string | null) ?? null, error };
 }
 
+/**
+ * Admin: clears the deputy's BandWith account (087). Their open links stop
+ * working; the next request sent by message carries a new one.
+ */
+export async function unlinkDeputy(deputyId: string) {
+  const { data, error } = await supabase.rpc('bw_deputy_unlink', { p_deputy_id: deputyId });
+  return { data: (data as 'unlinked' | 'not_linked' | null) ?? null, error };
+}
+
 export type DeputyClaimStatus = 'linked' | 'already' | 'taken' | 'member' | 'not_found';
 export interface DeputyClaimResult {
   status: DeputyClaimStatus;

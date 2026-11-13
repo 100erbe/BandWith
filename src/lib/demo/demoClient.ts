@@ -862,6 +862,13 @@ const rpc = (fn: string, args: Row = {}) => {
     case 'bw_deputy_request_ping':
       data = 'sent';
       break;
+    case 'bw_deputy_unlink': {
+      const d = table('band_deputies').find((x) => x.id === args.p_deputy_id);
+      data = d?.user_id ? 'unlinked' : 'not_linked';
+      if (d) d.user_id = null;
+      persist();
+      break;
+    }
     case 'bw_deputy_claim':
       data = { status: 'already', band_name: 'The Late Shift', deputy_name: DEMO_USER.user_metadata.full_name };
       break;
