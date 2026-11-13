@@ -12,6 +12,8 @@ import { getEventPrivate } from '@/lib/services/eventPrivate';
 import { toLocalDateString } from '@/lib/dates';
 import { useT, dateName, intlLocale, localDecimal } from '@/lib/i18n';
 import { revenueByType, type GigType, type RevenueEvent } from '@/lib/revenueByType';
+import { useAuth } from '@/lib/AuthContext';
+import { MemberStatsCard } from '@/app/components/dashboard/MemberStatsCard';
 
 interface AnalyticsViewProps {
   onClose: () => void;
@@ -96,6 +98,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
   useCurrency(); // re-render money labels when the band currency changes
   const t = useT();
   const { selectedBand } = useBand();
+  const { user } = useAuth();
   // Skip the query when Home's numbers were handed in.
   const { data: fetchedData, loading: fetching } = useDashboardData(sharedData ? null : selectedBand?.id || null);
   const dashboardData = sharedData ?? fetchedData;
@@ -322,6 +325,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
                 )}
               </Card>
             )}
+
+            {/* Per member this year (admins: whole band; members: themselves) */}
+            {bandId && <MemberStatsCard bandId={bandId} isAdmin={isAdmin} currentUserId={user?.id} />}
           </>
         )}
       </div>

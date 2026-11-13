@@ -3140,6 +3140,16 @@ const dict: Dictionary = {
   "{count} gigs": "{count} gig",
   "Revenue by event type": "Ricavi per tipo di evento",
   "No booked gigs this year yet.": "Nessun gig confermato quest'anno.",
+  "Your year": "Il tuo anno",
+  "{count} played": "{count} suonati",
+  "{count} coming up": "{count} in arrivo",
+  "{count} rehearsal": "{count} prova",
+  "{count} rehearsals": "{count} prove",
+  "{count} declined": "{count} rifiutati",
+  "{count} awaiting reply": "{count} in attesa di risposta",
+  "{amount} not paid yet": "{amount} ancora da pagare",
+  "Former member": "Ex membro",
+  "Couldn't load member stats.": "Impossibile caricare le statistiche dei membri.",
 };
 
 export default dict;
