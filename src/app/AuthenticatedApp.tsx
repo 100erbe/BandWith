@@ -4085,7 +4085,7 @@ export default function AuthenticatedApp() {
 
       <AnimatePresence>
         {selectedChat && selectedChat.uuid && (
-          <ChatDetailModal key="chat-detail" chat={{ id: selectedChat.uuid, type: selectedChat.type, name: selectedChat.name, initials: selectedChat.initials, avatarUrl: selectedChat.avatarUrl, unread: selectedChat.unread, members: selectedChat.members, isOnline: selectedChat.isOnline, bandLabel: selectedChat.bandLabel ?? convertedChats.find((c) => c.uuid === selectedChat.uuid)?.bandLabel }} onClose={() => { setSelectedChat(null); refetchChats?.(); }} />
+          <ChatDetailModal key="chat-detail" chat={{ id: selectedChat.uuid, type: selectedChat.type, name: selectedChat.name, initials: selectedChat.initials, avatarUrl: selectedChat.avatarUrl, unread: selectedChat.unread, members: selectedChat.members, isOnline: selectedChat.isOnline, bandLabel: selectedChat.bandLabel ?? convertedChats.find((c) => c.uuid === selectedChat.uuid)?.bandLabel }} onClose={() => { setSelectedChat(null); refetchChats?.(); }} onOpenEvent={(eventId) => { setSelectedChat(null); refetchChats?.(); void navigateToEvent(eventId); }} />
         )}
         {selectedChat && !selectedChat.uuid && (
           <motion.div key="demo-chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-6" onClick={() => setSelectedChat(null)}>

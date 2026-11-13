@@ -3170,6 +3170,7 @@ const dict: Dictionary = {
   "Nothing to sign": "Nichts zu unterschreiben",
   "Nothing due this week": "Diese Woche nichts fällig",
   "All ready": "Alle bereit",
+  "Cancelled": "Abgesagt",
 };
 
 export default dict;
