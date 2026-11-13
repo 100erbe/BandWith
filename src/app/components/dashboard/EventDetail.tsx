@@ -56,6 +56,9 @@ import {
 import { FeePayoutsContent } from '@/app/components/event/FeePayoutsContent';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { useEventTasks } from '@/lib/services/eventTasks';
+import { isGigOver, isLiveDay } from '@/lib/gigTiming';
+import { computeReadiness } from '@/lib/readiness';
+import { ReadinessSection } from '@/app/components/event/ReadinessSection';
 import {
   dayBefore,
   daysUntil,
@@ -96,6 +99,8 @@ interface EventDetailProps {
   /** Something on the event was saved from here (personal gig "Paid"). */
   onEventUpdated?: () => void;
   memberFee?: number;
+  /** Opened with "Go live": start in Stage mode. */
+  startInStage?: boolean;
   isAdmin?: boolean;
   currentUserId?: string;
 }
@@ -260,6 +265,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   onNotifyConflict,
   onEventUpdated,
   memberFee,
+  startInStage,
   isAdmin = true,
   currentUserId,
 }) => {
@@ -376,13 +382,13 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     };
   }, [event.setlistId, isPersonalGig, t]);
 
-  const isPast = useMemo(() => {
-    if (!event.date) return false;
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const normDate = event.date.includes('T') ? event.date.split('T')[0] : event.date;
-    return normDate < todayStr;
-  }, [event.date]);
+  // Times of this gig on its day; `time` is a 19:00 default when none was set.
+  const gigTimes = useMemo(
+    () => ({ date: event.date, start: event.timeSet === false ? undefined : event.time, end: event.endTime }),
+    [event.date, event.timeSet, event.time, event.endTime],
+  );
+  // Past once its day is over, or once a show that runs past midnight ends.
+  const isPast = useMemo(() => isGigOver(gigTimes), [gigTimes]);
 
   // Status bar icons follow the hero colour while the hero sits under the bar
   // (white on rehearsal blue / personal pink / past), then the theme default.
@@ -427,12 +433,12 @@ export const EventDetail: React.FC<EventDetailProps> = ({
 
   // Stage mode is offered for upcoming band gigs and promoted (filled) on gig day.
   const canStage = eventType === 'gig' && !isPast && !isPersonalGig;
-  const isGigDay = (() => {
-    if (!event.date) return false;
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    return (event.date.includes('T') ? event.date.split('T')[0] : event.date) === todayStr;
-  })();
+  const isGigDay = isLiveDay(gigTimes);
+  // "Go live" from Home opens the gig straight in Stage mode (once, on open).
+  useEffect(() => {
+    if (startInStage && canStage) setIsStageOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // iPhone Duo: Stage mode joins the rail's Side Actions; on gig day it is
   // the screen's primary action (filled).
   const stageInRail = useRailAction(
@@ -738,6 +744,21 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const depositDue = depositAmount > 0 && !event.depositPaid;
   const depositPct = bandFeeNum > 0 && depositAmount > 0 ? Math.round((depositAmount / bandFeeNum) * 100) : null;
   const allPaid = activeMembers.length > 0 && activeMembers.every((m) => !!m.paidAt);
+
+  // Show readiness (upcoming band gigs). Shown once the lineup and setlist
+  // are loaded, so it never flashes "no setlist" on the way in.
+  const showReadiness = eventType === 'gig' && !isPast && !isPersonalGig;
+  const readinessLoaded = !setlistLoading && !(membersLoading && !dbMembers) && !membersError;
+  // A plain call: this runs after the early return above, where no hook may be.
+  const readiness = computeReadiness({
+    timeSet: gigTimes.start != null,
+    venueSet: venueName !== 'TBD',
+    lineup: resolvedMembers,
+    setlistSongs: setlistSongs.length,
+    tasks: eventTasks,
+    // The deposit is the band's money: admins only.
+    deposit: isAdmin ? { amount: depositAmount, paid: !!event.depositPaid } : undefined,
+  });
 
   const confirmedExact = resolvedMembers.filter((m) => m.status === 'confirmed').length;
   const songSeconds = setlistSongs.map((s) => parseDurationSeconds(s.duration));
@@ -1092,6 +1113,17 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               )}
               {isPersonalGig && <PersonalPrivacyCard />}
 
+              {/* ─── SHOW READINESS (upcoming band gig) ─── */}
+              {showReadiness && readinessLoaded && (
+                <ReadinessSection
+                  readiness={readiness}
+                  onOpen={{
+                    lineup: memberCount > 0 ? () => setActiveSheet('lineup') : undefined,
+                    setlist: setlistSongs.length > 0 ? () => setActiveSheet('setlist') : undefined,
+                  }}
+                />
+              )}
+
               {/* ─── QUOTE (Figma 23:862) ─── */}
               {isQuote && (
                 <>
@@ -1422,7 +1454,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                       >
                         <DotCheckbox
                           checked={task.is_completed}
-                          activeColor={isRehearsal ? 'var(--accent-rehearsal)' : 'var(--foreground)'}
+                          activeColor={isRehearsal ? 'var(--accent-rehearsal)' : 'var(--fg)'}
                           inactiveColor="var(--border)"
                         />
                         <span className="flex-1 min-w-0 flex flex-col gap-0.5">
@@ -2007,7 +2039,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
             steps={[
               { label: t('Load in'), time: event.loadInTime, display: t('TBD') },
               { label: t('Soundcheck'), time: event.soundcheckTime, display: t('TBD') },
-              { label: t('Show'), time: event.time, display: t('TBD') },
+              { label: t('Show'), time: gigTimes.start, display: t('TBD') },
               { label: t('End'), time: event.endTime, display: t('TBD') },
             ]}
             songs={setlistSongs}

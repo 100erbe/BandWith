@@ -18,6 +18,7 @@ import { useEventDrafts, type EventDraft } from '@/lib/wizardDrafts';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { openMaps } from '@/app/components/ui/MapsLink';
 import { BandDeskMode, type DeskActionItem, type DeskGig } from '@/app/components/duo';
+import { NextGigReadiness } from '@/app/components/dashboard/NextGigReadiness';
 
 interface DashboardData {
   eventStats: {
@@ -59,6 +60,8 @@ interface HomeViewProps {
   onViewChange?: (tab: string) => void;
   onFilterEvents?: (filter: string) => void;
   onSelectEvent?: (eventId: string) => void;
+  /** "Go live" on the next gig: opens it in Stage mode. */
+  onGoLive?: (eventId: string) => void;
   isAdmin?: boolean;
   isSolo?: boolean;  // PLG: Solo mode hides collaborative features
   rehearsalPolls?: RehearsalPoll[];
@@ -201,6 +204,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onViewChange,
   onFilterEvents,
   onSelectEvent,
+  onGoLive,
   isAdmin: _isAdminProp = true,
   isSolo = false,
   rehearsalPolls = [],
@@ -553,6 +557,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
   // Personal gigs (band_id null) read as "personal", same rule as EventsView.
   const upcomingKind = (event: any) =>
     !isRehearsalEvent(event) && !event.band_id ? 'personal' as const : eventKindOf(event);
+  // First band gig in Upcoming: it gets the readiness line and "Go live".
+  const nextGigIndex = upcomingGigsAndRehearsals.findIndex((e: any) => upcomingKind(e) === 'gig');
 
   const venueOf = (event: any): string =>
     (event.venue_name || event.venueName || (typeof event.location === 'string' && event.location !== 'TBD' ? event.location.split(',')[0].trim() : '') || '').trim();
@@ -797,7 +803,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
               const rawDate = event.event_date || event.date;
               const d = rawDate ? parseLocalDate(rawDate) : null;
               const valid = d && !isNaN(d.getTime());
-              return (
+              const eventId: string | undefined = event.eventId || event.id;
+              const open = () => {
+                if (onSelectEvent && eventId) onSelectEvent(eventId);
+                else onViewChange?.('Events');
+              };
+              const row = (
                 <UpcomingRow
                   key={event.id || event.eventId || index}
                   kind={kind}
@@ -807,14 +818,22 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   day={valid ? d!.getDate() : '–'}
                   month={valid ? dateName(d!, { month: 'short' }) : t('TBD')}
                   value={upcomingValue(event)}
-                  onClick={() => {
-                    if (onSelectEvent && (event.id || event.eventId)) {
-                      onSelectEvent(event.eventId || event.id);
-                    } else {
-                      onViewChange?.('Events');
-                    }
-                  }}
+                  onClick={open}
                 />
+              );
+              // The next band gig shows its readiness and "Go live" (Figma "Phone · Next").
+              if (index !== nextGigIndex || !eventId) return row;
+              return (
+                <div key={event.id || event.eventId || index} className="flex flex-col gap-3">
+                  {row}
+                  <NextGigReadiness
+                    gig={{ ...event, eventId }}
+                    lineup={eventMembersMap ? eventMembersMap[eventId] ?? [] : undefined}
+                    isAdmin={!!isAdmin}
+                    onOpen={open}
+                    onGoLive={onGoLive ? () => onGoLive(eventId) : undefined}
+                  />
+                </div>
               );
             })}
           </div>

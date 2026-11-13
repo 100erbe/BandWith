@@ -8,6 +8,7 @@ import { HeaderAction } from '@/app/components/bw/Screen';
 import { RailCover, useRailTone } from '@/lib/railActions';
 import { setStatusBarTone } from '@/lib/systemBars';
 import { useT } from '@/lib/i18n';
+import { timelineDates } from '@/lib/gigTiming';
 
 export interface StageStep {
   label: string;
@@ -49,16 +50,6 @@ const to24h = (time?: string): string => {
   return m ? `${m[1].padStart(2, '0')}:${m[2]}` : '';
 };
 
-const toDate = (date?: string, time?: string): Date | null => {
-  if (!date || !time) return null;
-  const m = time.match(/^(\d{1,2}):(\d{2})/);
-  // Read YYYY-MM-DD as a local calendar day: new Date('2026-12-12') is UTC
-  // midnight and lands on the previous day west of Greenwich.
-  const ymd = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!m || !ymd) return null;
-  return new Date(+ymd[1], +ymd[2] - 1, +ymd[3], parseInt(m[1], 10), parseInt(m[2], 10), 0, 0);
-};
-
 /**
  * Stage mode: an OLED-black, glanceable view for gig day. Big times, the next
  * step highlighted, the setlist in large type. No decoration and no looping
@@ -92,16 +83,16 @@ export const StageMode: React.FC<StageModeProps> = ({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const nextIndex = useMemo(() => {
-    const idx = steps.findIndex((s) => {
-      const at = toDate(date, s.time);
-      return at ? at.getTime() > now.getTime() : false;
-    });
-    return idx;
-  }, [steps, date, now]);
+  // Steps in order on the gig day; an end after midnight lands on the next day.
+  const stepDates = useMemo(() => timelineDates(date, steps.map((s) => s.time)), [date, steps]);
+
+  const nextIndex = useMemo(
+    () => stepDates.findIndex((at) => (at ? at.getTime() > now.getTime() : false)),
+    [stepDates, now],
+  );
 
   const isDone = (i: number) => {
-    const at = toDate(date, steps[i].time);
+    const at = stepDates[i];
     return at ? at.getTime() <= now.getTime() : false;
   };
 
