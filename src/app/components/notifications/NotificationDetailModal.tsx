@@ -36,6 +36,9 @@ import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
 import { haptic } from '@/lib/haptics';
 import { t, useT, intlLocale } from '@/lib/i18n';
 import { inviteFeeToShow } from '@/lib/inviteFee';
+import { useAuth } from '@/lib/AuthContext';
+import { useLineupSoFar } from '@/app/hooks/useLineupSoFar';
+import { LineupSoFar } from '@/app/components/event/LineupSoFar';
 
 /** Calendar item fields the gig-invitation page reads (subset of EventItem). */
 export interface NotificationCalendarEvent extends CalendarEventLike {
@@ -280,6 +283,12 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
     : autoIndex !== null
       ? allNotifications[autoIndex]
       : notification;
+
+  // Gig invitation: who else is on it so far (names, parts, answers; no fees).
+  const { user: authUser } = useAuth();
+  const inviteEventId =
+    detailNotif?.type === 'event_invite' && detailNotif.data?.event_id ? String(detailNotif.data.event_id) : null;
+  const inviteLineup = useLineupSoFar(inviteEventId, detailNotif ? notificationBandId(detailNotif) : null, authUser?.id);
 
   // Auto-mark notification as read when viewed in detail (not the one the
   // open display shows by itself next to the list).
@@ -562,7 +571,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     const hasEventData = !!d.event_date;
                     const hasGenericFields = !!(d.invitee_email || d.inviter_name || d.member_name);
 
-                    if (!hasEventData && !hasGenericFields) return null;
+                    if (!hasEventData && !hasGenericFields) return inviteLineup ? <LineupSoFar lineup={inviteLineup} /> : null;
 
                     const isInvite = detailNotif.type === 'event_invite';
                     const eventId = d.event_id ? String(d.event_id) : null;
@@ -633,6 +642,8 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                           {d.inviter_name && <KV k={t('Invited by')} v={String(d.inviter_name)} />}
                           {d.member_name && <KV k={t('Member')} v={String(d.member_name)} />}
                         </Card>
+
+                        {isInvite && inviteLineup && <LineupSoFar lineup={inviteLineup} />}
 
                         {canCheckConflicts &&
                           (conflicts.length > 0 ? (
