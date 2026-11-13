@@ -20,7 +20,7 @@ const CONTEXT_CALL = /\bt\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*,\s*
 const usedKeys = (() => {
   const keys = new Map<string, string>();
   for (const [file, text] of Object.entries(SOURCES)) {
-    if (!text.includes("from '@/lib/i18n'")) continue;
+    if (!text.includes("from '@/lib/i18n'") && !text.includes('from "@/lib/i18n"')) continue;
     for (const m of text.matchAll(CALL)) {
       const key = unescape(m[1] ?? m[2]);
       if (!keys.has(key)) keys.set(key, file);

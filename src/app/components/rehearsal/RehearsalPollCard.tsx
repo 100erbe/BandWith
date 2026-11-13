@@ -47,7 +47,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
   const [votingOptionId, setVotingOptionId] = useState<string | null>(null);
   const [finalizingOptionId, setFinalizingOptionId] = useState<string | null>(null);
   const [showLocationInput, setShowLocationInput] = useState<string | null>(null); // optionId when admin clicks lock-in
-  const [finalLocation, setFinalLocation] = useState('Band Practice Space');
+  const [finalLocation, setFinalLocation] = useState(() => t('Band Practice Space'));
   const [dismissing, setDismissing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);

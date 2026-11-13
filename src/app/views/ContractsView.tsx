@@ -219,7 +219,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
     const client = ev.client_name || ev.venue_name;
     if (client) setFormClientName(client);
     if (ev.client_email) setFormClientEmail(ev.client_email);
-    if (!formTitle.trim()) setFormTitle(`${formType === 'rider' ? 'Technical rider' : 'Performance agreement'} · ${ev.title}`);
+    if (!formTitle.trim()) setFormTitle(`${formType === 'rider' ? t('Technical rider') : t('Performance agreement')} · ${ev.title}`);
   };
 
   // Upcoming gigs to link, loaded when the form opens.

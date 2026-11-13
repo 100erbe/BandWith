@@ -51,7 +51,8 @@ import { haptic } from '@/lib/haptics';
 import { LeaveWizardSheet } from '@/app/components/bw/LeaveWizardSheet';
 import { useLeadingCompanion } from '@/app/components/duo';
 import { LiveGigPreview } from '@/app/components/duo/previews/LiveGigPreview';
-import { useT, intlLocale } from '@/lib/i18n';
+import { useT, intlLocale, getLocale } from '@/lib/i18n';
+import { builtinText } from '@/lib/i18n/builtins';
 
 export interface BandMember {
   id: string;
@@ -846,14 +847,22 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const getEffectiveTitle = useCallback(() => {
     if (details.title.trim()) return details.title.trim();
-    const typeLabel = eventType ? eventType.charAt(0).toUpperCase() + eventType.slice(1) : 'Event';
+    const rawLabel = eventType ? eventType.charAt(0).toUpperCase() + eventType.slice(1) : 'Event';
+    // Saved as the title: English as before, otherwise in the app language.
+    const typeLabel =
+      getLocale() === 'en'
+        ? rawLabel
+        : eventType
+          ? t(EVENT_TYPE_OPTIONS.find(o => o.value === eventType)?.label ?? rawLabel)
+          : t('Event');
     if (details.clientName.trim()) {
       return `${typeLabel} - ${details.clientName.trim()}`;
     }
     const suffix = modalCategory === 'quote' ? 'Quote' : 'Gig';
     // Avoid "Gig Gig" when the default event type is already "gig".
-    return typeLabel === suffix ? `New ${suffix.toLowerCase()}` : `${typeLabel} ${suffix}`;
-  }, [details.title, details.clientName, eventType, modalCategory]);
+    if (rawLabel === suffix) return modalCategory === 'quote' ? t('New quote') : t('New gig');
+    return modalCategory === 'quote' ? t('{type} Quote', { type: typeLabel }) : t('{type} Gig', { type: typeLabel });
+  }, [details.title, details.clientName, eventType, modalCategory, t]);
 
   const handleNext = () => {
     if (step < STEPS.length - 1) setStep(step + 1);
@@ -1081,7 +1090,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         return [
           {
             uid: `set-${Date.now()}`,
-            title: 'Set 1',
+            title: t('Set {n}', { n: 1 }),
             songs: [
               {
                 uid: `song-${Date.now()}`,
@@ -1124,7 +1133,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         return [
           {
             uid: `set-${Date.now()}`,
-            title: 'Set 1',
+            title: t('Set {n}', { n: 1 }),
             songs: picked.map(p => ({
               uid: `song-${Date.now()}-${Math.random().toString(36).slice(2)}`,
               title: p.title,
@@ -1184,7 +1193,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
     const sets = Array.from(groupedBySet.entries()).map(([num, songs]) => ({
       uid: `set-${Date.now()}-${num}`,
-      title: `Set ${num}`,
+      title: t('Set {n}', { n: num }),
       songs,
     }));
 
@@ -1194,7 +1203,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const addSet = () => {
     setSetlist(prev => [
       ...prev,
-      { uid: `set-${Date.now()}`, title: `Set ${prev.length + 1}`, songs: [] },
+      { uid: `set-${Date.now()}`, title: t('Set {n}', { n: prev.length + 1 }), songs: [] },
     ]);
   };
 
@@ -1772,10 +1781,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <Selector
             key={loc}
             size="sm"
-            selected={details.venue === loc}
-            onClick={() => setDetails(prev => ({ ...prev, venue: loc }))}
+            selected={details.venue === builtinText(loc)}
+            onClick={() => setDetails(prev => ({ ...prev, venue: builtinText(loc) }))}
           >
-            {loc}
+            {builtinText(loc)}
           </Selector>
         ))}
       </div>

@@ -44,7 +44,8 @@ import { toLocalDateString } from '../../../lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { personName, personInitials } from '@/lib/personName';
 import { parseGenres } from '@/lib/songGenres';
-import { t, useT, intlLocale } from '@/lib/i18n';
+import { t, useT, intlLocale, getLocale } from '@/lib/i18n';
+import { builtinText } from '@/lib/i18n/builtins';
 
 interface TaskTemplateDB {
   id: string;
@@ -514,7 +515,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   const getEffectiveTitle = useCallback(() => {
     if (data.title && data.title.trim()) return data.title.trim();
     const opt = TYPE_OPTIONS.find(o => o.value === data.type);
-    return opt ? `${opt.label} Rehearsal` : 'Rehearsal';
+    // Saved as the title: English as before, otherwise in the app language.
+    return opt ? t('{type} Rehearsal', { type: getLocale() === 'en' ? opt.label : t(opt.label) }) : t('Rehearsal');
   }, [data.title, data.type]);
 
   // Navigation
@@ -790,7 +792,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
     const snapshot: RehearsalSetlistSnapshotFinal = {
       id: existingSnapshot?.id || `snap-${Date.now()}`,
-      name: 'Rehearsal Setlist',
+      name: t('Rehearsal Setlist'),
       createdAt: existingSnapshot?.createdAt || new Date().toISOString(),
       createdBy: existingSnapshot?.createdBy || currentUserInitials,
       sources: allSources,
@@ -1180,8 +1182,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
       {/* Quick-select chips */}
       <div className="flex flex-wrap gap-2 -mt-1">
         {['Band HQ', 'Studio A', 'Home Studio', 'TBD'].map((loc) => (
-          <Selector key={loc} selected={data.location === loc} onClick={() => setData(prev => ({ ...prev, location: loc }))}>
-            {loc}
+          <Selector key={loc} selected={data.location === builtinText(loc)} onClick={() => setData(prev => ({ ...prev, location: builtinText(loc) }))}>
+            {builtinText(loc)}
           </Selector>
         ))}
       </div>
@@ -1753,7 +1755,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                     }
                   >
                     <DotCheck checked={checked} className={checked ? 'text-foreground' : 'text-muted-foreground'} />
-                    <span className={cn('bw-body-sm truncate', !checked && 'text-muted-foreground')}>{item}</span>
+                    <span className={cn('bw-body-sm truncate', !checked && 'text-muted-foreground')}>{builtinText(item)}</span>
                   </button>
                 );
               })}

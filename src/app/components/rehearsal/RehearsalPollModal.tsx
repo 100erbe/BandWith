@@ -90,7 +90,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
     if (!isOpen) return;
 
     if (initialProposal) {
-      setTitle(initialProposal.title || 'Rehearsal Availability Poll');
+      setTitle(initialProposal.title || t('Rehearsal Availability Poll'));
       setNotes(cleanNotesWithoutDays(initialProposal.notes));
 
       // If proposal had preferred days, select them in preset generator
@@ -126,7 +126,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
         setTimeSlots([]);
       }
     } else {
-      setTitle('Upcoming Rehearsal Availability');
+      setTitle(t('Upcoming Rehearsal Availability'));
       setNotes('');
       setTimeSlots([]);
     }

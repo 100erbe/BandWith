@@ -2,6 +2,7 @@ import { supabase, getSafeUser } from '@/lib/supabase';
 import { shareFile, type FileShareResult } from '@/lib/nativeFiles';
 import { todayLocal } from '@/lib/dates';
 import { EVENT_MEMBER_COLUMNS, withMoney } from '@/lib/services/eventMemberMoney';
+import { t } from '@/lib/i18n';
 
 /**
  * "Export my data": a JSON copy of what the signed-in user owns.
@@ -99,5 +100,5 @@ export const dataExportFileName = () => `bandwith-export-${todayLocal()}.json`;
 export const exportMyData = async (): Promise<FileShareResult> => {
   const data = await buildMyDataExport();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  return shareFile(blob, dataExportFileName(), { title: 'BandWith data export' });
+  return shareFile(blob, dataExportFileName(), { title: t('BandWith data export') });
 };

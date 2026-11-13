@@ -1,4 +1,5 @@
 import { supabase, getSafeUser } from '@/lib/supabase';
+import { t } from '@/lib/i18n';
 
 /**
  * Personal privacy preferences, stored on the user's own profile row in
@@ -25,6 +26,10 @@ export type PrivacyPrefsLoad =
 
 export const PRIVACY_UNAVAILABLE_MESSAGE =
   'Privacy settings aren’t available on this server yet. Try again after the next update.';
+
+/** The message above in the app language (English: the same text). */
+const privacyUnavailableMessage = () =>
+  t('Privacy settings aren’t available on this server yet. Try again after the next update.');
 
 type PgLikeError = { code?: string; message?: string } | null | undefined;
 
@@ -59,11 +64,11 @@ export const loadPrivacyPrefs = async (): Promise<PrivacyPrefsLoad> => {
       .maybeSingle();
     if (error) {
       if (isMissingPrivacyColumn(error)) return { status: 'unavailable' };
-      return { status: 'error', error: toError(error, 'Could not load privacy settings') };
+      return { status: 'error', error: toError(error, t('Could not load privacy settings')) };
     }
     return { status: 'ready', prefs: parsePrivacyPrefs(data?.privacy) };
   } catch (e) {
-    return { status: 'error', error: toError(e, 'Could not load privacy settings') };
+    return { status: 'error', error: toError(e, t('Could not load privacy settings')) };
   }
 };
 
@@ -81,7 +86,7 @@ export const savePrivacyPref = async <K extends keyof PrivacyPrefs>(
       .maybeSingle();
     if (readError) {
       if (isMissingPrivacyColumn(readError)) {
-        return { error: new Error(PRIVACY_UNAVAILABLE_MESSAGE), unavailable: true };
+        return { error: new Error(privacyUnavailableMessage()), unavailable: true };
       }
       throw readError;
     }
@@ -91,12 +96,12 @@ export const savePrivacyPref = async <K extends keyof PrivacyPrefs>(
     const { error } = await supabase.from('profiles').update({ privacy: merged }).eq('id', user.id);
     if (error) {
       if (isMissingPrivacyColumn(error)) {
-        return { error: new Error(PRIVACY_UNAVAILABLE_MESSAGE), unavailable: true };
+        return { error: new Error(privacyUnavailableMessage()), unavailable: true };
       }
       throw error;
     }
     return { error: null };
   } catch (e) {
-    return { error: toError(e, 'Could not save privacy settings') };
+    return { error: toError(e, t('Could not save privacy settings')) };
   }
 };

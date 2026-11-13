@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { t } from '@/lib/i18n';
+import { builtinText } from '@/lib/i18n/builtins';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Task templates (table `task_templates`, migrations 006 / 008).
@@ -45,18 +46,19 @@ const asError = (err: unknown, fallback: string) => {
 
 const CATEGORIES: TemplateCategory[] = ['wedding', 'corporate', 'festival', 'private', 'rehearsal', 'other'];
 
-/** Normalises a DB row (tasks JSON may use snake_case or miss ids). */
+/** Normalises a DB row (tasks JSON may use snake_case or miss ids). The
+ *  starter lists' texts are shown in the app language while unchanged. */
 export const normalizeTemplate = (row: any): TaskTemplate => ({
   id: row.id,
   band_id: row.band_id,
-  name: row.name ?? '',
-  description: row.description ?? '',
+  name: builtinText(row.name ?? ''),
+  description: builtinText(row.description ?? ''),
   category: CATEGORIES.includes(row.category) ? row.category : 'other',
   is_default: !!row.is_default,
   created_at: row.created_at ?? '',
   tasks: (Array.isArray(row.tasks) ? row.tasks : []).map((task: any, i: number) => ({
     id: String(task?.id ?? `${row.id}-${i}`),
-    title: task?.title ?? '',
+    title: builtinText(task?.title ?? ''),
     dueOffset: task?.dueOffset ?? task?.due_offset ?? undefined,
     required: task?.required ?? false,
   })),
@@ -108,7 +110,7 @@ export async function updateTemplate(id: string, input: TemplateInput): Promise<
 /** Inserts a copy named "… (Copy)"; copies are never defaults. */
 export const duplicateTemplate = (template: TaskTemplate) =>
   createTemplate(template.band_id, {
-    name: `${template.name} (Copy)`,
+    name: t('{name} (Copy)', { name: template.name }),
     description: template.description,
     category: template.category,
     tasks: template.tasks.map((task) => ({ ...task })),

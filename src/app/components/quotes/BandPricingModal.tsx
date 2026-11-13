@@ -49,6 +49,7 @@ import {
 } from '@/lib/services/pricing';
 import { ONLINE_DEPOSITS_ENABLED } from '@/lib/services/pricing';
 import { t, useT, intlLocale } from '@/lib/i18n';
+import { builtinText } from '@/lib/i18n/builtins';
 
 export type PricingModalTabType = 'branding' | 'rates' | 'production' | 'services' | 'commercial';
 
@@ -526,7 +527,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
       (settings.lineup_packages[settings.lineup_packages.length - 1]?.musiciansCount || 4) + 1;
     const newPkg: LineupPackagePreset = {
       id: `pkg-${Date.now()}`,
-      name: `${nextCount}-Piece Band`,
+      name: t('{count}-Piece Band', { count: nextCount }),
       performanceType: inferPerformanceTypeFromCount(nextCount),
       musiciansCount: nextCount,
       flatPrice: nextCount * (settings.base_musician_rate || 250),
@@ -907,7 +908,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                         <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                           <input
                             type="text"
-                            value={pkg.name}
+                            value={builtinText(pkg.name)}
                             onChange={(e) => handleUpdatePackage(pkg.id, { name: e.target.value })}
                             placeholder={t('Formation name')}
                             aria-label={t('Formation name')}
@@ -918,7 +919,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                           </span>
                         </div>
                         <NumberPill
-                          label={t('{name} package price ({symbol})', { name: pkg.name || t('Formation'), symbol: currencySymbol.trim() })}
+                          label={t('{name} package price ({symbol})', { name: builtinText(pkg.name) || t('Formation'), symbol: currencySymbol.trim() })}
                           prefix={currencySymbol}
                           min="0"
                           className="w-28 shrink-0"
@@ -933,7 +934,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                           <IconButton
                             size="sm"
                             variant="ghost"
-                            label={t('Remove {name}', { name: pkg.name || t('formation') })}
+                            label={t('Remove {name}', { name: builtinText(pkg.name) || t('formation') })}
                             icon={<Trash2 />}
                             onClick={() => handleRemovePackage(pkg.id)}
                           />
@@ -959,12 +960,12 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                         <div className="flex items-center gap-3">
                           <CheckDot
                             checked={pkg.is_active}
-                            label={pkg.is_active ? t('Hide {name} in quotes', { name: pkg.name || t('formation') }) : t('Show {name} in quotes', { name: pkg.name || t('formation') })}
+                            label={pkg.is_active ? t('Hide {name} in quotes', { name: builtinText(pkg.name) || t('formation') }) : t('Show {name} in quotes', { name: builtinText(pkg.name) || t('formation') })}
                             onClick={() => handleUpdatePackage(pkg.id, { is_active: !pkg.is_active })}
                           />
                           <input
                             type="text"
-                            value={pkg.name}
+                            value={builtinText(pkg.name)}
                             onChange={(e) => handleUpdatePackage(pkg.id, { name: e.target.value })}
                             placeholder={t('Formation name')}
                             aria-label={t('Formation name')}
@@ -1203,7 +1204,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                         <div className="flex-1 min-w-0 flex flex-col gap-1">
                           <input
                             type="text"
-                            value={srv.name}
+                            value={builtinText(srv.name)}
                             aria-label={t('Service name')}
                             onChange={(e) => handleUpdateService(srv.id, { name: e.target.value })}
                             className={cn(
@@ -1211,7 +1212,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                               !srv.is_active && 'line-through text-muted-foreground',
                             )}
                           />
-                          {srv.description && <span className="bw-body-sm text-muted-foreground truncate">{srv.description}</span>}
+                          {srv.description && <span className="bw-body-sm text-muted-foreground truncate">{builtinText(srv.description)}</span>}
                         </div>
                         <Tag variant="subtle" className="mt-1.5">
                           {categoryLabel(srv.category) || srv.category}
@@ -1543,7 +1544,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden flex flex-col gap-3"
                     >
-                      <SettingRow label={t('Peak season markup')} hint="May, Jun, Sep & Oct (high-demand months)">
+                      <SettingRow label={t('Peak season markup')} hint={t('May, Jun, Sep & Oct (high-demand months)')}>
                         <NumberPill
                           label={t('Peak season markup percentage')}
                           prefix="+"
@@ -1562,7 +1563,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                           }}
                         />
                       </SettingRow>
-                      <SettingRow label={t('Off-peak season discount')} hint="Jan, Feb, Mar & Nov (off-peak incentive)">
+                      <SettingRow label={t('Off-peak season discount')} hint={t('Jan, Feb, Mar & Nov (off-peak incentive)')}>
                         <NumberPill
                           label={t('Off-peak season discount percentage')}
                           prefix="−"

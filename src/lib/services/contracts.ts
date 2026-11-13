@@ -189,7 +189,7 @@ export async function listLinkableEvents(bandId: string, fromDate = todayLocal()
       .slice(0, 12)
       .map((e) => ({
         id: e.id,
-        title: e.title || 'Untitled event',
+        title: e.title || t('Untitled event'),
         event_date: e.event_date ?? null,
         client_name: e.client_name ?? null,
         client_email: e.client_email ?? null,

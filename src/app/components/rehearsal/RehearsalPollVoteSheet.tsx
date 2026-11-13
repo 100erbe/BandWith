@@ -56,7 +56,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
   const [votingOptionId, setVotingOptionId] = useState<string | null>(null);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [showLocationInput, setShowLocationInput] = useState<string | null>(null);
-  const [finalLocation, setFinalLocation] = useState('Band Practice Space');
+  const [finalLocation, setFinalLocation] = useState(() => t('Band Practice Space'));
   const [isClearing, setIsClearing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -177,7 +177,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
       pollId: poll.id,
       winningOptionId: optionId,
       bandId: poll.band_id,
-      location: finalLocation.trim() || 'Band Practice Space',
+      location: finalLocation.trim() || t('Band Practice Space'),
       notes: poll.notes || undefined,
       adminId: currentUserId,
     });

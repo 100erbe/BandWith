@@ -1,6 +1,7 @@
 import { supabase, getSafeUser } from '../supabase';
 import { EVENT_MEMBER_COLUMNS, getEventMemberMoney, withMoney } from './eventMemberMoney';
 import { todayLocal, toLocalDateString } from '../dates';
+import { t } from '@/lib/i18n';
 
 // Types
 export type EventType = 'gig' | 'rehearsal' | 'wedding' | 'corporate' | 'private' | 'festival' | 'other';
@@ -302,7 +303,7 @@ export const createEvent = async (
       // Client-generated UUID (offline queue) makes retried creates idempotent.
       ...(typeof eventData.id === 'string' && /^[0-9a-f-]{36}$/i.test(eventData.id) ? { id: eventData.id } : {}),
       band_id: eventData.band_id,
-      title: eventData.title || 'Untitled Event',
+      title: eventData.title || t('Untitled Event'),
       event_type: eventData.event_type || 'gig',
       status: eventData.status || 'confirmed',
       event_date: eventData.event_date || todayLocal(),

@@ -80,7 +80,7 @@ export const AskDeputySheet: React.FC<{
         ? whatsappUrl(d.phone || '', text)
         : via === 'sms'
           ? smsUrl(d.phone || '', text)
-          : emailUrl(d.email || '', `${ctx.bandName}: deputy for ${ctx.eventTitle}`, text);
+          : emailUrl(d.email || '', t('{band}: deputy for {event}', { band: ctx.bandName, event: ctx.eventTitle }), text);
     setSent((s) => ({ ...s, [d.id]: true }));
     void openExternal(url);
   };

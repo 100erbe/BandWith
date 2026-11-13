@@ -11,6 +11,7 @@ import {
   type PushNotificationData,
 } from '@/lib/services/pushNotifications';
 import { Capacitor } from '@capacitor/core';
+import { t } from '@/lib/i18n';
 
 interface UsePushNotificationsReturn {
   isSupported: boolean;
@@ -53,26 +54,26 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
       if (Capacitor.getPlatform() === 'android') {
         await createNotificationChannel(
           'bandwith_general',
-          'General Notifications',
-          'General app notifications',
+          t('General Notifications'),
+          t('General app notifications'),
           4
         );
         await createNotificationChannel(
           'bandwith_messages',
-          'Messages',
-          'Chat messages and direct messages',
+          t('Messages'),
+          t('Chat messages and direct messages'),
           5
         );
         await createNotificationChannel(
           'bandwith_events',
-          'Event Notifications',
-          'Notifications about events and gigs',
+          t('Event Notifications'),
+          t('Notifications about events and gigs'),
           5
         );
         await createNotificationChannel(
           'bandwith_finance',
-          'Finance & Payments',
-          'Notifications about quotes and payments',
+          t('Finance & Payments'),
+          t('Notifications about quotes and payments'),
           4
         );
       }
