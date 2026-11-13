@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 import { parseLocalDate, toLocalDateString, todayLocal } from '../dates';
-import { t } from '@/lib/i18n';
+import { t, translate, intlLocale, type Locale } from '@/lib/i18n';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Contracts & riders (table `contracts`, migration 006).
@@ -201,7 +201,7 @@ export async function listLinkableEvents(bandId: string, fromDate = todayLocal()
 }
 
 /** Starting text for "Notes & terms"; the band edits it to fit the gig. */
-export const STANDARD_TERMS: Record<ContractType, string> = {
+const STANDARD_TERM_LINES: Record<ContractType, string[]> = {
   contract: [
     'Performance: the band performs live at the event on the date and times agreed.',
     'Fee & payment: a deposit confirms the booking; the balance is due on the event date. The deposit is non-refundable if the client cancels.',
@@ -211,7 +211,7 @@ export const STANDARD_TERMS: Record<ContractType, string> = {
     'Breaks & overtime: sets include short breaks; extra time on the day is charged at the agreed rate.',
     'Recordings: no professional audio or video recording without the band’s written consent.',
     'Force majeure: neither party is liable for cancellations caused by events beyond their control.',
-  ].join('\n\n'),
+  ],
   rider: [
     'Stage: minimum 6 × 4 m, level and covered if outdoors.',
     'Power: two separate 16 A outlets on the stage, on a circuit not shared with catering or lighting.',
@@ -220,7 +220,16 @@ export const STANDARD_TERMS: Record<ContractType, string> = {
     'Backstage: a private, lockable room with mirror, seating and water.',
     'Hospitality: meals and soft drinks for the band and crew.',
     'Parking: spaces for the band vehicles close to the loading point.',
-  ].join('\n\n'),
+  ],
+};
+
+/** Standard terms / rider in a given language (the form inserts them in the app language). */
+export const standardTerms = (type: ContractType, lang: Locale = 'en'): string =>
+  STANDARD_TERM_LINES[type].map((line) => translate(lang, line)).join('\n\n');
+
+export const STANDARD_TERMS: Record<ContractType, string> = {
+  contract: standardTerms('contract'),
+  rider: standardTerms('rider'),
 };
 
 export const markContractSent = (id: string, clientEmail?: string | null, now = new Date()) =>
@@ -273,17 +282,28 @@ export const contractFileName = (c: Pick<Contract, 'title' | 'type'>) => {
   return `${base || (isRider(c) ? 'Rider' : 'Contract')}.pdf`;
 };
 
-/** Subject + body for the client email / share sheet. */
-export const buildSendMessage = (c: Contract, bandName?: string | null) => {
-  const kind = isRider(c) ? 'technical rider' : 'contract';
+/** Subject + body for the client email / share sheet, in the client's language (`lang`). */
+export const buildSendMessage = (c: Contract, bandName?: string | null, lang: Locale = 'en') => {
+  const tr = (source: string, vars?: Record<string, string | number>) => translate(lang, source, vars);
+  const rider = isRider(c);
   const subject = `${c.title}${bandName ? ` — ${bandName}` : ''}`;
+  const date = c.event_date ? formatContractDate(c.event_date, intlLocale('en-GB', lang)) : '';
+  const vars = { title: c.title, event: c.event_name || '', date };
+  // Whole sentences per case: word order and articles differ between languages.
+  const attached = date
+    ? c.event_name
+      ? tr(rider ? 'Please find attached the technical rider "{title}" for {event} on {date}.' : 'Please find attached the contract "{title}" for {event} on {date}.', vars)
+      : tr(rider ? 'Please find attached the technical rider "{title}" for the event on {date}.' : 'Please find attached the contract "{title}" for the event on {date}.', vars)
+    : c.event_name
+      ? tr(rider ? 'Please find attached the technical rider "{title}" for {event}.' : 'Please find attached the contract "{title}" for {event}.', vars)
+      : tr(rider ? 'Please find attached the technical rider "{title}".' : 'Please find attached the contract "{title}".', vars);
   const lines = [
-    `Hi${c.client_name ? ` ${c.client_name}` : ''},`,
+    c.client_name ? tr('Hi {name},', { name: c.client_name }) : tr('Hi,'),
     '',
-    `Please find attached the ${kind} "${c.title}"${c.event_date ? ` for ${c.event_name ? `${c.event_name} on ` : 'the event on '}${formatContractDate(c.event_date)}` : c.event_name ? ` for ${c.event_name}` : ''}.`,
-    isRider(c) ? 'Let us know if anything needs adjusting.' : 'Please review it and send it back signed.',
+    attached,
+    rider ? tr('Let us know if anything needs adjusting.') : tr('Please review it and send it back signed.'),
     '',
-    'Best regards,',
+    tr('Best regards,'),
     bandName || '',
   ];
   return { subject, body: lines.join('\n').trimEnd() };
@@ -389,6 +409,8 @@ const n = (v: number) => (Math.round(v * 100) / 100).toString();
 
 interface PdfOptions {
   bandName?: string | null;
+  /** Language the client reads (default English). */
+  lang?: Locale;
   /** Generation date (tests pass a fixed one). */
   now?: Date;
 }
@@ -396,6 +418,9 @@ interface PdfOptions {
 /** Builds the PDF bytes (each char of the returned string is one byte). */
 export const buildContractPdfBytes = (c: Contract, opts: PdfOptions = {}): Uint8Array => {
   const now = opts.now ?? new Date();
+  const lang = opts.lang ?? 'en';
+  const tr = (source: string, vars?: Record<string, string | number>) => translate(lang, source, vars);
+  const date = (value?: string | null) => formatContractDate(value, intlLocale('en-GB', lang));
   const pages: string[][] = [];
   let ops: string[] = [];
   let y = PAGE_H - MARGIN;
@@ -418,7 +443,7 @@ export const buildContractPdfBytes = (c: Contract, opts: PdfOptions = {}): Uint8
   newPage();
 
   // Header: band name + document kind.
-  const kind = isRider(c) ? 'TECHNICAL RIDER' : 'CONTRACT';
+  const kind = toWinAnsi(isRider(c) ? tr('TECHNICAL RIDER') : tr('CONTRACT'));
   text(toWinAnsi((opts.bandName || '').toUpperCase()), MARGIN, 10, true, 0.35);
   const kindW = textWidth(kind, 10, true);
   text(kind, PAGE_W - MARGIN - kindW, 10, true, 0.35);
@@ -432,21 +457,21 @@ export const buildContractPdfBytes = (c: Contract, opts: PdfOptions = {}): Uint8
   }
   y -= 4;
   const status = effectiveStatus(c, toLocalDateString(now));
-  text(toWinAnsi(`Status: ${STATUS_LABEL[status]}`), MARGIN, 11, false, 0.35);
+  text(toWinAnsi(tr('Status: {status}', { status: tr(STATUS_LABEL[status]) })), MARGIN, 11, false, 0.35);
   y -= 18;
   rule();
   y -= 26;
 
   // Details.
   const rows: [string, string | null | undefined][] = [
-    ['Document type', isRider(c) ? 'Rider' : 'Contract'],
-    ['Client', c.client_name],
-    ['Client email', c.client_email],
-    ['Event', c.event_name],
-    ['Event date', formatContractDate(c.event_date)],
-    ['Valid until', formatContractDate(c.expires_at)],
-    ['Sent', formatContractDate(c.sent_at)],
-    ['Signed', formatContractDate(c.signed_at)],
+    [tr('Document type'), isRider(c) ? tr('Rider') : tr('Contract')],
+    [tr('Client'), c.client_name],
+    [tr('Client email'), c.client_email],
+    [tr('Event'), c.event_name],
+    [tr('Event date'), date(c.event_date)],
+    [tr('Valid until'), date(c.expires_at)],
+    [tr('Sent'), date(c.sent_at)],
+    [tr('Signed'), date(c.signed_at)],
   ];
   const labelW = 120;
   for (const [label, value] of rows) {
@@ -467,7 +492,7 @@ export const buildContractPdfBytes = (c: Contract, opts: PdfOptions = {}): Uint8
     ensure(60);
     rule();
     y -= 26;
-    text(isRider(c) ? 'REQUIREMENTS & NOTES' : 'NOTES & TERMS', MARGIN, 10, true, 0.35);
+    text(toWinAnsi(isRider(c) ? tr('REQUIREMENTS & NOTES') : tr('NOTES & TERMS')), MARGIN, 10, true, 0.35);
     y -= 22;
     for (const line of wrapText(toWinAnsi(c.content.trim()), 11.5, CONTENT_W)) {
       ensure(16);
@@ -485,15 +510,15 @@ export const buildContractPdfBytes = (c: Contract, opts: PdfOptions = {}): Uint8
     ops.push(`0.6 G 0.75 w ${n(MARGIN)} ${n(y)} m ${n(MARGIN + half)} ${n(y)} l S`);
     ops.push(`0.6 G 0.75 w ${n(MARGIN + half + 32)} ${n(y)} m ${n(PAGE_W - MARGIN)} ${n(y)} l S`);
     y -= 14;
-    text(toWinAnsi(opts.bandName ? `For ${opts.bandName}` : 'Band'), MARGIN, 9, false, 0.45);
-    text(toWinAnsi(c.client_name ? `For ${c.client_name}` : 'Client'), MARGIN + half + 32, 9, false, 0.45);
+    text(toWinAnsi(opts.bandName ? tr('For {name}', { name: opts.bandName }) : tr('Band')), MARGIN, 9, false, 0.45);
+    text(toWinAnsi(c.client_name ? tr('For {name}', { name: c.client_name }) : tr('Client')), MARGIN + half + 32, 9, false, 0.45);
   }
 
   // Footer on every page.
-  const generated = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const generated = now.toLocaleDateString(intlLocale('en-GB', lang), { day: 'numeric', month: 'short', year: 'numeric' });
   pages.forEach((p, i) => {
-    const left = toWinAnsi(`Generated with BandWith · ${generated}`);
-    const right = `Page ${i + 1} of ${pages.length}`;
+    const left = toWinAnsi(tr('Generated with BandWith · {date}', { date: generated }));
+    const right = toWinAnsi(tr('Page {page} of {total}', { page: i + 1, total: pages.length }));
     p.push(`BT /F1 8 Tf 0.5 g ${n(MARGIN)} ${n(MARGIN - 20)} Td ${pdfString(left)} Tj ET`);
     p.push(`BT /F1 8 Tf 0.5 g ${n(PAGE_W - MARGIN - textWidth(right, 8))} ${n(MARGIN - 20)} Td ${pdfString(right)} Tj ET`);
   });

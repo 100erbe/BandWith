@@ -38,7 +38,9 @@ import { HeaderAction, IconButton } from '@/app/components/bw/Screen';
 import { RailCover } from '@/lib/railActions';
 import { PillButton, Selector } from '@/app/components/bw/Form';
 import { OnlineDepositLinks } from '@/app/components/quotes/OnlineDeposit';
-import { useT } from '@/lib/i18n';
+import { useT, translate, intlLocale, type Locale } from '@/lib/i18n';
+import { docLanguageFor, rememberDocLanguage } from '@/lib/i18n/docLanguage';
+import { DocLanguagePicker } from '@/app/components/bw/DocLanguagePicker';
 
 export interface QuoteShareModalProps {
   isOpen: boolean;
@@ -71,6 +73,10 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
   const [copiedSummary, setCopiedSummary] = useState(false);
   const [shareFeedback, setShareFeedback] = useState<{ text: string; tone: 'ok' | 'error' } | null>(null);
   const sentRef = useRef(false);
+  // Language of the PDF and of the message the client receives.
+  const clientKey = quote.clientEmail || quote.clientName;
+  const [docLang, setDocLang] = useState<Locale>(() => docLanguageFor(clientKey));
+  const tr = (source: string, vars?: Record<string, string | number>) => translate(docLang, source, vars);
 
   const sym = currencySymbol(quote.currency || 'EUR');
   const quoteRef = useRef(quote);
@@ -94,7 +100,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
         loadedSettings = await getBandPricing(bandId);
       }
       setSettings(loadedSettings);
-      const generated = await generateQuotePdf(quoteRef.current, bandName, loadedSettings);
+      const generated = await generateQuotePdf(quoteRef.current, bandName, loadedSettings, docLang);
       setPdfResult(generated);
       setActivePageIndex(0);
     } catch (err) {
@@ -107,7 +113,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     // Regenerate when the quote's content changes, not on every parent
     // render (callers often pass an inline object).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bandId, bandName, quoteKey]);
+  }, [bandId, bandName, quoteKey, docLang]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -122,6 +128,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setUploadedUrl(null);
+      setDocLang(docLanguageFor(clientKey));
       sentRef.current = false;
       loadAndGenerate();
     }
@@ -159,23 +166,32 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     onSent?.(id);
   };
 
+  const changeDocLang = (l: Locale) => {
+    if (l === docLang) return;
+    rememberDocLanguage(clientKey, l);
+    // Drop the old PDF and link so nothing in the previous language gets uploaded or shared.
+    setPdfResult(null);
+    setUploadedUrl(null);
+    setDocLang(l);
+  };
+
   const buildShareText = (pdfUrl?: string | null) => {
-    const eventLabel = getEventTypeLabel((quote.eventType as any) || 'wedding');
+    const eventLabel = tr(getEventTypeLabel((quote.eventType as any) || 'wedding'));
     const eventDateStr = quote.eventDate
-      ? parseLocalDate(quote.eventDate).toLocaleDateString('en-GB', {
+      ? parseLocalDate(quote.eventDate).toLocaleDateString(intlLocale('en-GB', docLang), {
           day: 'numeric',
           month: 'long',
           year: 'numeric',
         })
-      : 'TBD';
-    const total = Math.round(quote.total || 0).toLocaleString();
+      : tr('TBD', { context: 'doc' });
+    const total = Math.round(quote.total || 0).toLocaleString(intlLocale(undefined, docLang));
     const validUntilStr = quote.validUntil
-      ? parseLocalDate(quote.validUntil).toLocaleDateString('en-GB', {
+      ? parseLocalDate(quote.validUntil).toLocaleDateString(intlLocale('en-GB', docLang), {
           day: 'numeric',
           month: 'short',
           year: 'numeric',
         })
-      : `${quote.validityDays || settings.default_validity_days || 30} days`;
+      : tr('{days} days', { days: quote.validityDays || settings.default_validity_days || 30 });
 
     const venueLocation = [
       quote.venueName || (quote as any).venue,
@@ -184,30 +200,39 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
       .filter(Boolean)
       .join(', ');
 
+    const amount = `${sym}${total}`;
     const lines = [
-      `Hi ${quote.clientName || 'there'},`,
+      quote.clientName ? tr('Hi {name},', { name: quote.clientName }) : tr('Hi there,'),
       ``,
-      `Here is the official event proposal from ${bandName.toUpperCase()} for "${quote.eventName || quote.eventTitle || eventLabel}":`,
-      `• Quote Ref: ${quote.quoteNumber || 'EVT-QUOTE'}`,
-      `• Event Date: ${eventDateStr}`,
-      `• Location: ${venueLocation || 'TBD'}`,
-      `• Lineup: ${quote.musicianCount || (quote.musicians || []).length || 1} Musicians`,
-      `• Total Proposal: ${sym}${total}${quote.vatExempt ? ' (VAT Exempt)' : ` (incl. ${quote.vatRate ?? settings.default_vat_rate ?? 22}% VAT)`}`,
+      tr('Here is the official event proposal from {band} for "{event}":', {
+        band: bandName.toUpperCase(),
+        event: quote.eventName || quote.eventTitle || eventLabel,
+      }),
+      tr('• Quote Ref: {ref}', { ref: quote.quoteNumber || 'EVT-QUOTE' }),
+      tr('• Event Date: {date}', { date: eventDateStr }),
+      tr('• Location: {place}', { place: venueLocation || tr('TBD', { context: 'doc' }) }),
+      tr('• Lineup: {count} Musicians', { count: quote.musicianCount || (quote.musicians || []).length || 1 }),
+      quote.vatExempt
+        ? tr('• Total Proposal: {amount} (VAT Exempt)', { amount })
+        : tr('• Total Proposal: {amount} (incl. {rate}% VAT)', { amount, rate: quote.vatRate ?? settings.default_vat_rate ?? 22 }),
       quote.depositRequired !== false && (quote.depositAmount || 0) > 0
-        ? `• Booking Deposit (${quote.depositPercentage || settings.default_deposit_rate || 20}%): ${sym}${Math.round(quote.depositAmount || 0).toLocaleString()}`
+        ? tr('• Booking Deposit ({percent}%): {amount}', {
+            percent: quote.depositPercentage || settings.default_deposit_rate || 20,
+            amount: `${sym}${Math.round(quote.depositAmount || 0).toLocaleString(intlLocale(undefined, docLang))}`,
+          })
         : null,
-      `• Valid Until: ${validUntilStr}`,
-      pdfUrl ? `\n📄 View / Download Full PDF Quote:\n${pdfUrl}` : null,
+      tr('• Valid Until: {date}', { date: validUntilStr }),
+      pdfUrl ? `\n${tr('📄 View / Download Full PDF Quote:')}\n${pdfUrl}` : null,
       ``,
-      `Please let us know if you have any questions or would like to tailor the package!`,
-      `Best regards,`,
+      tr('Please let us know if you have any questions or would like to tailor the package!'),
+      tr('Best regards,'),
       settings.signer_name || bandName,
     ].filter((line): line is string => line !== null);
 
     return lines.join('\n');
   };
 
-  const shareTitle = `${bandName} — Quote ${quote.quoteNumber || ''}`.trim();
+  const shareTitle = tr('{band} — Quote {ref}', { band: bandName, ref: quote.quoteNumber || '' }).trim();
 
   /** System share sheet with the PDF attached (Mail, WhatsApp, Files, AirDrop…). */
   const sharePdf = async (opts: { markAsSent: boolean; withText: boolean }) => {
@@ -266,7 +291,11 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
       void sharePdf({ markAsSent: true, withText: true });
       return;
     }
-    const subject = `${bandName.toUpperCase()} — Event Quote ${quote.quoteNumber || ''} (${quote.eventName || quote.eventTitle || 'Proposal'})`;
+    const subject = tr('{band} — Event Quote {ref} ({event})', {
+      band: bandName.toUpperCase(),
+      ref: quote.quoteNumber || '',
+      event: quote.eventName || quote.eventTitle || tr('Proposal'),
+    });
     const body = buildShareText(uploadedUrl);
     const mailto = `mailto:${encodeURIComponent(quote.clientEmail || '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     void openExternal(mailto);
@@ -492,6 +521,8 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
           )}
 
           <OnlineDepositLinks />
+
+          <DocLanguagePicker value={docLang} onChange={changeDocLang} className="pt-2" />
 
           {/* Share channels */}
           <section className="flex flex-col gap-2">
