@@ -35,6 +35,8 @@ interface SongPickerProps {
    * reports those songs here, so the caller can take them out of its list.
    */
   onRemoveSelected?: (ids: string[]) => void;
+  /** Stacking; above 110 when opened from a higher layer (poll builder, z 120). */
+  zIndex?: number;
 }
 
 type Tab = 'library' | 'add';
@@ -60,6 +62,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
   theme = 'lime',
   overline,
   onRemoveSelected,
+  zIndex = 110,
 }) => {
   const t = useT();
   const { selectedBand } = useBand();
@@ -248,7 +251,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
       overline={overline ?? t('Song library')}
       title={tab === 'library' ? t('Add songs') : t('New song')}
       footer={footer}
-      zIndex={110}
+      zIndex={zIndex}
     >
       <div className="flex flex-col gap-3">
         {tab === 'library' ? (

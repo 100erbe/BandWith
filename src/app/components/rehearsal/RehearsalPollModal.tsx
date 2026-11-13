@@ -259,6 +259,10 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
       setError(t('Add at least one candidate time slot for members to vote on.'));
       return;
     }
+    if (voteBy && !voteByCheck().ok) {
+      setError(t('Pick a day before the first slot'));
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -269,15 +273,11 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
       adminId,
       title: title.trim(),
       notes: notes.trim(),
-      // Only the composer has a "Vote by" field; the phone builder leaves it as it is.
-      ...(composerOn
-        ? {
-            voteBy: voteBy || null,
-            location: location.trim() || null,
-            roomCost: parseFloat(roomCost) > 0 ? parseFloat(roomCost) : null,
-            focusSongIds: focusSongs.map(s => s.id),
-          }
-        : {}),
+      // Vote by (058) and place, cost & songs (097): set in the composer and the builder.
+      voteBy: voteBy || null,
+      location: location.trim() || null,
+      roomCost: parseFloat(roomCost) > 0 ? parseFloat(roomCost) : null,
+      focusSongIds: focusSongs.map(s => s.id),
       timeSlots: timeSlots.map((s) => ({
         proposed_date: s.proposed_date,
         start_time: s.start_time,
@@ -297,6 +297,138 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
     onClose();
   };
 
+  // Place, cost & songs (097): the same fields in the iPad composer card and
+  // in the phone / Duo builder. Members get only their share of the room.
+  const memberTotalOf = (): number | undefined =>
+    weekFree?.values().next().value?.total ?? slotFree.values().next().value?.total;
+
+  function renderPlaceFields(idp: string, members: number | undefined, chipBg: string) {
+    return (
+      <>
+        <div className="flex flex-col gap-2">
+          <label htmlFor={`${idp}-poll-place`} className="bw-label-sm text-muted-foreground">
+            {t('Location / studio')}
+          </label>
+          <div className="flex items-center gap-3 h-[52px] px-4 rounded-full bg-field border border-border focus-within:border-2 focus-within:border-foreground">
+            <MapPin className="w-5 h-5 shrink-0" />
+            <input
+              id={`${idp}-poll-place`}
+              value={location}
+              onChange={e => setLocation(e.target.value)}
+              placeholder={t('e.g. Blackbox Studios · room 2')}
+              className="flex-1 min-w-0 bg-transparent outline-none bw-body-lg text-foreground placeholder:text-muted-foreground"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-2 min-w-0">
+            <label htmlFor={`${idp}-poll-cost`} className="bw-label-sm text-muted-foreground">
+              {t('Room cost')}
+            </label>
+            <div className="flex items-center gap-2 h-[52px] px-4 rounded-full bg-field border border-border focus-within:border-2 focus-within:border-foreground">
+              <span className="bw-body-lg shrink-0">{sym().trim()}</span>
+              <input
+                id={`${idp}-poll-cost`}
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step="1"
+                value={roomCost}
+                onChange={e => setRoomCost(e.target.value)}
+                placeholder="0"
+                className="flex-1 min-w-0 bg-transparent outline-none bw-body-lg text-foreground tabular-nums"
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 min-w-0">
+            <span className="bw-label-sm text-muted-foreground">{t('Split')}</span>
+            <div className={cn('h-[52px] px-4 rounded-full flex items-center bw-body-lg truncate', chipBg)}>
+              {(() => { const share = pollShareLabel(parseFloat(roomCost) || 0, members); return share ? t('{amount} each', { amount: share }) : t('Free'); })()}
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <span className="bw-label-sm text-muted-foreground">{t('Focus songs')}</span>
+          <div className="flex flex-wrap gap-2">
+            {focusSongs.map(song => (
+              <span
+                key={song.id}
+                className={cn('inline-flex items-center gap-1 h-9 pl-3 pr-1 rounded-full bw-label-sm max-w-full', chipBg)}
+              >
+                <span className="truncate">{song.title}</span>
+                <IconButton
+                  label={t('Remove {title}', { title: song.title })}
+                  icon={<X />}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setFocusSongs(prev => prev.filter(s => s.id !== song.id))}
+                />
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={() => setSongPickerOpen(true)}
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-foreground/30 bw-label-sm cursor-pointer hover:bg-foreground/[0.06]"
+            >
+              <Plus aria-hidden className="w-4 h-4" />
+              {t('Add')}
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  function renderSongPicker(zIndex?: number) {
+    return (
+      <AnimatePresence>
+        {songPickerOpen && (
+          <SongPicker
+            isOpen={songPickerOpen}
+            onClose={() => setSongPickerOpen(false)}
+            onSelect={(song: PickedSong) => {
+              setFocusSongs(prev => (prev.some(s => s.id === song.id) ? prev : [...prev, { id: song.id, title: song.title }]));
+            }}
+            selectedIds={focusSongs.map(s => s.id)}
+            theme="blue"
+            zIndex={zIndex}
+          />
+        )}
+      </AnimatePresence>
+    );
+  }
+
+  /** "Vote by" must fall between today and the first candidate slot. */
+  const voteByCheck = () => {
+    const today = toLocalDateString(new Date());
+    const first = [...timeSlots].map(s => s.proposed_date).sort()[0];
+    return { today, first, ok: !!voteBy && voteBy >= today && (!first || voteBy <= first) };
+  };
+
+  function renderVoteByField(idp: string) {
+    const { today, first, ok } = voteByCheck();
+    return (
+      <div className="flex flex-col gap-2">
+        <label htmlFor={`${idp}-poll-vote-by`} className="bw-label-sm text-muted-foreground">
+          {t('Vote by')}
+        </label>
+        <div className="flex items-center gap-3 h-[52px] px-4 rounded-full bg-field border border-border focus-within:border-2 focus-within:border-foreground">
+          <Calendar className="w-5 h-5 shrink-0" />
+          <input
+            id={`${idp}-poll-vote-by`}
+            type="date"
+            value={voteBy}
+            min={today}
+            max={first}
+            onChange={e => setVoteBy(e.target.value)}
+            className="flex-1 min-w-0 bg-transparent outline-none bw-body-lg text-foreground"
+          />
+        </div>
+        {voteBy && !ok && <p className="bw-label-xs text-destructive">{t('Pick a day before the first slot')}</p>}
+      </div>
+    );
+  }
+
   // ── TABLET COMPOSER ───────────────────────────────────────
   // Same state and publish as the builder below; days are picked on a week
   // strip coloured by how many members are free (095), and the preview shows
@@ -310,14 +442,12 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
     );
     const freeOf = (s: TimeSlotDraft) =>
       slotFree.get(slotKey({ date: s.proposed_date, start: s.start_time, end: s.end_time })) ?? null;
-    const memberTotal =
-      weekFree?.values().next().value?.total ?? (sorted.length ? freeOf(sorted[0])?.total : undefined);
+    const memberTotal = memberTotalOf();
     const best = sorted.reduce<TimeSlotDraft | null>((acc, s) => {
       const f = freeOf(s)?.free ?? -1;
       return f > (acc ? freeOf(acc)?.free ?? -1 : -1) ? s : acc;
     }, null);
-    const firstSlotDate = sorted[0]?.proposed_date;
-    const voteByOk = !!voteBy && voteBy >= todayStr && (!firstSlotDate || voteBy <= firstSlotDate);
+    const voteByOk = voteByCheck().ok;
 
     const toggleDay = (date: string) => {
       setError(null);
@@ -343,76 +473,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
 
     const placeCard = (
       <ComposerCard n={3} title={t('Place, cost & songs')} done={location.trim().length > 0}>
-        <div className="flex flex-col gap-2">
-          <label htmlFor="cmp-poll-place" className="bw-label-sm text-muted-foreground">
-            {t('Location / studio')}
-          </label>
-          <div className="flex items-center gap-3 h-[52px] px-4 rounded-full bg-field border border-border focus-within:border-2 focus-within:border-foreground">
-            <MapPin className="w-5 h-5 shrink-0" />
-            <input
-              id="cmp-poll-place"
-              value={location}
-              onChange={e => setLocation(e.target.value)}
-              placeholder={t('e.g. Blackbox Studios · room 2')}
-              className="flex-1 min-w-0 bg-transparent outline-none bw-body-lg text-foreground placeholder:text-muted-foreground"
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-2 min-w-0">
-            <label htmlFor="cmp-poll-cost" className="bw-label-sm text-muted-foreground">
-              {t('Room cost')}
-            </label>
-            <div className="flex items-center gap-2 h-[52px] px-4 rounded-full bg-field border border-border focus-within:border-2 focus-within:border-foreground">
-              <span className="bw-body-lg shrink-0">{sym().trim()}</span>
-              <input
-                id="cmp-poll-cost"
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step="1"
-                value={roomCost}
-                onChange={e => setRoomCost(e.target.value)}
-                placeholder="0"
-                className="flex-1 min-w-0 bg-transparent outline-none bw-body-lg text-foreground tabular-nums"
-              />
-            </div>
-          </div>
-          <div className="flex flex-col gap-2 min-w-0">
-            <span className="bw-label-sm text-muted-foreground">{t('Split')}</span>
-            <div className="h-[52px] px-4 rounded-full bg-background flex items-center bw-body-lg truncate">
-              {share ? t('{amount} each', { amount: share }) : t('Free')}
-            </div>
-          </div>
-        </div>
-        <div className="flex flex-col gap-2">
-          <span className="bw-label-sm text-muted-foreground">{t('Focus songs')}</span>
-          <div className="flex flex-wrap gap-2">
-            {focusSongs.map(song => (
-              <span
-                key={song.id}
-                className="inline-flex items-center gap-1 h-9 pl-3 pr-1 rounded-full bg-background bw-label-sm max-w-full"
-              >
-                <span className="truncate">{song.title}</span>
-                <IconButton
-                  label={t('Remove {title}', { title: song.title })}
-                  icon={<X />}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setFocusSongs(prev => prev.filter(s => s.id !== song.id))}
-                />
-              </span>
-            ))}
-            <button
-              type="button"
-              onClick={() => setSongPickerOpen(true)}
-              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-foreground/30 bw-label-sm cursor-pointer hover:bg-foreground/[0.06]"
-            >
-              <Plus aria-hidden className="w-4 h-4" />
-              {t('Add')}
-            </button>
-          </div>
-        </div>
+        {renderPlaceFields('cmp', memberTotal, 'bg-background')}
       </ComposerCard>
     );
 
@@ -560,26 +621,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
 
     const deadlineCard = (
       <ComposerCard n={4} title={t('Vote deadline & note')} done={voteByOk}>
-        <div className="flex flex-col gap-2">
-          <label htmlFor="cmp-poll-vote-by" className="bw-label-sm text-muted-foreground">
-            {t('Vote by')}
-          </label>
-          <div className="flex items-center gap-3 h-[52px] px-4 rounded-full bg-field border border-border focus-within:border-2 focus-within:border-foreground">
-            <Calendar className="w-5 h-5 shrink-0" />
-            <input
-              id="cmp-poll-vote-by"
-              type="date"
-              value={voteBy}
-              min={todayStr}
-              max={firstSlotDate}
-              onChange={e => setVoteBy(e.target.value)}
-              className="flex-1 min-w-0 bg-transparent outline-none bw-body-lg text-foreground"
-            />
-          </div>
-          {voteBy && !voteByOk && (
-            <p className="bw-label-xs text-destructive">{t('Pick a day before the first slot')}</p>
-          )}
-        </div>
+        {renderVoteByField('cmp')}
         <div className="flex flex-col gap-2">
           <label htmlFor="cmp-poll-note" className="bw-label-sm text-muted-foreground">
             {t('Goal / notes (optional)')}
@@ -733,19 +775,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
             </div>
           </div>
         )}
-        <AnimatePresence>
-          {songPickerOpen && (
-            <SongPicker
-              isOpen={songPickerOpen}
-              onClose={() => setSongPickerOpen(false)}
-              onSelect={(song: PickedSong) => {
-                setFocusSongs(prev => (prev.some(s => s.id === song.id) ? prev : [...prev, { id: song.id, title: song.title }]));
-              }}
-              selectedIds={focusSongs.map(s => s.id)}
-              theme="blue"
-            />
-          )}
-        </AnimatePresence>
+        {renderSongPicker()}
       </ComposerShell>
     );
   }
@@ -825,6 +855,14 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
               onChange={(e) => setNotes(e.target.value)}
               placeholder={t('e.g. Focus on ending transitions')}
             />
+
+            {/* Place, cost & songs (097), as in the iPad composer */}
+            <section className="flex flex-col gap-4 pt-2" aria-labelledby="poll-builder-place">
+              <h2 id="poll-builder-place" className="bw-label-md text-foreground">
+                {t('Place, cost & songs')}
+              </h2>
+              {renderPlaceFields('bld', memberTotalOf(), 'bg-card')}
+            </section>
 
             {/* Generator mode (Figma Segmented) */}
             <div role="tablist" aria-label={t('Slot generator')} className="flex p-1 gap-1 rounded-full bg-card">
@@ -1001,6 +1039,9 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
                 })}
               </ul>
             )}
+
+            {/* Vote by (058) */}
+            <div className="pt-2">{renderVoteByField('bld')}</div>
           </div>
         </div>
 
@@ -1023,6 +1064,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
             </PillButton>
           </div>
         </div>
+        {renderSongPicker(130)}
       </motion.div>
     </AnimatePresence>
   );
