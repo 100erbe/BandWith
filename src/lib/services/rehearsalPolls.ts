@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { attachMemberFees } from './bandMemberFees';
 import { createEvent } from './events';
 import { createBulkNotifications } from './notifications';
 import { personName } from '@/lib/personName';
@@ -459,15 +460,17 @@ export const finalizePollIntoRehearsal = async ({
     // 3. Fetch active band members to create rosters
     const { data: bandMembers, error: membersError } = await supabase
       .from('band_members')
-      .select('user_id, role, default_fee')
+      .select('band_id, user_id, role')
       .eq('band_id', bandId)
       .eq('is_active', true);
 
     if (membersError) throw membersError;
+    // Fees from bw_band_member_fees (076): the caller is an admin, so all rows.
+    const membersWithFees = await attachMemberFees((bandMembers || []) as any[]);
 
     // Deduplicate members by user_id
     const seenUsers = new Set<string>();
-    const uniqueBandMembers = (bandMembers || []).filter((bm: any) => {
+    const uniqueBandMembers = membersWithFees.filter((bm: any) => {
       if (!bm.user_id || seenUsers.has(bm.user_id)) return false;
       seenUsers.add(bm.user_id);
       return true;

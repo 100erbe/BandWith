@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { BAND_MEMBER_COLUMNS, attachMemberFees } from './bandMemberFees';
 
 // Types
 export interface Band {
@@ -47,7 +48,9 @@ export interface BandMember {
   role: 'admin' | 'member';
   instrument?: string;
   stage_name?: string;
+  /** From bw_band_member_fees (076): all rows for admins, own row for members. */
   default_fee?: number;
+  fee_percentage?: number;
   is_active: boolean;
   joined_at: string;
   left_at?: string;
@@ -128,7 +131,7 @@ export const getBands = async (): Promise<{ data: BandWithMembers[] | null; erro
     const { data: allMembers, error: membersError } = await supabase
       .from('band_members')
       .select(`
-        *,
+        ${BAND_MEMBER_COLUMNS},
         profile:profiles (
           id,
           email,
@@ -144,10 +147,13 @@ export const getBands = async (): Promise<{ data: BandWithMembers[] | null; erro
       console.error('[getBands] Error batch-loading members:', membersError);
     }
 
+    // Fees come from bw_band_member_fees (076), never from the table.
+    const membersWithFees = allMembers ? await attachMemberFees(allMembers as any[]) : null;
+
     // Group members by band_id
     const membersByBandId: Record<string, any[]> = {};
-    if (allMembers) {
-      for (const member of allMembers) {
+    if (membersWithFees) {
+      for (const member of membersWithFees) {
         const bid = member.band_id;
         if (!membersByBandId[bid]) membersByBandId[bid] = [];
         membersByBandId[bid].push(member);
@@ -194,10 +200,10 @@ export const getBand = async (bandId: string): Promise<{ data: BandWithMembers |
     if (bandError) throw bandError;
 
     // Get members with profiles
-    const { data: members, error: membersError } = await supabase
+    const { data: rawMembers, error: membersError } = await supabase
       .from('band_members')
       .select(`
-        *,
+        ${BAND_MEMBER_COLUMNS},
         profile:profiles (
           id,
           email,
@@ -210,15 +216,16 @@ export const getBand = async (bandId: string): Promise<{ data: BandWithMembers |
       .eq('is_active', true);
 
     if (membersError) throw membersError;
+    const members = await attachMemberFees((rawMembers || []) as any[]);
 
     // Get user's role in this band
-    const userMember = members?.find(m => m.user_id === user.id);
+    const userMember = members.find(m => m.user_id === user.id);
 
     return {
       data: {
         ...band,
-        members: members || [],
-        member_count: members?.length || 0,
+        members,
+        member_count: members.length,
         user_role: userMember?.role || 'member',
       },
       error: null,
@@ -336,7 +343,7 @@ export const getBandMembers = async (bandId: string): Promise<{ data: BandMember
     const { data, error } = await supabase
       .from('band_members')
       .select(`
-        *,
+        ${BAND_MEMBER_COLUMNS},
         profile:profiles (
           id,
           email,
@@ -354,7 +361,7 @@ export const getBandMembers = async (bandId: string): Promise<{ data: BandMember
     if (error) throw error;
 
     // Ensure profiles with null joins don't crash the UI
-    const safeData = (data || []).map((m: any) => ({
+    const safeData = (await attachMemberFees((data || []) as any[])).map((m: any) => ({
       ...m,
       profile: m.profile || null,
     })) as BandMember[];
@@ -380,7 +387,7 @@ export const addBandMember = async (
         role,
         instrument: instrument || null,
       })
-      .select()
+      .select(BAND_MEMBER_COLUMNS)
       .single();
 
     if (error) throw error;
@@ -400,7 +407,7 @@ export const updateBandMember = async (
       .from('band_members')
       .update(updates)
       .eq('id', memberId)
-      .select()
+      .select(BAND_MEMBER_COLUMNS)
       .single();
 
     if (error) throw error;

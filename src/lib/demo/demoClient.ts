@@ -688,6 +688,16 @@ const rpc = (fn: string, args: Row = {}) => {
         .map((r) => ({ event_id: r.event_id, user_id: r.user_id, fee: r.fee ?? 0, paid_at: r.paid_at ?? null }));
       break;
     }
+    // Member fees (076): all rows of bands the user administers, own row elsewhere.
+    case 'bw_band_member_fees': {
+      const ids: string[] = Array.isArray(args.p_band_ids) ? args.p_band_ids : [];
+      const members = table('band_members');
+      const adminOf = new Set(members.filter((r) => r.user_id === DEMO_USER.id && r.role === 'admin').map((r) => r.band_id));
+      data = members
+        .filter((r) => ids.includes(r.band_id) && (r.user_id === DEMO_USER.id || adminOf.has(r.band_id)))
+        .map((r) => ({ band_id: r.band_id, user_id: r.user_id, default_fee: r.default_fee ?? null, fee_percentage: r.fee_percentage ?? null }));
+      break;
+    }
     case 'bw_save_event_lineup': {
       const rows = table('event_members');
       const now = new Date().toISOString();
