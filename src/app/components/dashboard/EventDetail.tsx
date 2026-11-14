@@ -1698,6 +1698,16 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 </section>
               )}
 
+              {/* ─── NOTE (rehearsal): set in the iPad composer, Figma "Focus & note" ─── */}
+              {isRehearsal && !isPersonalGig && !!event.notes?.trim() && (
+                <section className="flex flex-col gap-6" aria-label={t('Notes')}>
+                  <SectionTitle title={t('NOTES')} />
+                  <p className="bg-card rounded-[16px] p-4 bw-body-md whitespace-pre-wrap select-text [overflow-wrap:anywhere]">
+                    {event.notes.trim()}
+                  </p>
+                </section>
+              )}
+
               {/* ─── TASKS (band events with saved to-dos) ─── */}
               {inOverview && !isPersonalGig && eventTasks.length > 0 && (
                 <section className="flex flex-col gap-6">

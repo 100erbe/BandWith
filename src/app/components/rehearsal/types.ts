@@ -84,6 +84,11 @@ export interface RehearsalTask {
 }
 
 export interface RehearsalState {
+  /**
+   * Note for the band (iPad composer card 4, Figma "Focus & note"); saved to
+   * events.notes. Undefined in the phone wizard, so editing leaves notes as they are.
+   */
+  notes?: string;
   // Essentials
   type: RehearsalType;
   title: string;

@@ -2110,7 +2110,11 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     );
 
     const focusCard = (
-      <ComposerCard n={4} title={t('Focus & tasks')} done={data.setlist.length > 0 || data.tasks.length > 0}>
+      <ComposerCard
+        n={4}
+        title={t('Focus, note & tasks')}
+        done={data.setlist.length > 0 || data.tasks.length > 0 || !!data.notes?.trim()}
+      >
         <div className="flex flex-col gap-2">
           <span className="bw-label-xs text-muted-foreground">{t('Focus songs')}</span>
           <div className="flex flex-wrap gap-2">
@@ -2131,6 +2135,20 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               {t('Add')}
             </Selector>
           </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="cmp-rehearsal-note" className="bw-label-xs text-muted-foreground">
+            {t('Goal / notes (optional)')}
+          </label>
+          <textarea
+            id="cmp-rehearsal-note"
+            value={data.notes ?? ''}
+            onChange={e => setData(prev => ({ ...prev, notes: e.target.value }))}
+            rows={3}
+            maxLength={2000}
+            placeholder={t('e.g. Focus on ending transitions')}
+            className="w-full rounded-[24px] bg-field border border-border px-4 py-3 bw-body-md text-foreground placeholder:text-muted-foreground/60 outline-none resize-none focus:border-2 focus:border-foreground"
+          />
         </div>
         <div className="flex items-center gap-2">
           <PillField

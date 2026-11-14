@@ -3771,6 +3771,7 @@ const dict: Dictionary = {
   "Show the click": "Afficher le clic",
   "Start the click": "Lancer le clic",
   "Stop the click": "Arrêter le clic",
+  "Focus, note & tasks": "Objectifs, note et tâches",
 };
 
 export default dict;
