@@ -126,6 +126,26 @@ describe('fix 1: updates to offline-created events', () => {
     expect(stored()).toEqual([]);
   });
 
+  it('keeps an edit of a synced create across a restart (temp id saved as the real id)', async () => {
+    await enqueueOfflineCreate('offline_ev_5');
+    await q.processSyncQueue();
+    const realId = mocks.createEvent.mock.calls[0][0].id;
+
+    await q.enqueueMutation('update_event', { eventId: 'offline_ev_5', updates: { title: 'Edited' } });
+    mocks.updateEvent.mockResolvedValueOnce({ data: null, error: new Error('Failed to fetch') });
+    await q.processSyncQueue();
+    expect(stored()[0].payload.eventId).toBe(realId);
+
+    // App killed: the in-memory temp -> real map is gone.
+    vi.resetModules();
+    q = await import('../syncQueue');
+    q.setOfflineQueueUser(USER);
+    const res = await q.processSyncQueue();
+    expect(res.dropped).toBe(0);
+    expect(mocks.updateEvent).toHaveBeenLastCalledWith(realId, { title: 'Edited' });
+    expect(stored()).toEqual([]);
+  });
+
   it('cancels a create that was deleted before it synced', async () => {
     await enqueueOfflineCreate('offline_ev_4');
     await q.enqueueMutation('delete_event', { eventId: 'offline_ev_4' });
