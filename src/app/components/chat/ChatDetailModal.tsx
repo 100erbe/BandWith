@@ -19,7 +19,7 @@ import {
 import { cn } from '@/app/components/ui/utils';
 import { eventKindOf, type EventKind, HeaderAction, IconButton, NavBackButton, Tag, PillButton } from '@/app/components/bw';
 import { supabase } from '@/lib/supabase';
-import { getMessages, sendMessage, markChatAsRead, subscribeToChat, subscribeToReceipts, getChatParticipants, deleteChat, getChat, receiptFor } from '@/lib/services/chats';
+import { getMessages, sendMessage, markChatAsRead, subscribeToChat, subscribeToReceipts, getChatParticipants, deleteChat, getChat, receiptFor, chatErrorMessage } from '@/lib/services/chats';
 import type { Message, ChatParticipant, ReceiptStatus } from '@/lib/services/chats';
 import { ReceiptTicks } from '@/app/components/chat/ReceiptTicks';
 import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
@@ -604,7 +604,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
       setNewMessage(messageText);
       setReplyingTo(replyToMessage);
       const offline = (typeof navigator !== 'undefined' && !navigator.onLine) || isOfflineError(error);
-      setSendError(offline ? t('Message not sent. Check your connection and try again.') : t('Message not sent. Try again.'));
+      setSendError(offline ? t('Message not sent. Check your connection and try again.') : chatErrorMessage(error, t('Message not sent. Try again.')));
     } else if (data) {
       setMessages(prev => prev.map(m => m.id === optimisticMessage.id ? data : m));
     }

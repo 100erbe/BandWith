@@ -2,6 +2,14 @@ import { supabase, getSafeUser } from '../supabase';
 import { sendPushToUsers } from './notifications';
 import { personName } from '@/lib/personName';
 import { isDirectChatBetween, type DirectChatFacts } from '@/lib/directChat';
+import { t } from '@/lib/i18n';
+
+/** A chat rule said no (who may write to whom). The message is translated and safe to show. */
+export class ChatRuleError extends Error {}
+
+/** What to show for a chat error: the rule when one said no, never raw server text. */
+export const chatErrorMessage = (error: unknown, fallback: string): string =>
+  error instanceof ChatRuleError ? error.message : fallback;
 
 // ============================================
 // TYPES
@@ -533,7 +541,7 @@ export const createChat = async (
       }
 
       if (!allowed) {
-        return { data: null, error: new Error('Members are only allowed to direct message band admins.') };
+        return { data: null, error: new ChatRuleError(t('Direct messaging is only available with band admins.')) };
       }
     } else if (data.type === 'band' && data.band_id) {
       const { data: bm } = await supabase
@@ -545,7 +553,7 @@ export const createChat = async (
         .maybeSingle();
 
       if (!bm) {
-        return { data: null, error: new Error('You can only message bands you are a member of.') };
+        return { data: null, error: new ChatRuleError(t('You can only message in bands you are an active member of.')) };
       }
     } else if (data.type === 'event' && data.event_id) {
       let allowed = false;
@@ -569,7 +577,7 @@ export const createChat = async (
         if (em && em.status !== 'declined') allowed = true;
       }
       if (!allowed) {
-        return { data: null, error: new Error('You can only message in events you are participating in.') };
+        return { data: null, error: new ChatRuleError(t('You can only message in events you are participating in.')) };
       }
     }
 
@@ -864,7 +872,7 @@ export const sendMessage = async (
         }
 
         if (!allowed) {
-          return { data: null, error: new Error('Direct messaging is only permitted with band admins.') };
+          return { data: null, error: new ChatRuleError(t('Direct messaging is only available with band admins.')) };
         }
       }
     } else if (chat.type === 'band' && chat.band_id) {
@@ -877,7 +885,7 @@ export const sendMessage = async (
         .maybeSingle();
 
       if (!bm) {
-        return { data: null, error: new Error('You can only message in bands you are a member of.') };
+        return { data: null, error: new ChatRuleError(t('You can only message in bands you are an active member of.')) };
       }
     } else if (chat.type === 'event' && chat.event_id) {
       let allowed = false;
@@ -901,7 +909,7 @@ export const sendMessage = async (
         if (em && em.status !== 'declined') allowed = true;
       }
       if (!allowed) {
-        return { data: null, error: new Error('You can only message in events you are participating in.') };
+        return { data: null, error: new ChatRuleError(t('You can only message in events you are participating in.')) };
       }
     }
 

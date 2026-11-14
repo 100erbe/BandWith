@@ -29,7 +29,7 @@ import { inviteToBand } from '@/lib/services/invitations';
 import type { BandMember } from '@/lib/services/bands';
 import { DotText } from '@/app/components/bw';
 import { MemberDetail } from '@/app/components/band/MemberDetail';
-import { createChat } from '@/lib/services/chats';
+import { createChat, chatErrorMessage } from '@/lib/services/chats';
 import { ScreenHeader, IconButton, Card, Tag, BwSheet } from '@/app/components/bw/Screen';
 import { PillButton } from '@/app/components/bw/Form';
 import { personName } from '@/lib/personName';
@@ -500,7 +500,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                   ? async () => {
                       const { data, error } = await createChat({ type: 'direct', participant_ids: [m.user_id] });
                       if (error || !data) {
-                        flashNotice(error?.message || t('Could not open the chat. Try again.'));
+                        flashNotice(chatErrorMessage(error, t('Could not open the chat. Try again.')));
                         return;
                       }
                       setDetailId(null);

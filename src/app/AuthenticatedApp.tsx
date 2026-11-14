@@ -48,7 +48,7 @@ import {
 import type { EventMember, Event } from "@/lib/services/events";
 import { respondToOwnInvite, InviteResponseError } from "@/lib/services/inviteResponse";
 import { createSetlist, deleteSetlist, replaceSetlistSongs, updateSetlist } from "@/lib/services/songs";
-import { receiptFor, deleteChat as deleteChatService, createChat as createChatService } from "@/lib/services/chats";
+import { receiptFor, deleteChat as deleteChatService, createChat as createChatService, chatErrorMessage } from "@/lib/services/chats";
 import { deleteNotification as deleteNotificationService, createNotification, getUnreadCount } from "@/lib/services/notifications";
 import { syncAppBadge } from "@/lib/services/appBadge";
 import { ErrorState } from "@/app/components/ui/ErrorState";
@@ -1018,7 +1018,7 @@ export default function AuthenticatedApp() {
     // On the server but not in the list yet (another band, still loading): open it.
     const item = eventToEventItem(row as Event);
     item.band_id = row.band_id || undefined;
-    item.band_name = row.band_id ? bands[row.band_id] : 'Personal';
+    item.band_name = row.band_id ? bands[row.band_id] : t('Personal');
     handleEventCardClickRef.current(item);
   }, []);
   const navigateToEvent = useCallback(async (eventDbId: string) => {
@@ -1452,7 +1452,7 @@ export default function AuthenticatedApp() {
       if (type === "direct") {
         const otherWithProfile = others.find((p) => (p as any).profile);
         // Always the other person's name, never a generic "Direct Chat".
-        displayName = (otherWithProfile ? personName((otherWithProfile as any).profile, "") : "") || (chat.name && chat.name !== "New Chat" && chat.name !== "Chat" && chat.name !== "Direct Chat" ? chat.name : "Member");
+        displayName = (otherWithProfile ? personName((otherWithProfile as any).profile, "") : "") || (chat.name && chat.name !== "New Chat" && chat.name !== "Chat" && chat.name !== "Direct Chat" ? chat.name : t("Member"));
         const otherWithAvatar = others.find((p) => (p as any).profile?.avatar_url);
         avatarUrl = (otherWithAvatar as any)?.profile?.avatar_url || undefined;
       } else if (type === "band") {
@@ -2401,7 +2401,7 @@ export default function AuthenticatedApp() {
       participant_ids: lineup,
     });
     if (error || !chat) {
-      setSaveToast({ message: error?.message || t('Could not open the event chat.'), type: 'error' });
+      setSaveToast({ message: chatErrorMessage(error, t('Could not open the event chat.')), type: 'error' });
       return;
     }
     // Open display: the gig stays on the leading page next to its thread.

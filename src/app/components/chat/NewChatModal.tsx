@@ -9,7 +9,7 @@ import {
 import { cn } from '@/app/components/ui/utils';
 import { EventMark, eventKindOf, IconButton, Tag, PillButton } from '@/app/components/bw';
 import { RailSheet } from '@/lib/railActions';
-import { createChat } from '@/lib/services/chats';
+import { createChat, chatErrorMessage } from '@/lib/services/chats';
 import { getBandMembersForChat, getBands } from '@/lib/services/bands';
 import { getEvents } from '@/lib/services/events';
 import { supabase } from '@/lib/supabase';
@@ -246,7 +246,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         });
       }
     } catch (err: any) {
-      setError(err.message || t('Failed to create chat'));
+      setError(chatErrorMessage(err, t('Failed to create chat')));
     }
 
     setCreating(false);

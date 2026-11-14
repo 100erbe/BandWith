@@ -19,6 +19,7 @@ vi.mock('@/lib/services/chats', () => ({
   subscribeToReceipts: () => () => {},
   deleteChat: vi.fn(async () => ({ error: null })),
   receiptFor: () => 'sent',
+  chatErrorMessage: (_e: unknown, fallback: string) => fallback,
 }));
 vi.mock('@/lib/supabase', () => {
   const b: any = new Proxy(function () {}, {
