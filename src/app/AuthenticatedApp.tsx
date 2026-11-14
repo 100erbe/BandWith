@@ -123,7 +123,9 @@ import {
 
 import { AdminGuidedTourModal } from "@/app/components/onboarding/AdminGuidedTourModal";
 import { Quote } from "@/app/data/quotes";
-import { createQuote as createQuoteDB, appQuoteToDbRecord, appMusiciansToDb } from "@/lib/services/quotes";
+import { createQuote as createQuoteDB, updateQuote as updateQuoteDB, appQuoteToDbRecord, appMusiciansToDb, dbQuoteToAppQuote } from "@/lib/services/quotes";
+import { republishClientQuote } from "@/lib/services/quoteLinks";
+import type { Quote as AppQuote } from "@/app/data/quotes";
 import { quoteMusicianFee } from "@/lib/services/quoteMath";
 
 import { ChatDetailModal, NewChatModal } from "@/app/components/chat";
@@ -363,6 +365,8 @@ export default function AuthenticatedApp() {
   const [selectedEventMembership, setSelectedEventMembership] = useState<EventMember | null>(null);
   // A quote from the wizard is being saved (no second save meanwhile).
   const quoteSaveRunningRef = useRef(false);
+  /** EDIT QUOTE on a quote event: the quote itself, in the quote wizard. */
+  const [editingLinkedQuote, setEditingLinkedQuote] = useState<{ quote: AppQuote; eventId: string; bandId: string } | null>(null);
   // RSVP answers arrive late: they only apply if their event is still open.
   const eventKeyOf = (e: EventData) => e.eventId || e.id?.toString() || null;
   const { isCurrent: isOpenEvent, markCurrent: markOpenEvent } = useCurrentKey(
@@ -2291,6 +2295,30 @@ export default function AuthenticatedApp() {
     else if (s === 'QUOTED' || s === 'QUOTE') evType = 'quote';
     else evType = 'gig';
 
+    // A quote event: edit the quote itself (fee, items, client), as the
+    // Quotes screen does, so the detail, the PDF and SHARE QUOTE show the
+    // new version. Without a linked quote, the event is edited as before.
+    if (evType === 'quote' && selectedEvent.eventId) {
+      const base = supabase.from('quotes').select('*, musicians:quote_musicians(*)');
+      const { data: rows, error: quoteErr } = await (selectedEvent.quoteId
+        ? base.eq('id', selectedEvent.quoteId).limit(1)
+        : base.eq('converted_to_event_id', selectedEvent.eventId).order('created_at', { ascending: false }).limit(1));
+      if (quoteErr) {
+        setSaveToast({ message: isOfflineError(quoteErr) ? t('No connection. Try again when you are online.') : t('Could not load the quote: {error}', { error: quoteErr.message }), type: 'error' });
+        return;
+      }
+      if (rows?.[0]) {
+        setEditingLinkedQuote({
+          quote: dbQuoteToAppQuote(rows[0] as any) as unknown as AppQuote,
+          eventId: selectedEvent.eventId,
+          bandId: String(selectedEvent.band_id),
+        });
+        setSelectedEvent(null);
+        setSelectedEventMembership(null);
+        return;
+      }
+    }
+
     let memberUserIds: string[] = [];
     let memberFeeMap: Record<string, string> = {};
     if (selectedEvent.eventId) {
@@ -2321,6 +2349,52 @@ export default function AuthenticatedApp() {
     setSelectedEventMembership(null);
     setCreateEventType(evType);
     setIsCreateEventOpen(true);
+  };
+
+  /** Saves the quote edited from its event, and keeps the event in step. */
+  const handleLinkedQuoteSave = async (q: Partial<AppQuote>, opts?: { share?: boolean }) => {
+    const editing = editingLinkedQuote;
+    if (!editing || quoteSaveRunningRef.current) return;
+    quoteSaveRunningRef.current = true;
+    try {
+      const { band_id: _bandId, ...updates } = appQuoteToDbRecord(q, editing.bandId);
+      const { data, error } = await updateQuoteDB(editing.quote.id, updates);
+      if (error || !data) {
+        // The wizard stays open with what was typed.
+        setSaveToast({ message: t('Quote not saved: {error}', { error: error?.message || t('unknown error') }), type: 'error' });
+        return;
+      }
+      // The event shows the quote's date, time, place, client and fee.
+      const { error: eventErr } = await updateEvent(editing.eventId, {
+        title: q.eventName || q.clientName || t('Quote Event'),
+        event_date: q.eventDate,
+        start_time: q.eventTimeStart || '20:00',
+        end_time: q.eventTimeEnd || null,
+        venue_name: q.venueName || null,
+        venue: q.venueName || null,
+        venue_city: q.venueCity || null,
+        venue_address: q.venueAddress || null,
+        indoor_outdoor: q.indoorOutdoor || null,
+        fee: q.total || 0,
+        client_name: q.clientName || null,
+      } as any);
+      const saved = { ...q, ...dbQuoteToAppQuote(data as any), musicians: q.musicians || editing.quote.musicians } as AppQuote;
+      setEditingLinkedQuote(null);
+      setSaveToast(eventErr
+        ? { message: t('Quote updated, but the event was not: {error}', { error: eventErr.message }), type: 'error' }
+        : { message: t('Quote updated'), type: 'success' });
+      if (opts?.share) setSharingQuote(saved);
+      // Already sent with the client link: the page shows the new version.
+      republishClientQuote(saved as any, editing.bandId, realBand?.name || 'Band').then(({ data: version, error: pubError }) => {
+        if (pubError) setSaveToast({ message: t('The client page could not be updated. Try again.'), type: 'error' });
+        else if (version && version > 1) setSaveToast({ message: t('The client’s page now shows version {n}.', { n: version }), type: 'success' });
+      });
+      refetchExpandedQuotes();
+      refetchEvents().catch(() => {});
+      if (refetchDashboard) refetchDashboard().catch(() => {});
+    } finally {
+      quoteSaveRunningRef.current = false;
+    }
   };
 
   const handleEventDelete = async () => {
@@ -4157,6 +4231,18 @@ export default function AuthenticatedApp() {
               quoteSaveRunningRef.current = false;
             }
           }} />}</AnimatePresence>
+
+          <AnimatePresence key="nested-presence-edit-quote">
+            {editingLinkedQuote && (
+              <QuoteCreationWizard
+                bandMembers={memoizedBandMembers}
+                initialData={editingLinkedQuote.quote}
+                initialClientName={editingLinkedQuote.quote.clientName}
+                onClose={() => setEditingLinkedQuote(null)}
+                onCreate={handleLinkedQuoteSave}
+              />
+            )}
+          </AnimatePresence>
 
           <AnimatePresence key="nested-presence-3">
             {sharingQuote && (

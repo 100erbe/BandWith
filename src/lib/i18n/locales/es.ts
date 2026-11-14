@@ -3788,6 +3788,7 @@ const dict: Dictionary = {
   "{answered} of {total} answered": "{answered} de {total} han respondido",
   "Your votes were cleared.": "Se borraron tus votos.",
   "No date works for {names}": "Ninguna fecha le va bien a {names}",
+  "Quote updated, but the event was not: {error}": "Presupuesto actualizado, pero el evento no: {error}",
 };
 
 export default dict;
