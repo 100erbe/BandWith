@@ -1,4 +1,4 @@
-import { handleBackFromStack } from '@/lib/backStack';
+import { handleBackFromStack, setAppBack, type BackMode } from '@/lib/backStack';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { uuidToNumericId } from '@/lib/numericId';
 import { useCurrentKey } from '@/lib/useCurrentKey';
@@ -1126,6 +1126,31 @@ export default function AuthenticatedApp() {
   isAdminRef.current = isAdmin;
   // Set below, once removeNotifications exists.
   const removeNotificationsRef = useRef<(ids: string[]) => void>(() => {});
+  const twoPaneRef = useRef(twoPane);
+  twoPaneRef.current = twoPane;
+  // A push or inbox target must not open beneath what is on screen (layers
+  // stack by fixed z-index: event 90 > chat 80 > full-screen views 70 >
+  // the home scroller with its cards), so close what would cover it.
+  const closeLayersFor = useCallback((target: "chat" | "card" | "view") => {
+    // Phone: a chat opens under an open event. Two panes show both side by side.
+    if (target !== "chat" || !twoPaneRef.current) {
+      setSelectedEvent(null);
+      setSelectedEventMembership(null);
+    }
+    if (target === "chat") return;
+    setSelectedChat(null);
+    setShowSettings(false);
+    setSettingsInitialSection("main");
+    setShowBandMembers(false);
+    setShowSetlistManager(false);
+    setShowAnalytics(false);
+    setShowInventory(false);
+    setShowContracts(false);
+    setContractPrefill(null);
+    setShowTaskTemplates(false);
+    setShowPastEvents(false);
+    setShowDeputyGigs(false);
+  }, []);
   useEffect(() => {
     const handler = async (ev: globalThis.Event) => {
       const d = (ev as CustomEvent).detail;
@@ -1146,6 +1171,7 @@ export default function AuthenticatedApp() {
         if (choice === "switch") await new Promise((r) => setTimeout(r, 150));
       }
       if (d.screen === "chat" && d.chatId) {
+        closeLayersFor("chat");
         setActiveTab("Chat");
         setTimeout(() => {
           // A chat already in the inbox opens with its real type and name; otherwise the chat screen looks it up.
@@ -1161,21 +1187,27 @@ export default function AuthenticatedApp() {
         setActiveTab("Events");
       } else if (d.screen === "quotes") {
         if (isAdminRef.current) {
+          closeLayersFor("card");
           setQuoteFocus(d.quoteId ?? null);
           setExpandedCard("quotes");
         }
         else setActiveTab("Home");
       } else if (d.screen === "finance") {
-        if (isAdminRef.current) setExpandedCard("finance");
-        else setActiveTab("Home");
+        if (isAdminRef.current) {
+          closeLayersFor("card");
+          setExpandedCard("finance");
+        } else setActiveTab("Home");
       } else if (d.screen === "invites") {
         setActiveTab("Home");
         window.dispatchEvent(new CustomEvent("bw:refresh-invites"));
       } else if (d.screen === "bandMembers") {
+        closeLayersFor("view");
         setShowBandMembers(true);
       } else if (d.screen === "repertoire") {
+        closeLayersFor("view");
         setShowSetlistManager(true);
       } else if (d.screen === "deputyGigs") {
+        closeLayersFor("view");
         setDeputyGigsFocus(d.requestId ?? null);
         setShowDeputyGigs(true);
         window.dispatchEvent(new CustomEvent("bw:refresh-deputy-gigs"));
@@ -1184,7 +1216,7 @@ export default function AuthenticatedApp() {
     };
     window.addEventListener("push-navigate", handler);
     return () => window.removeEventListener("push-navigate", handler);
-  }, [navigateToEvent]);
+  }, [navigateToEvent, closeLayersFor]);
 
   const setEvents = (updater: typeof localEvents | ((prev: typeof localEvents) => typeof localEvents)) => {
     setLocalEvents(typeof updater === "function" ? updater : () => updater);
@@ -1254,7 +1286,7 @@ export default function AuthenticatedApp() {
     if (isSolo) {
       return {
         id: 0,
-        name: 'My Calendar',
+        name: t('My calendar'),
         role: 'MEMBER',
         initials: 'P', // "Personal"
         members: 1,
@@ -1276,17 +1308,19 @@ export default function AuthenticatedApp() {
     // Fallback: when no real band exists yet, create a placeholder from onboarding data
     return {
       id: 0,
-      name: 'My Band',
+      name: t('My band'),
       role: 'ADMIN',
       initials: 'MB',
       members: 1,
       genre: '',
       plan: 'Free',
     } as Band;
-  }, [realBand, isSolo, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `locale` re-labels the placeholders
+  }, [realBand, isSolo, user, locale]);
 
+  // By id: two bands can share a name.
   const setSelectedBand = (band: Band) => {
-    const match = realBands.find((rb) => rb.name === band.name);
+    const match = realBands.find((rb) => uuidToNumericId(rb.id) === band.id);
     if (match) selectBand(match.id);
   };
 
@@ -1677,6 +1711,14 @@ export default function AuthenticatedApp() {
   }, [events, eventMembersMap, user?.id, realBand?.id, isAdminOfBand]);
 
   const currentRehearsal = upcomingRehearsals[rehearsalIndex] || upcomingRehearsals[0];
+  // Who is on it (not who declined), for live mode's check-in and the summary.
+  const rehearsalLineup = useMemo(
+    () =>
+      (currentRehearsal?.eventId ? eventMembersMap[currentRehearsal.eventId] || [] : [])
+        .filter((m) => m.status !== "declined")
+        .map((m, i) => ({ userId: m.userId || `member-${i}`, name: m.name })),
+    [currentRehearsal?.eventId, eventMembersMap],
+  );
 
   const memoizedBandMembers = useMemo(() => {
     if (!realBand?.members) return [];
@@ -1875,6 +1917,7 @@ export default function AuthenticatedApp() {
         ids.forEach((nid) => { const rid = notificationIdMap.get(nid); if (rid) markNotificationAsRead(rid); });
         setTimeout(() => refetchNotifications?.(), 500);
         closeIdentity();
+        closeLayersFor("chat");
         setTimeout(() => {
           setActiveTab("Chat");
           const sn = (realNotif?.data as any)?.senderName || realNotif?.title?.replace("💬 ", "") || t("Chat");
@@ -1939,7 +1982,7 @@ export default function AuthenticatedApp() {
       if (actionType === "NAV_CHAT") setActiveTab("Chat");
       else if (actionType === "NAV_EVENTS") { setActiveTab("Events"); setEventFilter("All"); }
       else if (actionType === "NAV_EVENTS_CONFIRMED") { setActiveTab("Events"); setEventFilter("Confirmed"); }
-      else if (actionType === "NAV_FINANCE") setExpandedCard("finance");
+      else if (actionType === "NAV_FINANCE") { closeLayersFor("card"); setExpandedCard("finance"); }
     }, 300);
   };
 
@@ -2032,6 +2075,8 @@ export default function AuthenticatedApp() {
     urgentNotification,
     rsvpNotification,
     pollNotification,
+    votePollId,
+    eventLoadError,
     selectedNotifications,
     selectedNotification,
     inboxOpen,
@@ -2074,6 +2119,8 @@ export default function AuthenticatedApp() {
     urgentNotification,
     rsvpNotification,
     pollNotification,
+    votePollId,
+    eventLoadError,
     selectedNotifications,
     selectedNotification,
     inboxOpen,
@@ -2111,107 +2158,119 @@ export default function AuthenticatedApp() {
     activeTab,
   };
 
+  // One back chain for Android Back, the Escape key (lib/backStack) and the
+  // web build's browser Back. Rebuilt every render so it sees the latest
+  // handlers, but the native listener is registered once: re-adding it on
+  // each render left moments with two listeners (double back) or none (exit).
+  const backChainRef = useRef<(mode: BackMode) => boolean>(() => false);
   useEffect(() => {
-    if (!isNative) return;
-
-    const handlerPromise = App.addListener('backButton', () => {
+    backChainRef.current = (mode) => {
       const s = backNavStateRef.current;
 
       // 0. Screens that go back one level themselves (Settings sub-sections,
       //    the quote PDF sheet, pricing tabs…) get the press first.
-      if (handleBackFromStack()) return;
+      if (handleBackFromStack()) return true;
 
       // 1. Transient Notifications & Popups
-      if (s.urgentNotification) {
+      // The urgent popup only shows when no RSVP or poll sheet covers it.
+      if (s.urgentNotification && !s.rsvpNotification && !s.pollNotification) {
         setUrgentNotification(null);
-        return;
+        return true;
       }
       if (s.rsvpNotification) {
         setRsvpNotification(null);
-        return;
+        return true;
       }
       if (s.pollNotification) {
         setPollNotification(null);
-        return;
+        return true;
+      }
+      if (s.votePollId) {
+        setVotePollId(null);
+        return true;
+      }
+      if (s.eventLoadError) {
+        setEventLoadError(null);
+        return true;
       }
       if (s.selectedNotifications.length > 0 || s.inboxOpen) {
         setSelectedNotifications([]); setInboxOpen(false);
-        return;
+        return true;
       }
       if (s.selectedNotification) {
         setSelectedNotification(null);
-        return;
+        return true;
       }
 
       // 2. Modals, Sheets & Creation Flows
       if (s.showPersonalGigModal) {
         setShowPersonalGigModal(false);
-        return;
+        return true;
       }
       if (s.showNoBandRehearsalModal) {
         setShowNoBandRehearsalModal(false);
-        return;
+        return true;
       }
       if (s.showChooseBandProposalModal) {
         setShowChooseBandProposalModal(false);
-        return;
+        return true;
       }
       if (s.showProposeRehearsalModal) {
         setShowProposeRehearsalModal(false);
-        return;
+        return true;
       }
       if (s.showRehearsalPollModal) {
         setShowRehearsalPollModal(false);
-        return;
+        return true;
       }
       if (s.isCreateEventOpen) {
         setIsCreateEventOpen(false);
-        return;
+        return true;
       }
       if (s.showNewChat) {
         setShowNewChat(false);
-        return;
+        return true;
       }
       if (s.showEditProfile) {
         setShowEditProfile(false);
-        return;
+        return true;
       }
       if (s.showCreateBand) {
         setShowCreateBand(false);
-        return;
+        return true;
       }
       if (s.showUpgradePricing || s.showPricingModal) {
         setShowUpgradePricing(false);
         setShowPricingModal(false);
-        return;
+        return true;
       }
       if (s.showAdminTour) {
         setShowAdminTour(false);
-        return;
+        return true;
       }
       if (s.isPlusMenuOpen) {
         setIsPlusMenuOpen(false);
-        return;
+        return true;
       }
       if (s.isDayPickerOpen) {
         setIsDayPickerOpen(false);
-        return;
+        return true;
       }
       if (s.isBandSwitcherOpen) {
         setIsBandSwitcherOpen(false);
-        return;
+        return true;
       }
 
       // 3. Detail & Management Screens (Chat, Event, Expanded Cards, Tools)
       if (s.selectedChat) {
         setSelectedChat(null);
         refetchChats?.();
-        return;
+        return true;
       }
       if (s.selectedEvent) {
         setSelectedEvent(null);
         setSelectedEventMembership(null);
-        return;
+        return true;
       }
       if (s.expandedCard) {
         if (s.expandedCard === "rehearsal" && (s.rehearsalViewMode === "live" || s.rehearsalViewMode === "post")) {
@@ -2220,61 +2279,67 @@ export default function AuthenticatedApp() {
         } else {
           setExpandedCard(null);
         }
-        return;
+        return true;
       }
       if (s.showSettings) {
         setShowSettings(false);
         setSettingsInitialSection("main");
-        return;
+        return true;
       }
       if (s.showBandMembers) {
         setShowBandMembers(false);
-        return;
+        return true;
       }
       if (s.showSetlistManager) {
         setShowSetlistManager(false);
-        return;
+        return true;
       }
       if (s.showAnalytics) {
         setShowAnalytics(false);
-        return;
+        return true;
       }
       if (s.showInventory) {
         setShowInventory(false);
-        return;
+        return true;
       }
       if (s.showContracts) {
         setShowContracts(false); setContractPrefill(null);
-        return;
+        return true;
       }
       if (s.showTaskTemplates) {
         setShowTaskTemplates(false);
-        return;
+        return true;
       }
       if (s.showPastEvents) {
         setShowPastEvents(false);
-        return;
+        return true;
       }
       if (s.showDeputyGigs) {
         setShowDeputyGigs(false);
-        return;
+        return true;
       }
 
       // 4. Slide-over Hubs & Panels
       if (s.isControlDeckOpen) {
         setIsControlDeckOpen(false);
-        return;
+        return true;
       }
       if (s.isIdentityOpen) {
         closeIdentity();
-        return;
+        return true;
       }
+
+      // Escape only closes layers.
+      if (mode === "key") return false;
 
       // 5. Secondary Tabs -> Return to Home
       if (s.activeTab !== "Home") {
         setActiveTab("Home");
-        return;
+        return true;
       }
+
+      // The browser's Back leaves the site from here.
+      if (mode === "web") return false;
 
       // 6. First Level (Home tab with no overlays) -> Double tap to exit
       const now = Date.now();
@@ -2289,12 +2354,35 @@ export default function AuthenticatedApp() {
           minimal: true,
         });
       }
-    });
+      return true;
+    };
+  });
+  useEffect(() => setAppBack((mode) => backChainRef.current(mode)), []);
 
+  useEffect(() => {
+    if (!isNative) return;
+    const handlerPromise = App.addListener('backButton', () => {
+      backChainRef.current("native");
+    });
     return () => {
       handlerPromise.then((h) => h.remove());
     };
-  }, [isNative, closeIdentity, toggleLive, refetchChats]);
+  }, [isNative]);
+
+  // Web build: the browser's Back closes the top layer like Android Back,
+  // through one history entry kept on top while the app is open; with
+  // nothing left to close it leaves as usual.
+  useEffect(() => {
+    if (isNative) return;
+    const arm = () => window.history.pushState({ ...(window.history.state || {}), bwBack: true }, "");
+    if (!window.history.state?.bwBack) arm();
+    const onPop = () => {
+      if (backChainRef.current("web")) arm();
+      else window.history.back();
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [isNative]);
 
   const handleEventEdit = async () => {
     if (!selectedEvent) return;
@@ -3851,15 +3939,21 @@ export default function AuthenticatedApp() {
       <React.Suspense fallback={null}>
         <AnimatePresence>
           {/* z-185 like the views inside: under the iPhone Duo rail (190),
-              where live mode puts its Exit. */}
-          {rehearsalViewMode === "live" && expandedCard === "rehearsal" && (
+              where live mode puts its Exit. Each lazy view suspends inside
+              its own layer: suspending the whole list stalled live mode's
+              exit, leaving it under the summary. */}
+          {rehearsalViewMode === "live" && expandedCard === "rehearsal" && currentRehearsal && (
             <motion.div key="rehearsal-live" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[185]">
-              <RehearsalLiveView onClose={() => setRehearsalViewMode("overview")} onFinish={() => setRehearsalViewMode("post")} />
+              <React.Suspense fallback={null}>
+                <RehearsalLiveView rehearsal={currentRehearsal} lineup={rehearsalLineup} onClose={() => setRehearsalViewMode("overview")} onFinish={() => setRehearsalViewMode("post")} />
+              </React.Suspense>
             </motion.div>
           )}
-          {rehearsalViewMode === "post" && expandedCard === "rehearsal" && (
+          {rehearsalViewMode === "post" && expandedCard === "rehearsal" && currentRehearsal && (
             <motion.div key="rehearsal-post" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[185]">
-              <RehearsalPostView onClose={() => setRehearsalViewMode("overview")} />
+              <React.Suspense fallback={null}>
+                <RehearsalPostView rehearsal={currentRehearsal} lineup={rehearsalLineup} upcoming={upcomingRehearsals} onClose={() => setRehearsalViewMode("overview")} />
+              </React.Suspense>
             </motion.div>
           )}
 
@@ -4468,7 +4562,7 @@ export default function AuthenticatedApp() {
       <BandSwitchPrompt request={bandSwitchRequest} onChoose={chooseBandSwitch} />
 
       {eventLoadError && (
-        <div className="bw-pane-detail fixed inset-0 z-[100] bg-background flex items-center justify-center px-6" style={{ paddingTop: 'var(--safe-top)' }}>
+        <div className="bw-pane-detail fixed inset-0 z-[100] bg-background flex items-center justify-center" style={{ paddingTop: 'var(--safe-top)', paddingLeft: 'calc(var(--safe-left) + 24px)', paddingRight: 'calc(var(--safe-right) + 24px)' }}>
           {eventLoadError.kind === 'error' ? (
             <ErrorState
               body={eventLoadError.message || t("Check your connection and try again.")}

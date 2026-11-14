@@ -38,6 +38,7 @@ import { updateBand } from '@/lib/services/bands';
 import { uploadBandBrandingAsset, getBandPricing, saveBandPricing } from '@/lib/services/pricing';
 import { personName, personInitials, hasRealName } from '@/lib/personName';
 import { useT } from '@/lib/i18n';
+import { uuidToNumericId } from '@/lib/numericId';
 import { assetStatusParts, EMPTY_ASSET_STATUS, type AssetId, type AssetStatusCounts, type StatusPart } from '@/lib/assetStatus';
 
 interface NotificationGroup {
@@ -805,8 +806,9 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
 
                   <div className="flex flex-col gap-2">
                     {bands.map((b) => {
-                      const isActive = b.id === selectedBand.id || b.name === selectedBand.name;
-                      const matchedRealBand = realBandsList?.find((rb) => rb.name === b.name);
+                      // By id: two bands can share a name.
+                      const isActive = b.id === selectedBand.id;
+                      const matchedRealBand = realBandsList?.find((rb) => uuidToNumericId(rb.id) === b.id);
                       const itemInitials = b.initials || initialsOf(b.name);
                       return (
                         <button
