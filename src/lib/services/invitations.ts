@@ -158,6 +158,15 @@ export async function declineInvitation(invitationId: string): Promise<void> {
   if (error) throw toInviteError(error);
 }
 
+/**
+ * Declines from the invite link before signing in: holding the token is the
+ * proof, as for the preview (migration 102). Throws InviteError.
+ */
+export async function declineInvitationByToken(token: string): Promise<void> {
+  const { error } = await supabase.rpc('bw_decline_invitation_by_token', { p_token: token });
+  if (error) throw toInviteError(error);
+}
+
 export interface PendingInvitation {
   id: string;
   bandId: string;

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ArrowUpRight, Calendar, MessageSquare, Music } from '@/app/components/icons';
-import { AuthScreen, BackButton, PillButton, Selector } from '@/app/components/bw/Form';
+import { AuthScreen, BackButton, FormError, PillButton, Selector } from '@/app/components/bw/Form';
 import { DotMeter } from '@/app/components/bw/Metric';
 import { DotText } from '@/app/components/bw/DotText';
 import { setStatusBarTone } from '@/lib/systemBars';
@@ -38,6 +38,9 @@ interface JoinerInviteLandingProps {
   onAccept: () => void;
   onDecline: () => void;
   onBack?: () => void;
+  /** Telling the server about the decline. */
+  declining?: boolean;
+  declineError?: string | null;
 }
 
 /** Figma metric meter: 2 × 11 dots, one dot per unit. */
@@ -49,6 +52,8 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
   onAccept,
   onDecline,
   onBack,
+  declining = false,
+  declineError = null,
 }) => {
   const t = useT();
   const PERKS = [
@@ -94,7 +99,8 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
       top={onBack ? <BackButton onClick={onBack} className="bw-duo-rail-back" /> : undefined}
       footer={
         <>
-          <PillButton variant="danger" size="sm" onClick={onDecline}>
+          {declineError && <FormError>{declineError}</FormError>}
+          <PillButton variant="danger" size="sm" onClick={onDecline} loading={declining}>
             {t('Decline invitation')}
           </PillButton>
           <PillButton onClick={onAccept} trailingIcon={<ArrowUpRight className="w-5 h-5" />}>

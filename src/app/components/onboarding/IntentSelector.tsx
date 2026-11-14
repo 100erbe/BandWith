@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { ArrowUpRight } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { useOnboarding } from '@/lib/OnboardingContext';
+import { useAuth } from '@/lib/AuthContext';
 import { AuthScreen, Kicker, PillButton } from '@/app/components/bw/Form';
 import { DotMatrixRadio, WizardTop, wizardStep } from './OnboardingChrome';
 import { useT } from '@/lib/i18n';
@@ -51,7 +52,16 @@ export const IntentSelector: React.FC<IntentSelectorProps> = ({
     },
   ];
   const { path } = useOnboarding();
+  const { user, signOut } = useAuth();
   const [choice, setChoice] = useState<Intent | null>(null);
+  // Wrong Google account or a typo in the address: a way out before any band exists.
+  const [signingOut, setSigningOut] = useState(false);
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    const { error } = await signOut();
+    if (error) setSigningOut(false);
+  };
   const { step, total } = wizardStep(path, 'intent');
 
   const handleContinue = () => {
@@ -134,6 +144,21 @@ export const IntentSelector: React.FC<IntentSelectorProps> = ({
           );
         })}
       </div>
+
+      {user?.email && (
+        <p className="bw-body-sm text-muted-foreground break-words">
+          {t('Signed in as {account}', { account: user.email })}
+          {' · '}
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="underline underline-offset-4 text-foreground disabled:opacity-40"
+          >
+            {t('Sign out')}
+          </button>
+        </p>
+      )}
     </AuthScreen>
   );
 };

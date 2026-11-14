@@ -11,6 +11,7 @@ import {
   type PendingInvitation,
 } from '@/lib/services/invitations';
 import { useT } from '@/lib/i18n';
+import { useAuth } from '@/lib/AuthContext';
 
 interface PendingInvitesPromptProps {
   userId: string | null | undefined;
@@ -45,6 +46,7 @@ function writeDismissed(ids: string[]) {
  */
 export function PendingInvitesPrompt({ userId, onJoined, onToast, hidden }: PendingInvitesPromptProps) {
   const t = useT();
+  const { refreshProfile } = useAuth();
   const [invites, setInvites] = useState<PendingInvitation[]>([]);
   const [busy, setBusy] = useState<'join' | 'decline' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +93,9 @@ export function PendingInvitesPrompt({ userId, onJoined, onToast, hidden }: Pend
     setError(null);
     try {
       const bandId = await acceptInvitation({ invitationId: current.id });
+      // Joining switches a solo account to member (server side): read the
+      // profile again so the app leaves solo mode and shows the band.
+      await refreshProfile();
       onToast?.(t('You joined {band}', { band: current.bandName }), 'success');
       onJoined(bandId, current.bandName);
       next();

@@ -29,6 +29,7 @@ const OnboardingFlow = lazy(
 const DeputyHome = lazy(() => import("./components/deputy/DeputyHome"));
 const AppLockScreen = lazy(() => import("./components/onboarding/AppLockScreen"));
 const BandsLoadError = lazy(() => import("./components/onboarding/BandsLoadError"));
+const InviteLinkNotice = lazy(() => import("./components/notifications/InviteLinkNotice"));
 
 // Remembers that this account has deputy gigs and no band, so the next
 // launch opens "Deputy gigs" straight away (checked again in the background).
@@ -72,11 +73,18 @@ export default function App() {
   const { isAuthenticated, loading: authLoading, userMode, profile, isPasswordRecovery, user, signOut } = useAuth();
   // The server writes some pushes (deputies) in the language of the app.
   useServerLocaleSync(isAuthenticated && !isPasswordRecovery ? user?.id : null, profile?.preferred_language);
-  const { startOnboarding, goToStep } = useOnboarding();
+  const { startOnboarding, goToStep, resetOnboarding, path: onboardingPath } = useOnboarding();
   const deputyClaim = useDeputyClaim();
   const { bands, loading: bandsLoading, refreshBands, error: bandsError } = useBand();
   const [showOnboarding, setShowOnboarding] = useState(true);
   const prevAuthRef = useRef(isAuthenticated);
+  // Signed out (any screen, with or without a reload): the next screen is the
+  // welcome screen, not the step the onboarding was on.
+  useEffect(() => {
+    if (authLoading) return;
+    if (prevAuthRef.current && !isAuthenticated) resetOnboarding();
+    prevAuthRef.current = isAuthenticated;
+  }, [isAuthenticated, authLoading, resetOnboarding]);
 
   // App lock (src/lib/appLock.ts): decided once, when the session saved at
   // launch is known. A sign-in later in this run never locks.
@@ -171,6 +179,10 @@ export default function App() {
   const isSolo = userMode === 'solo' || profile?.user_mode === 'solo';
   const [deputyHome, setDeputyHome] = useState<boolean>(() => readDeputyHome(user?.id));
   const [skipDeputyHome, setSkipDeputyHome] = useState(false);
+  // "Set up your band" from Deputy gigs, then Back out of the onboarding: Deputy gigs again.
+  useEffect(() => {
+    if (skipDeputyHome && !onboardingPath) setSkipDeputyHome(false);
+  }, [skipDeputyHome, onboardingPath]);
   useEffect(() => {
     if (!isAuthenticated || authLoading || bandsLoading || !user?.id) return;
     if (bands.length > 0 || isSolo) {
@@ -197,6 +209,8 @@ export default function App() {
     console.log("Navigating to dashboard!");
     onboardingCompletedRef.current = true;
     setShowOnboarding(false);
+    // The invite (if any) was handled by the onboarding.
+    setInviteToken(null);
 
     // Fire refreshBands in background to avoid blocking the transition
     refreshBands().catch(e => console.error("Error refreshing bands:", e));
@@ -336,6 +350,14 @@ export default function App() {
   return (
     <Suspense fallback={<BlackScreen />}>
       <AuthenticatedApp />
+      {/* An invite link opened while signed in (onboarding is not shown). */}
+      {inviteToken && (
+        <InviteLinkNotice
+          token={inviteToken}
+          onDone={() => setInviteToken(null)}
+          onSignOut={() => void signOut()}
+        />
+      )}
     </Suspense>
   );
 }

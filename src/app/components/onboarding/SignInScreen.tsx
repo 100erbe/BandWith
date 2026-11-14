@@ -13,6 +13,10 @@ import {
 } from '@/app/components/icons';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { Capacitor } from '@capacitor/core';
+import { authErrorMessage } from '@/lib/authErrors';
+import { useCloseOnBack } from '@/lib/overlayBack';
+import { quickSignInDeclined, rememberQuickSignInDeclined } from '@/lib/quickSignInPrompt';
 import { AuthScreen, BackButton, FormError, Kicker, OrDivider, PillButton, PillField } from '@/app/components/bw/Form';
 import type { BiometricStatus } from '@/lib/services/biometric';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
@@ -34,7 +38,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
 }) => {
   const t = useT();
   const bioDrag = useSheetDrag(() => { void handleBiometricPromptDecision(false); });
-  const { signIn, signInWithGoogle, signInWithApple, isAuthenticated } = useAuth();
+  const { signIn, signInWithGoogle, signInWithApple, isAuthenticated, authError, clearAuthError } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,10 +46,23 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // A sign-in that came back to the app and failed (expired link, Google /
+  // Apple cancelled): say it here.
+  useEffect(() => {
+    if (!authError) return;
+    setError(authError);
+    setLoading(false);
+    clearAuthError();
+  }, [authError, clearAuthError]);
+
   // Biometric state — module loaded lazily to avoid native plugin in entry chunk
   const [biometricStatus, setBiometricStatus] = useState<BiometricStatus | null>(null);
   const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
   const [pendingCredentials, setPendingCredentials] = useState<{ email: string; password: string } | null>(null);
+  // The quick sign-in answer for this screen: asked once, not again on each
+  // wrong-password retry.
+  const bioDecisionRef = useRef<boolean | null>(null);
+  useCloseOnBack(showBiometricPrompt, () => { void handleBiometricPromptDecision(false); });
   const biometricModuleRef = useRef<typeof import('@/lib/services/biometric') | null>(null);
   const mountedRef = useRef(true);
   const onSuccessRef = useRef(onSuccess);
@@ -121,16 +138,16 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
           await forget(t('Your password changed. Sign in with it once to turn quick sign-in back on.'));
           return;
         }
-        setError(error.message);
+        setError(authErrorMessage(error));
         setLoading(false);
         return;
       }
       const { data: { session } } = await supabase.auth.getSession();
       await bioModule.updateStoredSession(session);
       onSuccess();
-    } catch (err: any) {
+    } catch {
       if (!mountedRef.current) return;
-      setError(err.message || t('Biometric authentication failed'));
+      setError(t('Biometric authentication failed'));
       setLoading(false);
     }
   };
@@ -140,29 +157,36 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     setShowBiometricPrompt(false);
 
     if (!pendingCredentials) return;
+    bioDecisionRef.current = save;
+    if (!save) rememberQuickSignInDeclined(pendingCredentials.email);
+    await signInWithPassword(pendingCredentials.email, pendingCredentials.password, save);
+  };
+
+  /** Password sign-in; `saveQuick` turns quick sign-in on once the password is proven right. */
+  const signInWithPassword = async (mail: string, pass: string, saveQuick: boolean) => {
     setLoading(true);
     setError(null);
 
     try {
-      const { error } = await signIn(pendingCredentials.email, pendingCredentials.password);
+      const { error } = await signIn(mail, pass);
       if (!mountedRef.current) return;
       if (error) {
-        setError(error.message);
+        setError(authErrorMessage(error));
         setLoading(false);
         return;
       }
       // Quick sign-in keeps the session's refresh token, never the password,
       // and only once the password is proven right.
-      if (save && biometricModuleRef.current) {
+      if (saveQuick && biometricModuleRef.current) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           await biometricModuleRef.current.saveSessionForBiometric(session, { allowWebTest: import.meta.env.DEV });
         }
       }
       onSuccess();
-    } catch (err: any) {
+    } catch (err) {
       if (!mountedRef.current) return;
-      setError(err.message || t('An error occurred'));
+      setError(authErrorMessage(err));
       setLoading(false);
     }
   };
@@ -175,7 +199,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     const { error } = await signInWithGoogle();
     if (!mountedRef.current) return;
     if (error) {
-      setError(error.message);
+      setError(authErrorMessage(error));
     }
     setLoading(false);
   };
@@ -187,10 +211,10 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     setError(null);
     const { error } = await signInWithApple();
     if (!mountedRef.current) return;
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    }
+    if (error) setError(authErrorMessage(error));
+    // Native: the in-app browser is open now. If it is closed without
+    // signing in, the buttons must work again (web: the page redirects).
+    if (error || Capacitor.isNativePlatform()) setLoading(false);
   };
 
   /** Sign-in: show biometric save prompt BEFORE calling signIn() to avoid race conditions. */
@@ -213,31 +237,23 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     }
 
     // Offer quick sign-in when it is off, or ask before moving it from
-    // another account to this one (PR-42).
+    // another account to this one (PR-42). Asked once on this screen (a
+    // wrong-password retry keeps the answer), and never again for an
+    // account that said "Not now" on this device.
     const typedEmail = email.trim().toLowerCase();
-    if (bioStatus?.isAvailable && (!bioStatus.hasCredentials || (bioStatus.email && bioStatus.email !== typedEmail))) {
+    if (
+      bioDecisionRef.current === null &&
+      !quickSignInDeclined(typedEmail) &&
+      bioStatus?.isAvailable &&
+      (!bioStatus.hasCredentials || (bioStatus.email && bioStatus.email !== typedEmail))
+    ) {
       // Show prompt first — signIn() happens after user decides
       setPendingCredentials({ email, password });
       setShowBiometricPrompt(true);
       return;
     }
 
-    // No biometric prompt needed — sign in directly
-    setLoading(true);
-    try {
-      const { error } = await signIn(email, password);
-      if (!mountedRef.current) return;
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-        return;
-      }
-      onSuccess();
-    } catch (err: any) {
-      if (!mountedRef.current) return;
-      setError(err.message || t('An error occurred'));
-      setLoading(false);
-    }
+    await signInWithPassword(email, password, bioDecisionRef.current === true);
   };
 
   const getBiometryDisplayName = (type?: string) => {
