@@ -158,11 +158,12 @@ describe('contract writes', () => {
     });
   });
 
-  it('returns insert errors instead of a local row', async () => {
+  it('returns insert errors instead of a local row, in words the user can read', async () => {
     handler = () => ({ error: { message: 'new row violates row-level security policy' } });
     const { data, error } = await createContract({ bandId: 'b1', type: 'contract', title: 'T', clientName: 'C' });
     expect(data).toBeNull();
-    expect(error?.message).toMatch(/row-level security/);
+    expect(error?.message).toBe('Could not create the document.');
+    expect(error?.message).not.toMatch(/row-level security/);
   });
 
   it('rejects an invalid client email before writing', async () => {

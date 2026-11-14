@@ -12,6 +12,15 @@
  * - Non-finite inputs count as 0 and the subtotal never goes below 0.
  */
 
+/**
+ * Fallbacks when neither the quote nor the band's pricing settings have a
+ * value, shared by the PDF and the client's page so both show the same.
+ */
+export const DEFAULT_VAT_RATE = 21;
+export const DEFAULT_DEPOSIT_RATE = 20;
+export const DEFAULT_SETS = 3;
+export const DEFAULT_SET_MINUTES = 45;
+
 export type QuoteDiscountType = 'none' | 'percentage' | 'fixed';
 
 export interface QuoteMathLineItem {
@@ -132,6 +141,19 @@ export const totalsForQuote = (
     });
   }
   return calculateTotalsFromSubtotal(finite(fallback.subtotal ?? q.subtotal), opts);
+};
+
+/**
+ * The deposit percentage a quote asks for: 0 when it asks for none (no
+ * deposit, or 0%), otherwise its own percentage, else `fallback` (the band's
+ * default, else DEFAULT_DEPOSIT_RATE). Clamped to [0, 100].
+ */
+export const quoteDepositPercent = (
+  q: { depositRequired?: boolean | null; depositPercentage?: number | null },
+  fallback?: number | null,
+): number => {
+  if (q.depositRequired === false) return 0;
+  return clamp(finite(q.depositPercentage ?? fallback ?? DEFAULT_DEPOSIT_RATE), 0, 100);
 };
 
 /** Deposit amount (cents-rounded) for a total and a deposit percentage clamped to [0, 100]. */

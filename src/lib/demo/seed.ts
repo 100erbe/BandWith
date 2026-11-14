@@ -21,11 +21,11 @@ export const DEMO_USER = {
   id: IDS.me,
   aud: 'authenticated',
   role: 'authenticated',
-  email: 'demo@bandwith.app',
+  email: 'demo@example.com',
   email_confirmed_at: '2026-01-10T10:00:00.000Z',
   phone: '',
   app_metadata: { provider: 'email', providers: ['email'] },
-  user_metadata: { full_name: 'Alex Rivera' } as Record<string, any>,
+  user_metadata: { full_name: 'Leo M.' } as Record<string, any>,
   identities: [],
   created_at: '2026-01-10T10:00:00.000Z',
   updated_at: '2026-01-10T10:00:00.000Z',
@@ -45,11 +45,11 @@ export const buildSeed = (): DemoDB => {
   const created = ago(60 * 24 * 120);
 
   const profiles: Row[] = [
-    { id: IDS.me, email: 'demo@bandwith.app', full_name: 'Alex Rivera', avatar_url: null, role: 'admin', instrument: 'Vocals', phone: '+39 333 000 0001', bio: 'Lead vocals and band leader.', location: 'Milano', timezone: 'Europe/Rome', preferred_language: 'en', sub_tier: 'unlimited', user_mode: 'band', notification_preferences: {} },
-    { id: IDS.marta, email: 'marta@example.com', full_name: 'Marta Conti', avatar_url: null, role: 'member', instrument: 'Drums', phone: null, sub_tier: 'free_member', user_mode: 'member' },
-    { id: IDS.jonah, email: 'jonah@example.com', full_name: 'Jonah Reyes', avatar_url: null, role: 'member', instrument: 'Bass', phone: null, sub_tier: 'free_member', user_mode: 'member' },
-    { id: IDS.lena, email: 'lena@example.com', full_name: 'Lena Park', avatar_url: null, role: 'member', instrument: 'Keys', phone: null, sub_tier: 'free_member', user_mode: 'member' },
-    { id: IDS.sam, email: 'sam@example.com', full_name: 'Sam Okafor', avatar_url: null, role: 'member', instrument: 'Guitar', phone: null, sub_tier: 'free_member', user_mode: 'member' },
+    { id: IDS.me, email: 'demo@example.com', full_name: 'Leo M.', avatar_url: null, role: 'admin', instrument: 'Vocals', phone: '+39 333 000 0001', bio: 'Lead vocals and band leader.', location: 'Milano', timezone: 'Europe/Rome', preferred_language: 'en', sub_tier: 'unlimited', user_mode: 'band', notification_preferences: {} },
+    { id: IDS.marta, email: 'marta@example.com', full_name: 'Marta C.', avatar_url: null, role: 'member', instrument: 'Drums', phone: null, sub_tier: 'free_member', user_mode: 'member' },
+    { id: IDS.jonah, email: 'jonah@example.com', full_name: 'Jonah R.', avatar_url: null, role: 'member', instrument: 'Bass', phone: null, sub_tier: 'free_member', user_mode: 'member' },
+    { id: IDS.lena, email: 'lena@example.com', full_name: 'Lena P.', avatar_url: null, role: 'member', instrument: 'Keys', phone: null, sub_tier: 'free_member', user_mode: 'member' },
+    { id: IDS.sam, email: 'sam@example.com', full_name: 'Sam O.', avatar_url: null, role: 'member', instrument: 'Guitar', phone: null, sub_tier: 'free_member', user_mode: 'member' },
   ].map((p) => ({ created_at: created, updated_at: created, ...p }));
 
   const bands: Row[] = [
@@ -62,7 +62,7 @@ export const buildSeed = (): DemoDB => {
       dj_hourly_rate: 80, production_standard_fee: 400, production_pro_fee: 900, production_extra_location_fee: 150,
       travel_rate_per_km: 0.45, home_base_address: 'Via Tortona 27, Milano', home_base_latitude: 45.4518, home_base_longitude: 9.1661,
       pricing_currency: 'EUR', pricing_rules: {}, extra_services: [], contact_email: 'booking@velvetstatic.example',
-      signer_name: 'Alex Rivera', signer_role: 'Band leader', default_payment_terms: '30% deposit, balance on the day',
+      signer_name: 'Leo M.', signer_role: 'Band leader', default_payment_terms: '30% deposit, balance on the day',
     },
   ];
 
@@ -115,9 +115,9 @@ export const buildSeed = (): DemoDB => {
     deposit_paid: false, attachments: [], is_recurring: false, ...e,
   });
   const events: Row[] = [
-    ev(0, { title: 'Rooftop Session', event_type: 'gig', event_date: day(0), load_in_time: '17:00', soundcheck_time: '18:30', start_time: '21:00', end_time: '23:30', venue_name: 'Terrazza Aurora', venue_address: 'Via Mazzini 12', venue_city: 'Milano', fee: 1800, setlist_id: id(400), dress_code: 'All black', client_name: 'Aurora Events', client_email: 'events@aurora.example', notes: 'Parking in the back courtyard. Ask for Paolo at the door.' }),
+    ev(0, { title: 'Rooftop Session', event_type: 'gig', event_date: day(0), load_in_time: '17:00', soundcheck_time: '18:30', start_time: '21:00', end_time: '23:30', venue_name: 'Terrazza Aurora', venue_address: 'Via Mazzini 12', venue_city: 'Milano', fee: 1800, setlist_id: id(400), dress_code: 'All black', client_name: 'Aurora Events', client_email: 'events@aurora.example', notes: 'Parking in the back courtyard. Ask for the venue manager at the door.' }),
     ev(1, { title: 'Weekly rehearsal', event_type: 'rehearsal', event_date: day(1), start_time: '19:00', end_time: '22:00', venue_name: 'Blackbox Studios', venue_address: 'Via Ventura 4', venue_city: 'Milano', fee: null }),
-    ev(2, { title: 'Giulia & Marco — Wedding', event_type: 'gig', event_date: day(5), load_in_time: '15:00', soundcheck_time: '16:30', start_time: '20:30', end_time: '00:30', venue_name: 'Villa Necchi', venue_address: 'Via Mozart 14', venue_city: 'Milano', fee: 3200, setlist_id: id(401), dress_code: 'Suits', client_name: 'Giulia Bianchi', deposit_amount: 960, deposit_paid: true, payment_status: 'partial' }),
+    ev(2, { title: 'Client A — Wedding', event_type: 'gig', event_date: day(5), load_in_time: '15:00', soundcheck_time: '16:30', start_time: '20:30', end_time: '00:30', venue_name: 'Villa Necchi', venue_address: 'Via Mozart 14', venue_city: 'Milano', fee: 3200, setlist_id: id(401), dress_code: 'Suits', client_name: 'Client A', deposit_amount: 960, deposit_paid: true, payment_status: 'partial' }),
     ev(3, { title: 'New songs rehearsal', event_type: 'rehearsal', event_date: day(8), start_time: '18:30', end_time: '21:30', venue_name: 'Blackbox Studios', venue_city: 'Milano', fee: null }),
     ev(4, { title: 'Jazz Club Night', event_type: 'gig', status: 'tentative', event_date: day(14), load_in_time: '19:00', soundcheck_time: '20:00', start_time: '22:00', end_time: '01:00', venue_name: 'Blue Note', venue_address: 'Via Borsieri 37', venue_city: 'Milano', fee: 1400 }),
     ev(5, { title: 'Tech Summit Afterparty', event_type: 'gig', event_date: day(27), load_in_time: '16:00', soundcheck_time: '17:30', start_time: '21:00', end_time: '23:00', venue_name: 'Superstudio Più', venue_city: 'Milano', fee: 4500, client_name: 'Northwind Conferences', client_company: 'Northwind' }),
@@ -170,9 +170,9 @@ export const buildSeed = (): DemoDB => {
     };
   };
   const quotes: Row[] = [
-    q(0, { status: 'draft', client_name: 'Federica Russo', client_email: 'federica@example.com', event_name: 'Russo 40th birthday', event_type: 'private_party', event_date: day(40), venue_name: 'Cascina Cuccagna', venue_city: 'Milano', guest_count: 80, base_fee: 1600, travel_fee: 0, sound_included: true, sound_fee: 300, valid_until: day(20) }),
+    q(0, { status: 'draft', client_name: 'Client B', client_email: 'client.b@example.com', event_name: '40th birthday party', event_type: 'private_party', event_date: day(40), venue_name: 'Cascina Cuccagna', venue_city: 'Milano', guest_count: 80, base_fee: 1600, travel_fee: 0, sound_included: true, sound_fee: 300, valid_until: day(20) }),
     q(1, { status: 'negotiating', client_name: 'Northwind Conferences', client_email: 'ops@northwind.example', client_company: 'Northwind', event_name: 'Year-end gala', event_type: 'corporate', event_date: day(52), venue_name: 'Palazzo Clerici', venue_city: 'Milano', guest_count: 300, base_fee: 3800, travel_fee: 0, sound_included: true, sound_fee: 900, sent_at: ago(60 * 24 * 3), valid_until: day(14) }),
-    q(2, { status: 'accepted', client_name: 'Giulia Bianchi', client_email: 'giulia@example.com', event_name: 'Giulia & Marco — Wedding', event_type: 'wedding', event_date: day(5), venue_name: 'Villa Necchi', venue_city: 'Milano', guest_count: 140, base_fee: 3200, travel_fee: 0, sound_fee: 0, sent_at: ago(60 * 24 * 40), responded_at: ago(60 * 24 * 35), response_type: 'accepted', converted_to_event_id: id(602) }),
+    q(2, { status: 'accepted', client_name: 'Client A', client_email: 'client.a@example.com', event_name: 'Client A — Wedding', event_type: 'wedding', event_date: day(5), venue_name: 'Villa Necchi', venue_city: 'Milano', guest_count: 140, base_fee: 3200, travel_fee: 0, sound_fee: 0, sent_at: ago(60 * 24 * 40), responded_at: ago(60 * 24 * 35), response_type: 'accepted', converted_to_event_id: id(602) }),
   ];
 
   const transactions: Row[] = [
@@ -212,9 +212,9 @@ export const buildSeed = (): DemoDB => {
 
   const notifications: Row[] = [
     { id: id(1400), user_id: IDS.me, band_id: IDS.band, type: 'event_invite', title: 'New gig: Jazz Club Night', body: 'You have been added to Jazz Club Night. Confirm your availability.', data: { event_id: id(604) }, read: false, priority: 'high', reference_id: id(604), reference_type: 'event', created_at: ago(60 * 2) },
-    { id: id(1401), user_id: IDS.me, band_id: IDS.band, type: 'chat_message', title: 'Marta Conti', body: '+1, then straight into September 🔥', data: { chat_id: id(1100) }, read: false, priority: 'normal', reference_id: id(1100), reference_type: 'chat', created_at: ago(12) },
+    { id: id(1401), user_id: IDS.me, band_id: IDS.band, type: 'chat_message', title: 'Marta C.', body: '+1, then straight into September 🔥', data: { chat_id: id(1100) }, read: false, priority: 'normal', reference_id: id(1100), reference_type: 'chat', created_at: ago(12) },
     { id: id(1402), user_id: IDS.me, band_id: IDS.band, type: 'rehearsal_poll', title: 'Vote on rehearsal dates', body: 'Jonah proposed 3 dates for next week.', data: { poll_id: id(1500) }, read: false, priority: 'normal', reference_id: id(1500), reference_type: 'rehearsal_poll', created_at: ago(60 * 20) },
-    { id: id(1403), user_id: IDS.me, band_id: IDS.band, type: 'quote_accepted', title: 'Quote accepted', body: 'Giulia Bianchi accepted Q-2026-0014.', data: { quote_id: id(902) }, read: true, priority: 'normal', reference_id: id(902), reference_type: 'quote', created_at: ago(60 * 24 * 35) },
+    { id: id(1403), user_id: IDS.me, band_id: IDS.band, type: 'quote_accepted', title: 'Quote accepted', body: 'Client A accepted Q-2026-0014.', data: { quote_id: id(902) }, read: true, priority: 'normal', reference_id: id(902), reference_type: 'quote', created_at: ago(60 * 24 * 35) },
   ].map((n) => ({ archived: false, read_at: null, ...n }));
 
   const rehearsal_polls: Row[] = [
@@ -238,9 +238,9 @@ export const buildSeed = (): DemoDB => {
     { id: id(1603), band_id: IDS.band, name: 'Festival day', description: 'Backline, passes, stage plot', category: 'festival', tasks: [{ id: 't1', title: 'Send stage plot', dueOffset: -14, required: true }, { id: 't2', title: 'Confirm backline', dueOffset: -7, required: true }, { id: 't3', title: 'Collect artist passes', dueOffset: 0, required: true }], is_default: false, created_by: IDS.me, created_at: created, updated_at: created },
   ];
   const contracts: Row[] = [
-    { id: id(1700), band_id: IDS.band, event_id: id(602), title: 'Wedding performance agreement', type: 'performance', status: 'signed', event_name: 'Giulia & Marco — Wedding', event_date: day(5), client_name: 'Giulia Bianchi', client_email: 'giulia@example.com', signed_at: ago(60 * 24 * 34), created_by: IDS.me, created_at: created, updated_at: created },
+    { id: id(1700), band_id: IDS.band, event_id: id(602), title: 'Wedding performance agreement', type: 'performance', status: 'signed', event_name: 'Client A — Wedding', event_date: day(5), client_name: 'Client A', client_email: 'client.a@example.com', signed_at: ago(60 * 24 * 34), created_by: IDS.me, created_at: created, updated_at: created },
     // Rider linked to the wedding (093): v3, sent, seen by the venue.
-    { id: id(1702), band_id: IDS.band, event_id: id(602), title: 'Stage & tech rider — Wedding', type: 'rider', version: 3, status: 'viewed', event_name: 'Giulia & Marco — Wedding', event_date: day(5), client_name: 'Villa Necchi', client_email: 'events@villanecchi.example', content: 'Power: 2 × 16 A within 10 m of the stage.\nStage: 6 × 4 m, flat and covered if outdoors.\nChanging room and dinner for 6.', sent_at: ago(60 * 24 * 12), viewed_at: ago(60 * 24 * 11), signed_at: null, created_by: IDS.me, created_at: created, updated_at: created },
+    { id: id(1702), band_id: IDS.band, event_id: id(602), title: 'Stage & tech rider — Wedding', type: 'rider', version: 3, status: 'viewed', event_name: 'Client A — Wedding', event_date: day(5), client_name: 'Villa Necchi', client_email: 'events@villanecchi.example', content: 'Power: 2 × 16 A within 10 m of the stage.\nStage: 6 × 4 m, flat and covered if outdoors.\nChanging room and dinner for 6.', sent_at: ago(60 * 24 * 12), viewed_at: ago(60 * 24 * 11), signed_at: null, created_by: IDS.me, created_at: created, updated_at: created },
     { id: id(1701), band_id: IDS.band, event_id: null, title: 'Year-end gala agreement', type: 'performance', status: 'sent', event_name: 'Year-end gala', event_date: day(52), client_name: 'Northwind Conferences', client_email: 'ops@northwind.example', signed_at: null, created_by: IDS.me, created_at: created, updated_at: created },
   ];
   // Rider & stage (092): the wedding has a saved plot (full band + trio);
@@ -265,7 +265,7 @@ export const buildSeed = (): DemoDB => {
       inputs: [
         ['Kick', 'Beta 52', 'Marta'], ['Snare', 'SM57', 'Marta'], ['OH L', 'C414', 'Marta'], ['OH R', 'C414', 'Marta'],
         ['Bass', 'DI', 'Jonah'], ['Guitar', 'SM57', 'Sam'], ['Keys L', 'DI', 'Lena'], ['Keys R', 'DI', 'Lena'],
-        ['Lead vox', 'Beta 58', 'Alex'], ['Bvx 1', 'SM58', 'Sam'], ['Bvx 2', 'SM58', 'Lena'], ['Playback', 'DI', 'Lena'], ['Spare vox', 'SM58', 'Guest'],
+        ['Lead vox', 'Beta 58', 'Leo'], ['Bvx 1', 'SM58', 'Sam'], ['Bvx 2', 'SM58', 'Lena'], ['Playback', 'DI', 'Lena'], ['Spare vox', 'SM58', 'Guest'],
       ].map(([source, mic, who], i) => ({ id: `ch-${i}`, source, mic, kind: mic === 'DI' ? 'di' : 'mic', who })),
       band_brings: ['PA 2× 12" + sub', 'Mixer XR18', 'Backline', 'Lights'],
       venue_provides: ['Power 2× 16A', 'Stage 6 × 4 m', 'Changing room', 'Dinner × 6'],
@@ -274,7 +274,7 @@ export const buildSeed = (): DemoDB => {
   const inventory: Row[] = [
     { id: id(1800), band_id: IDS.band, name: 'Nord Stage 4', category: 'keys', quantity: 1, status: 'available', location: 'Lena', created_at: created, updated_at: created },
     { id: id(1801), band_id: IDS.band, name: 'Shure SM58', category: 'microphones', quantity: 4, status: 'available', location: 'Rehearsal room', created_at: created, updated_at: created },
-    { id: id(1802), band_id: IDS.band, name: 'In-ear mixer (Behringer P16)', category: 'monitoring', quantity: 1, status: 'in_use', location: 'Alex', created_at: created, updated_at: created },
+    { id: id(1802), band_id: IDS.band, name: 'In-ear mixer (Behringer P16)', category: 'monitoring', quantity: 1, status: 'in_use', location: 'Leo', created_at: created, updated_at: created },
     { id: id(1803), band_id: IDS.band, name: 'DI boxes', category: 'cables', quantity: 6, status: 'maintenance', location: 'Rehearsal room', created_at: created, updated_at: created },
     ...([
       [1804, 'PA tops 12"', 'Other', 2, 'available', 'Case A'],
@@ -283,7 +283,7 @@ export const buildSeed = (): DemoDB => {
       [1807, 'Mic stands', 'Stands', 5, 'available', 'Case D'],
       [1808, 'XLR 10 m', 'Cables', 12, 'available', 'Cable bag'],
       [1809, 'Power strips', 'Cables', 4, 'available', 'Cable bag'],
-      [1810, 'LED PAR 54×3W', 'Lighting', 4, 'in_use', 'Alex'],
+      [1810, 'LED PAR 54×3W', 'Lighting', 4, 'in_use', 'Leo'],
       [1811, 'Speaker cases', 'Cases', 2, 'available', 'Van'],
       [1812, 'Mic case', 'Cases', 1, 'available', 'Van'],
       [1813, 'Cable bag', 'Cases', 1, 'available', 'Van'],
@@ -313,23 +313,23 @@ export const buildSeed = (): DemoDB => {
   // Fictional session players (no real people or numbers).
   const band_deputies: Row[] = [
     // On BandWith (086): asked in the app.
-    { id: id(2000), band_id: IDS.band, name: 'Sam Keller', instrument: 'Bass', phone: '+10000000001', email: 'sam@example.com', notes: 'Reads charts', default_fee: 180, user_id: id(2090), created_by: IDS.me, created_at: created, updated_at: created },
-    { id: id(2001), band_id: IDS.band, name: 'Noa Brandt', instrument: 'Drums', phone: '+10000000002', email: null, notes: null, default_fee: 200, created_by: IDS.me, created_at: created, updated_at: created },
-    { id: id(2002), band_id: IDS.band, name: 'Ivo Marsh', instrument: 'Keys', phone: null, email: 'ivo@example.com', notes: 'Own rig', default_fee: null, created_by: IDS.me, created_at: created, updated_at: created },
+    { id: id(2000), band_id: IDS.band, name: 'Luca T.', instrument: 'Bass', phone: '+10000000001', email: 'luca@example.com', notes: 'Reads charts', default_fee: 180, user_id: id(2090), created_by: IDS.me, created_at: created, updated_at: created },
+    { id: id(2001), band_id: IDS.band, name: 'Noa B.', instrument: 'Drums', phone: '+10000000002', email: null, notes: null, default_fee: 200, created_by: IDS.me, created_at: created, updated_at: created },
+    { id: id(2002), band_id: IDS.band, name: 'Ivo M.', instrument: 'Keys', phone: null, email: 'ivo@example.com', notes: 'Own rig', default_fee: null, created_by: IDS.me, created_at: created, updated_at: created },
   ];
 
   // The demo user plays as a deputy for another (fictional) band: what
   // bw_my_deputy_gigs returns (086). Address kept, shown after a yes.
   const demo_deputy_gigs: Row[] = [
     {
-      id: id(2100), token: 'd'.repeat(64), status: 'pending', deputy_name: 'Alex Rivera', role: 'Vocals', fee: 150, currency: 'EUR',
+      id: id(2100), token: 'd'.repeat(64), status: 'pending', deputy_name: 'Leo M.', role: 'Vocals', fee: 150, currency: 'EUR',
       reply_note: null, responded_at: null, band_name: 'The Late Shift', event_title: 'Jazz Brunch', event_type: 'gig',
       event_date: day(9), start_time: '12:00:00', end_time: '15:00:00', load_in_time: '10:30:00', soundcheck_time: null,
       venue_name: 'Hotel Bristol', venue_city: 'Torino', venue_address: 'Via XX Settembre 48', event_cancelled: false,
       changes: [], before: {}, closed: false,
     },
     {
-      id: id(2101), token: 'e'.repeat(64), status: 'available', deputy_name: 'Alex Rivera', role: 'Vocals', fee: 220, currency: 'EUR',
+      id: id(2101), token: 'e'.repeat(64), status: 'available', deputy_name: 'Leo M.', role: 'Vocals', fee: 220, currency: 'EUR',
       reply_note: 'I can bring my own mic', responded_at: ago(60 * 24 * 3), band_name: 'The Late Shift', event_title: 'Summer Wedding', event_type: 'gig',
       event_date: day(23), start_time: '19:30:00', end_time: '23:30:00', load_in_time: '16:00:00', soundcheck_time: '17:30:00',
       venue_name: 'Villa Arconati', venue_city: 'Bollate', venue_address: 'Via Madonna Fametta 1', event_cancelled: false,
@@ -371,8 +371,8 @@ export const buildSeed = (): DemoDB => {
     // The wedding quote was accepted on the page.
     {
       id: id(984), quote_id: id(902), band_id: IDS.band, token: 'e'.repeat(64), lang: 'it', version: 1, version_at: ago(60 * 24 * 40),
-      snapshot: { v: 1, ref: 'Q-2026-0014', title: 'Giulia & Marco — Wedding' }, pdf_url: null, pdf_version: null, status: 'accepted',
-      sent_at: ago(60 * 24 * 40), first_viewed_at: ago(60 * 24 * 39), responded_at: ago(60 * 24 * 35), accepted_name: 'Giulia Bianchi', accepted_version: 1,
+      snapshot: { v: 1, ref: 'Q-2026-0014', title: 'Client A — Wedding' }, pdf_url: null, pdf_version: null, status: 'accepted',
+      sent_at: ago(60 * 24 * 40), first_viewed_at: ago(60 * 24 * 39), responded_at: ago(60 * 24 * 35), accepted_name: 'Client A', accepted_version: 1,
       decline_reason: null, revoked_at: null, created_at: ago(60 * 24 * 40), updated_at: ago(60 * 24 * 35),
     },
   ];
@@ -381,7 +381,7 @@ export const buildSeed = (): DemoDB => {
     { id: id(982), quote_id: id(901), band_id: IDS.band, kind: 'viewed', channel: null, body: null, version: 1, created_at: ago(60 * 24 * 2) },
     { id: id(985), quote_id: id(902), band_id: IDS.band, kind: 'sent', channel: 'email', body: null, version: 1, created_at: ago(60 * 24 * 40) },
     { id: id(986), quote_id: id(902), band_id: IDS.band, kind: 'viewed', channel: null, body: null, version: 1, created_at: ago(60 * 24 * 39) },
-    { id: id(987), quote_id: id(902), band_id: IDS.band, kind: 'accepted', channel: null, body: 'Giulia Bianchi', version: 1, created_at: ago(60 * 24 * 35) },
+    { id: id(987), quote_id: id(902), band_id: IDS.band, kind: 'accepted', channel: null, body: 'Client A', version: 1, created_at: ago(60 * 24 * 35) },
     { id: id(983), quote_id: id(901), band_id: IDS.band, kind: 'client_message', channel: null, body: 'Could you add a DJ set after the band? We would like music until 1 am.', version: 1, created_at: ago(60 * 5) },
   ];
 

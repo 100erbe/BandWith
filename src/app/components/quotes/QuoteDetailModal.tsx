@@ -5,7 +5,7 @@ import { Quote, getEventTypeLabel } from '@/app/data/quotes';
 import { WeatherWidget } from '@/app/components/ui/WeatherWidget';
 import { useBand } from '@/lib/BandContext';
 import { QuoteShareModal } from './QuoteShareModal';
-import { totalsForQuote, formatQuoteMoney } from '@/lib/services/quoteMath';
+import { totalsForQuote, formatQuoteMoney, calculateDepositAmount, quoteDepositPercent } from '@/lib/services/quoteMath';
 import { parseLocalDate } from '@/lib/dates';
 import { currencySymbol } from '@/lib/currency';
 import { DotText } from '@/app/components/bw';
@@ -14,10 +14,10 @@ import { cn } from '@/app/components/ui/utils';
 import { IconButton, NavBackButton, Tag, Card } from '@/app/components/bw/Screen';
 import { PillButton } from '@/app/components/bw/Form';
 import { OnlineDepositLinks } from '@/app/components/quotes/OnlineDeposit';
-import { useT, dateName, intlLocale } from '@/lib/i18n';
+import { useT, dateName, intlLocale, getLocale } from '@/lib/i18n';
 import { builtinText } from '@/lib/i18n/builtins';
 import { isUuid } from '@/lib/services/quotes';
-import type { QuoteMessageKind } from '@/lib/services/quoteLinks';
+import { clientQuoteItems, type QuoteMessageKind } from '@/lib/services/quoteLinks';
 import { QuoteClientLink } from './QuoteClientLink';
 
 interface QuoteDetailModalProps {
@@ -125,25 +125,25 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     .filter(Boolean)
     .join(' · ');
 
-  // Line items: stored line items first, otherwise the wizard's sets + custom items.
-  const itemRows: { id: string; label: string; amount: number }[] =
+  // Line items: stored line items first, otherwise the rows of the PDF and
+  // the client's page (band fee, production, moments, extras, travel…).
+  const itemRows: { id: string; label: string; amount: number | null }[] =
     quote.lineItems && quote.lineItems.length > 0
       ? quote.lineItems.map((li) => ({
           id: li.id,
           label: li.quantity > 1 ? `${builtinText(li.description)} × ${li.quantity}` : builtinText(li.description),
           amount: (li.unitPrice || 0) * (li.quantity || 1),
         }))
-      : [
-          ...(quote.selectedMoments || []).map((m) => ({ id: `m-${m.id}`, label: builtinText(m.name), amount: m.price || 0 })),
-          ...(quote.customItems || []).map((c) => ({
-            id: `c-${c.id}`,
-            label: builtinText(c.description || c.name) || t('Custom item'),
-            amount: (c.amount ?? c.price ?? 0) * (c.quantity || 1),
-          })),
-        ];
+      : clientQuoteItems(quote, getLocale()).map((it, i) => ({
+          id: `i-${i}`,
+          label: it.detail ? `${it.label} · ${it.detail}` : it.label,
+          amount: it.amount,
+        }));
 
   const vatRate = quote.vatExempt || quote.reverseCharge ? 0 : quote.vatRate || 0;
-  const dp = quote.depositPercentage || 30;
+  // 0% or "no deposit" means no deposit (not the 30% it used to fall back to).
+  const dp = quoteDepositPercent(quote);
+  const depositAmount = calculateDepositAmount(displayTotal, dp);
 
   // Validity: days left until validUntil.
   const validUntil = quote.validUntil ? parseLocalDate(quote.validUntil) : null;
@@ -282,21 +282,19 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               </div>
               <DotText text={money(displayTotal)} size={34} label={money(displayTotal)} />
               <p className="bw-body-sm text-sheet-foreground/80">
-                {[sentLine, t('Deposit {percent}% · {amount}', { percent: dp, amount: money((displayTotal * dp) / 100) })].filter(Boolean).join(' · ')}
+                {[sentLine, dp > 0 ? t('Deposit {percent}% · {amount}', { percent: dp, amount: money(depositAmount) }) : null].filter(Boolean).join(' · ')}
               </p>
             </section>
 
             {/* Online deposit (Stripe / PayPal): visible, off during the alpha */}
-            {quote.depositRequired !== false && dp > 0 && (
-              <OnlineDepositLinks amount={money((displayTotal * dp) / 100)} />
-            )}
+            {dp > 0 && <OnlineDepositLinks amount={money(depositAmount)} />}
 
             {/* Line items */}
             <section className="flex flex-col gap-4">
               <h2 className="bw-h1">{t('Line items')}</h2>
               <Card>
                 {itemRows.map((row) => (
-                  <KeyValueRow key={row.id} label={row.label} value={money(row.amount)} />
+                  <KeyValueRow key={row.id} label={row.label} value={row.amount == null ? t('Included') : money(row.amount)} />
                 ))}
                 {itemRows.length > 0 && <hr className="border-0 h-px bg-border" />}
                 <KeyValueRow label={t('Subtotal')} value={money(hasMath ? totals.subtotal : displayTotal)} />

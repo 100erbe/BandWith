@@ -245,7 +245,11 @@ export const QuoteClientLink: React.FC<QuoteClientLinkProps> = ({
     );
   }
 
-  const status = link.status;
+  // An answer recorded in the app (by phone, in person) counts as the
+  // client's answer here too, even before the link itself shows it.
+  const linkFinal = link.status === 'accepted' || link.status === 'declined';
+  const status = linkFinal ? link.status : quote.status === 'ACCEPTED' ? 'accepted' : quote.status === 'DECLINED' ? 'declined' : link.status;
+  const answeredInApp = !linkFinal && status !== link.status;
   const final = status === 'accepted' || status === 'declined';
   const steps: { key: string; label: string; done: boolean; current: boolean }[] = [
     { key: 'sent', label: t('Sent'), done: true, current: status === 'sent' },
@@ -299,13 +303,15 @@ export const QuoteClientLink: React.FC<QuoteClientLinkProps> = ({
       {status === 'accepted' && (
         <Card className="dark bg-sheet text-sheet-foreground">
           <p className="bw-body-md">
-            {t('Accepted by {name} on {date} · version {n}', {
-              name: link.accepted_name || t('the client'),
-              date: link.responded_at ? when(link.responded_at) : '',
-              n: link.accepted_version ?? link.version,
-            })}
+            {answeredInApp
+              ? t('You marked this quote as accepted.')
+              : t('Accepted by {name} on {date} · version {n}', {
+                  name: link.accepted_name || t('the client'),
+                  date: link.responded_at ? when(link.responded_at) : '',
+                  n: link.accepted_version ?? link.version,
+                })}
           </p>
-          <p className="bw-body-sm text-sheet-foreground/70">{t('A recorded acceptance, not a signature: formal signing stays in Contracts.')}</p>
+          {!answeredInApp && <p className="bw-body-sm text-sheet-foreground/70">{t('A recorded acceptance, not a signature: formal signing stays in Contracts.')}</p>}
           <div className="grid grid-cols-1 @min-[420px]:grid-cols-2 gap-2">
             {onCreateGig && (
               <PillButton variant="white" size="md" loading={creatingGig} icon={<CalendarPlus className="w-4 h-4" />} onClick={onCreateGig}>

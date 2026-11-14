@@ -3789,6 +3789,13 @@ const dict: Dictionary = {
   "Your votes were cleared.": "Tes votes ont été effacés.",
   "No date works for {names}": "Aucune date ne convient à {names}",
   "Quote updated, but the event was not: {error}": "Devis mis à jour, mais pas l'événement : {error}",
+  "Gig for {client}": "Concert pour {client}",
+  "You marked this quote as accepted.": "Tu as marqué ce devis comme accepté.",
+  "Quote accepted. Open it to create the gig.": "Devis accepté. Ouvre-le pour créer le concert.",
+  "Gig created, but its lineup was not added. Add the musicians in the gig.": "Concert créé, mais la formation n’a pas été ajoutée. Ajoute les musiciens dans le concert.",
+  "Could not confirm the quote. Check your connection and try again.": "Impossible de confirmer le devis. Vérifie ta connexion et réessaie.",
+  "Could not turn it back into a quote. Check your connection and try again.": "Impossible de le repasser en devis. Vérifie ta connexion et réessaie.",
+  "Quote not saved. Check your connection and try again.": "Devis non enregistré. Vérifie ta connexion et réessaie.",
 };
 
 export default dict;

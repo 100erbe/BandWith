@@ -10,7 +10,8 @@ vi.mock('@/lib/supabase', () => ({
   supabase: { rpc: (fn: string, args: unknown) => mockRpc(fn, args), from: vi.fn() },
 }));
 
-import { buildClientQuoteSnapshot, clientLinkMessage, publishQuoteLink, quoteLinkUrl } from '../quoteLinks';
+import { buildClientQuoteSnapshot, clientLinkMessage, clientQuoteItems, publishQuoteLink, quoteLinkUrl } from '../quoteLinks';
+import { DEFAULT_SETS, DEFAULT_SET_MINUTES, DEFAULT_VAT_RATE } from '../quoteMath';
 import type { Quote } from '@/app/data/quotes';
 
 const quote: Partial<Quote> = {
@@ -85,5 +86,57 @@ describe('publishing', () => {
     const res = await publishQuoteLink(String(quote.id), snap, 'en', null);
     expect(mockRpc).toHaveBeenCalledWith('bw_quote_link_publish', expect.objectContaining({ p_quote_id: quote.id, p_lang: 'en' }));
     expect(res.data?.version).toBe(1);
+  });
+});
+
+describe('line items (quote detail, PDF and client page)', () => {
+  const full: Partial<Quote> = {
+    ...quote,
+    baseFee: 3000,
+    subtotal: 3790,
+    soundIncluded: false,
+    soundFee: 400,
+    lightsFee: 100,
+    travelIncluded: false,
+    travelFee: 120,
+    accommodationNeeded: true,
+    accommodationFee: 170,
+    customItems: [{ id: 'c1', description: 'DJ set', amount: 0, quantity: 1 }],
+  };
+
+  it('lists the band fee, production, travel and accommodation, not only the extras', () => {
+    const items = clientQuoteItems(full, 'en');
+    const labels = items.map((i) => i.label);
+    expect(labels).toEqual(['MAIN BAND', 'MUSICAL PRODUCTION', 'DJ SET', 'TRAVEL & LOGISTICS', 'ACCOMMODATION']);
+    expect(items.map((i) => i.amount)).toEqual([3000, 500, null, 120, 170]);
+    // The priced rows add up to the subtotal.
+    expect(items.reduce((sum, i) => sum + (i.amount ?? 0), 0)).toBe(3790);
+  });
+
+  it('are the same rows the client page shows', () => {
+    expect(buildClientQuoteSnapshot(full, 'en').items).toEqual(clientQuoteItems(full, 'en'));
+  });
+});
+
+describe('defaults shared with the PDF', () => {
+  it('a quote without a VAT rate uses the same rate as the PDF', () => {
+    const snap = buildClientQuoteSnapshot({ ...quote, vatRate: undefined }, 'en');
+    expect(snap.vatLabel).toBe(`VAT ${DEFAULT_VAT_RATE}%`);
+    expect(snap.vat).toBe(Math.round(3800 * DEFAULT_VAT_RATE) / 100);
+  });
+
+  it('the band default VAT rate wins over the shared one', () => {
+    expect(buildClientQuoteSnapshot({ ...quote, vatRate: undefined }, 'en', { default_vat_rate: 10 }).vatLabel).toBe('VAT 10%');
+  });
+
+  it('a quote without sets shows the sets the PDF shows', () => {
+    const snap = buildClientQuoteSnapshot({ ...quote, numberOfSets: 0, setDuration: 0 }, 'en');
+    expect(snap.sets).toContain(`${DEFAULT_SETS} sets of ${DEFAULT_SET_MINUTES} minutes`);
+  });
+
+  it('no deposit (or 0%) means no deposit line', () => {
+    expect(buildClientQuoteSnapshot({ ...quote, depositRequired: false, depositPercentage: 30 }, 'en').deposit).toBeNull();
+    expect(buildClientQuoteSnapshot({ ...quote, depositPercentage: 0 }, 'en').deposit).toBeNull();
+    expect(buildClientQuoteSnapshot({ ...quote, vatRate: 0, depositPercentage: 30 }, 'en').deposit).toEqual({ percent: 30, amount: 1140 });
   });
 });

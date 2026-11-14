@@ -179,7 +179,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               loading={demoLoading}
               onClick={() => {
                 setDemoLoading(true);
-                signIn('demo@bandwith.app', 'demo').finally(() => setDemoLoading(false));
+                signIn('demo@example.com', 'demo').finally(() => setDemoLoading(false));
               }}
               className="text-accent-foreground underline underline-offset-4"
             >

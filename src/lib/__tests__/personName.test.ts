@@ -24,6 +24,6 @@ describe('personName', () => {
   });
 
   it('keeps a name that only looks like part of the address elsewhere', () => {
-    expect(personName({ full_name: 'Gianluca', email: 'gianluca.b@example.com' })).toBe('Gianluca');
+    expect(personName({ full_name: 'Leo', email: 'leo.m@example.com' })).toBe('Leo');
   });
 });

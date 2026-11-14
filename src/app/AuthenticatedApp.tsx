@@ -2559,7 +2559,7 @@ export default function AuthenticatedApp() {
       if (refetchDashboard) await refetchDashboard();
     } catch (err: any) {
       console.error('Failed to confirm quote:', err);
-      setSaveToast({ message: t('Failed to confirm quote: {error}', { error: err.message || t('Unknown error') }), type: 'error' });
+      setSaveToast({ message: t('Could not confirm the quote. Check your connection and try again.'), type: 'error' });
     }
   };
 
@@ -2570,10 +2570,9 @@ export default function AuthenticatedApp() {
     try {
       const { error: eventErr } = await supabase
         .from('events')
-        .update({
-          status: 'tentative',
-          event_type: 'other',
-        })
+        // Tentative is what makes it a quote again; the type (wedding,
+        // corporate…) stays for when it is confirmed again.
+        .update({ status: 'tentative' })
         .eq('id', ev.eventId);
 
       if (eventErr) throw eventErr;
@@ -2602,7 +2601,6 @@ export default function AuthenticatedApp() {
         return {
           ...prev,
           status: 'QUOTE',
-          eventType: 'quote',
           color: 'bg-accent-quote text-white',
         };
       });
@@ -2620,7 +2618,7 @@ export default function AuthenticatedApp() {
       if (refetchDashboard) await refetchDashboard();
     } catch (err: any) {
       console.error('Failed to revert quote:', err);
-      setSaveToast({ message: t('Failed to revert quote: {error}', { error: err.message || t('Unknown error') }), type: 'error' });
+      setSaveToast({ message: t('Could not turn it back into a quote. Check your connection and try again.'), type: 'error' });
     }
   };
 
@@ -4171,7 +4169,8 @@ export default function AuthenticatedApp() {
                     await supabase.from('events').delete().eq('id', createdEventId);
                   }
                   // The wizard stays open with the quote as typed.
-                  setSaveToast({ message: t('Quote not saved: {error}', { error: quoteErr?.message || t('unknown error') }), type: 'error' });
+                  console.warn('[quotes] quote not saved:', quoteErr);
+                  setSaveToast({ message: t('Quote not saved. Check your connection and try again.'), type: 'error' });
                 } else {
                   closeQuoteWizard();
                   setSaveToast({ message: t('Quote {number} saved', { number: savedQuote.quote_number }), type: 'success' });

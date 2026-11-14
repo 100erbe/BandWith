@@ -2341,7 +2341,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           quoteNumber: `EVT-${String(event.id).slice(0, 6).toUpperCase()}`,
           eventName: event.title,
           eventTitle: event.title,
-          clientName: event.clientName || 'Client',
+          // No name: the message greets the client with "Hi there".
+          clientName: event.clientName || '',
           eventType: (event.eventType as any) || 'wedding',
           eventDate: event.date,
           eventTimeStart: event.time,

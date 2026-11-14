@@ -2,7 +2,8 @@
 // The link carries a 64-character token; bw_rider_view returns only the
 // rider, the gig's times and venue, and the stage (plot, input list, who
 // brings what) — never the client or the fee. Opening it marks the rider
-// as seen for the band.
+// as seen for the band; `&preview=1` (the band checking its own link)
+// does not.
 
 import { asStageData, channelLabel, stageSize, type StageData, type StagePlot } from './lib/stagePlot';
 import { RIDER_STRINGS, fill, pickRiderLang, type RiderStrings } from './rider/strings';
@@ -28,6 +29,7 @@ interface View {
 
 const params = new URL(window.location.href).searchParams;
 const token = (params.get('t') ?? '').toLowerCase();
+const preview = params.get('preview') === '1';
 const lang = pickRiderLang([params.get('l') ?? '', ...(navigator.languages ?? []), navigator.language ?? '']);
 const S: RiderStrings = RIDER_STRINGS[lang];
 document.documentElement.lang = lang;
@@ -150,8 +152,16 @@ function stageCards(st: StageData): HTMLElement[] {
   return out;
 }
 
-function render(v: View | null) {
+function render(v: View | null, offline = false) {
   app.replaceChildren();
+  if (offline) {
+    const card = simpleCard('BandWith', S.offlineTitle, S.offlineBody);
+    card.append(
+      h('div', { class: 'stack' }, h('button', { class: 'btn light', type: 'button', onclick: () => void load() }, S.retry, h('span', { class: 'arrow', 'aria-hidden': 'true' }, '↻'))),
+    );
+    app.append(card);
+    return;
+  }
   if (!v) {
     app.append(simpleCard('BandWith', S.invalidTitle, S.invalidBody));
     return;
@@ -174,13 +184,21 @@ async function load() {
   }
   app.replaceChildren(simpleCard('BandWith', S.loading, ''));
   let view: View | null = null;
+  let offline = false;
   try {
-    view = await rpc<View | null>('bw_rider_view', { p_token: token });
+    try {
+      view = await rpc<View | null>('bw_rider_view', preview ? { p_token: token, p_preview: true } : { p_token: token });
+    } catch (e) {
+      // A database before migration 105 has no preview flag yet.
+      if (!preview || (e as Error).message !== '404') throw e;
+      view = await rpc<View | null>('bw_rider_view', { p_token: token });
+    }
   } catch {
-    view = null;
+    // No signal or the server is down: not a bad link.
+    offline = true;
   }
   document.title = view ? `${S.kicker} · ${view.event_title || view.title} · ${view.band_name}` : `${S.kicker} · BandWith`;
-  render(view);
+  render(view, offline);
 }
 
 void load();

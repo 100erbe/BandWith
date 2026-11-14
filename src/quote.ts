@@ -111,6 +111,8 @@ const remoteApi: Api = {
 let api: Api = remoteApi;
 
 let view: QuoteLinkView | null = null;
+// The page could not be loaded (no signal, server down): not a bad link.
+let offline = false;
 let busy = false;
 let failure: string | null = null;
 let fieldError: { field: 'name' | 'check'; text: string } | null = null;
@@ -146,8 +148,14 @@ async function act(run: () => Promise<QuoteLinkView | null>, focus?: string) {
   failure = null;
   render();
   try {
-    applyView(await run());
-    if (focus === 'sent') draft.message = '';
+    const next = await run();
+    if (!next) {
+      // The link was turned off or replaced meanwhile: nothing was recorded.
+      view = null;
+    } else {
+      applyView(next);
+      if (focus === 'sent') draft.message = '';
+    }
   } catch (e) {
     failure = e instanceof RpcError && e.code === '54000' ? S.tooMany : S.error;
   }
@@ -268,11 +276,13 @@ function quoteCard(v: QuoteLinkView, q: ClientQuoteSnapshot) {
 
 function statusCard(v: QuoteLinkView) {
   if (v.status === 'accepted' && v.accepted_at) {
+    const at = { ...vars(v), who: v.accepted_name || '', date: stampDate(v.accepted_at), time: stampTime(v.accepted_at) };
     return h(
       'section',
       { class: 'card ink', role: 'status' },
       h('h2', { 'data-focus': true, tabindex: '-1' }, S.acceptedTitle),
-      h('p', {}, fill(S.acceptedBody, { ...vars(v), who: v.accepted_name || '', date: stampDate(v.accepted_at), time: stampTime(v.accepted_at) })),
+      // No name: the band recorded the client's yes (by phone, in person).
+      h('p', {}, fill(v.accepted_name ? S.acceptedBody : S.acceptedBodyBand, at)),
       h('p', { class: 'mute', style: 'font-size:14px;line-height:20px' }, S.acceptedLegal),
     );
   }
@@ -358,6 +368,12 @@ function chatCard(v: QuoteLinkView) {
 
 function render() {
   app.replaceChildren();
+  if (offline) {
+    const card = simpleCard('BandWith', S.offlineTitle, S.offlineBody);
+    card.append(h('div', { class: 'stack' }, h('button', { class: 'btn light', type: 'button', onclick: () => void load() }, S.retry, arrow())));
+    app.append(card);
+    return;
+  }
   if (!view?.quote) {
     app.append(simpleCard('BandWith', S.invalidTitle, S.invalidBody));
     return;
@@ -375,6 +391,7 @@ function render() {
 }
 
 // New band replies while the page stays open.
+let polling = false;
 function poll() {
   window.setInterval(async () => {
     if (document.hidden || busy || !view) return;
@@ -399,14 +416,22 @@ async function load() {
     return;
   }
   app.replaceChildren(simpleCard('BandWith', S.loading, '', false));
+  offline = false;
+  let next: QuoteLinkView | null = null;
   try {
-    applyView(await (preview ? api.view() : api.seen()));
+    next = await (preview ? api.view() : api.seen());
   } catch {
-    view = null;
+    offline = true;
   }
+  // NULL: an unknown, replaced or turned-off link.
+  if (next) applyView(next);
+  else view = null;
   document.title = view?.quote ? `${S.kicker} ${view.quote.ref} · ${view.band_name}` : `${S.kicker} · BandWith`;
   render();
-  if (view) poll();
+  if (view && !polling) {
+    polling = true;
+    poll();
+  }
 }
 
 void load();

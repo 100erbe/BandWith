@@ -4,7 +4,10 @@ import type {
   QuoteMusician as AppQuoteMusician,
   QuoteStatus as AppQuoteStatus,
 } from '@/app/data/quotes';
-import { roundCents, totalsForQuote } from './quoteMath';
+import { quoteMusicianFee, roundCents, totalsForQuote } from './quoteMath';
+import { saveEventLineup, type LineupRow } from './eventMemberMoney';
+import { notifyEventMembersCreated } from './notifications';
+import { personName } from '@/lib/personName';
 import { t } from '@/lib/i18n';
 
 // Types
@@ -388,6 +391,25 @@ export const markQuoteViewed = async (quoteId: string): Promise<{ error: Error |
   }
 };
 
+/**
+ * The client answered by phone or in person: their quote page (migration
+ * 099) shows the answer too and stops offering Accept / Decline (migration
+ * 105). Best effort: the quote itself is already updated, and a quote
+ * without a client link, or a database before 105, has nothing to do.
+ */
+const recordOutcomeOnClientLink = async (quoteId: string, outcome: 'accepted' | 'declined', reason?: string): Promise<void> => {
+  try {
+    const { error } = await supabase.rpc('bw_quote_link_set_outcome', {
+      p_quote_id: quoteId,
+      p_outcome: outcome,
+      p_reason: reason ?? null,
+    });
+    if (error) console.warn('[quotes] the client page was not updated:', error);
+  } catch (err) {
+    console.warn('[quotes] the client page was not updated:', err);
+  }
+};
+
 export const acceptQuote = async (quoteId: string): Promise<{ data: Quote | null; error: Error | null }> => {
   try {
     const { data, error } = await supabase
@@ -414,6 +436,7 @@ export const acceptQuote = async (quoteId: string): Promise<{ data: Quote | null
         .eq('status', 'tentative');
       if (evErr) console.warn('[quotes] accepted, but the event was not confirmed:', evErr);
     }
+    await recordOutcomeOnClientLink(quoteId, 'accepted');
 
     return { data, error: null };
   } catch (error: any) {
@@ -439,6 +462,7 @@ export const declineQuote = async (
       .single();
 
     if (error) throw error;
+    await recordOutcomeOnClientLink(quoteId, 'declined', reason);
 
     return { data, error: null };
   } catch (error: any) {
@@ -471,81 +495,174 @@ export const duplicateQuote = async (quoteId: string): Promise<{ data: Quote | n
   }
 };
 
-export const convertQuoteToEvent = async (quoteId: string): Promise<{ data: { eventId: string } | null; error: Error | null }> => {
+/**
+ * The lineup of a gig made from a quote: the quote's musicians with an
+ * account, each with their role and fee (the creator is confirmed, the others
+ * are asked). Musicians without an account (external, typed by name) can't
+ * be added to a gig, and a person listed twice counts once.
+ */
+export const lineupFromQuoteMusicians = (
+  musicians: Pick<QuoteMusician, 'user_id' | 'instrument' | 'fee'>[] | null | undefined,
+  creatorId?: string | null,
+): LineupRow[] => {
+  const seen = new Set<string>();
+  const rows: LineupRow[] = [];
+  for (const m of Array.isArray(musicians) ? musicians : []) {
+    if (!m || !isUuid(m.user_id) || seen.has(m.user_id)) continue;
+    seen.add(m.user_id);
+    rows.push({
+      user_id: m.user_id,
+      role: (m.instrument || '').trim() || 'Musician',
+      fee: roundCents(quoteMusicianFee(m)),
+      status: m.user_id === creatorId ? 'confirmed' : 'pending',
+    });
+  }
+  return rows;
+};
+
+export interface QuoteGigResult {
+  eventId: string;
+  /** A new gig was made (not the quote's tentative one, nor one made before). */
+  created: boolean;
+  /** The gig was made, but its lineup could not be saved. */
+  lineupError?: boolean;
+}
+
+export const convertQuoteToEvent = async (quoteId: string): Promise<{ data: QuoteGigResult | null; error: Error | null }> => {
   try {
     const { data: quote, error: fetchError } = await getQuote(quoteId);
     if (fetchError || !quote) throw fetchError || new Error('Quote not found');
 
-    // Create event from quote
-    const { data: event, error: createError } = await supabase
+    // A gig already made from this quote (a second tap, or a first try whose
+    // link back to the quote failed): use it, never a second one.
+    const { data: existing, error: existingError } = await supabase
       .from('events')
-      .insert({
-        band_id: quote.band_id,
-        title: quote.event_name || `Event for ${quote.client_name}`,
-        event_type: quote.event_type || 'gig',
-        status: 'confirmed',
-        event_date: quote.event_date,
-        start_time: quote.event_time_start,
-        end_time: quote.event_time_end,
-        venue_name: quote.venue_name,
-        venue_address: quote.venue_address,
-        venue_city: quote.venue_city,
-        venue_country: quote.venue_country,
-        indoor_outdoor: quote.indoor_outdoor,
-        fee: quote.total,
-        currency: quote.currency,
-        client_name: quote.client_name,
-        client_email: quote.client_email,
-        client_phone: quote.client_phone,
-        client_company: quote.client_company,
-        notes: quote.client_notes,
-        internal_notes: quote.internal_notes,
-        quote_id: quoteId,
-        created_by: quote.created_by,
-      })
-      // Only the id: after 078 step 2 the price and client columns of
-      // events cannot be read back directly.
       .select('id')
-      .single();
+      .eq('quote_id', quoteId)
+      .order('created_at', { ascending: true })
+      .limit(1);
+    if (existingError) throw existingError;
+    const found = Array.isArray(existing) && existing[0]?.id ? (existing[0].id as string) : null;
 
-    if (createError) throw createError;
+    let eventId = found;
+    let lineupError = false;
+    if (!eventId) {
+      const { data: event, error: createError } = await supabase
+        .from('events')
+        .insert({
+          band_id: quote.band_id,
+          title: quote.event_name || (quote.client_name ? t('Gig for {client}', { client: quote.client_name }) : t('Quote Event')),
+          event_type: quote.event_type || 'gig',
+          status: 'confirmed',
+          event_date: quote.event_date,
+          start_time: quote.event_time_start,
+          end_time: quote.event_time_end,
+          venue_name: quote.venue_name,
+          venue_address: quote.venue_address,
+          venue_city: quote.venue_city,
+          venue_country: quote.venue_country,
+          indoor_outdoor: quote.indoor_outdoor,
+          fee: quote.total,
+          currency: quote.currency,
+          client_name: quote.client_name,
+          client_email: quote.client_email,
+          client_phone: quote.client_phone,
+          client_company: quote.client_company,
+          notes: quote.client_notes,
+          internal_notes: quote.internal_notes,
+          quote_id: quoteId,
+          created_by: quote.created_by,
+        })
+        // Only the id: after 078 step 2 the price and client columns of
+        // events cannot be read back directly.
+        .select('id')
+        .single();
 
-    // Update quote with event reference
-    await supabase
+      if (createError) throw createError;
+      eventId = event.id as string;
+
+      // The quote's musicians and their fees become the gig's lineup.
+      const { data: { user } } = await getSafeUser();
+      const lineup = lineupFromQuoteMusicians(quote.musicians, user?.id);
+      if (lineup.length > 0) {
+        const { error: saveError } = await saveEventLineup(eventId, lineup);
+        if (saveError) {
+          console.warn('[quotes] gig created, but its lineup was not saved:', saveError);
+          lineupError = true;
+        } else if (user?.id) {
+          const invited = lineup.filter((r) => r.user_id !== user.id);
+          if (invited.length > 0) {
+            const { data: me } = await supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle();
+            const fees: Record<string, number> = {};
+            for (const r of invited) fees[r.user_id] = r.fee ?? 0;
+            const { error: notifyError } = await notifyEventMembersCreated(
+              quote.band_id,
+              eventId,
+              quote.event_name || quote.client_name || 'Gig',
+              quote.event_date || '',
+              (quote.event_time_start || '').slice(0, 5),
+              quote.event_type || 'gig',
+              user.id,
+              personName({ full_name: (me as { full_name?: string } | null)?.full_name || user.user_metadata?.full_name, email: user.email }, 'Someone'),
+              invited.map((r) => r.user_id),
+              // Each musician's notification carries only their own fee.
+              { venue: quote.venue_name, memberFees: fees },
+            );
+            if (notifyError) console.warn('[quotes] lineup saved, but not notified:', notifyError);
+          }
+        }
+      }
+    }
+
+    // Link the quote to its gig. If this fails the gig still carries the
+    // quote's id, so the next try finds it instead of making another one.
+    const { error: linkError } = await supabase
       .from('quotes')
-      .update({ converted_to_event_id: event.id })
+      .update({ converted_to_event_id: eventId })
       .eq('id', quoteId);
+    if (linkError) console.warn('[quotes] gig made, but not linked to the quote yet:', linkError);
 
-    return { data: { eventId: event.id }, error: null };
+    return { data: { eventId: eventId as string, created: !found, ...(lineupError ? { lineupError } : {}) }, error: null };
   } catch (error: any) {
     return { data: null, error };
   }
 };
 
+// One conversion at a time per quote: a double tap gets the same promise.
+const gigRuns = new Map<string, Promise<{ data: QuoteGigResult | null; error: Error | null }>>();
+
 /**
  * The gig of an accepted quote (the client accepted on the quote page,
  * migration 099): the tentative event made with the quote becomes confirmed,
- * otherwise a new confirmed event is created from the quote.
+ * otherwise a new confirmed event is created from the quote, with the
+ * quote's musicians and fees as its lineup.
  */
-export const gigFromAcceptedQuote = async (quoteId: string): Promise<{ data: { eventId: string; created: boolean } | null; error: Error | null }> => {
-  try {
-    const { data: q, error } = await supabase.from('quotes').select('converted_to_event_id').eq('id', quoteId).single();
-    if (error) throw error;
-    if (q?.converted_to_event_id) {
-      const { error: evErr } = await supabase
-        .from('events')
-        .update({ status: 'confirmed' })
-        .eq('id', q.converted_to_event_id)
-        .eq('status', 'tentative');
-      if (evErr) throw evErr;
-      return { data: { eventId: q.converted_to_event_id, created: false }, error: null };
+export const gigFromAcceptedQuote = (quoteId: string): Promise<{ data: QuoteGigResult | null; error: Error | null }> => {
+  const running = gigRuns.get(quoteId);
+  if (running) return running;
+  const run = (async (): Promise<{ data: QuoteGigResult | null; error: Error | null }> => {
+    try {
+      const { data: q, error } = await supabase.from('quotes').select('converted_to_event_id').eq('id', quoteId).single();
+      if (error) throw error;
+      if (q?.converted_to_event_id) {
+        const { error: evErr } = await supabase
+          .from('events')
+          .update({ status: 'confirmed' })
+          .eq('id', q.converted_to_event_id)
+          .eq('status', 'tentative');
+        if (evErr) throw evErr;
+        return { data: { eventId: q.converted_to_event_id, created: false }, error: null };
+      }
+      const made = await convertQuoteToEvent(quoteId);
+      if (made.error || !made.data) throw made.error || new Error('The gig was not created');
+      return { data: made.data, error: null };
+    } catch (error: any) {
+      return { data: null, error };
     }
-    const made = await convertQuoteToEvent(quoteId);
-    if (made.error || !made.data) throw made.error || new Error('The gig was not created');
-    return { data: { eventId: made.data.eventId, created: true }, error: null };
-  } catch (error: any) {
-    return { data: null, error };
-  }
+  })();
+  gigRuns.set(quoteId, run);
+  void run.finally(() => gigRuns.delete(quoteId));
+  return run;
 };
 
 // ============================================
