@@ -29,17 +29,21 @@ import { useBand } from '@/lib/BandContext';
 import {
   getSongs, createSong, deleteSong, updateSong,
   getSetlists, getSetlist, createSetlist, updateSetlist, deleteSetlist,
-  replaceSetlistSongs, seedRepertoireSongs, bulkCreateSongs
+  replaceSetlistSongs, seedRepertoireSongs, bulkCreateSongs,
+  getSongUsage, getUpcomingGigsForSetlists
 } from '@/lib/services/songs';
+import { setlistDeleteText, songDeleteText } from '@/lib/deleteImpact';
+import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
 import { parseSongList, SONG_LIST_ACCEPT } from '@/lib/songListImport';
 import type { Song, Setlist } from '@/lib/services/songs';
 import { AddSongModal } from '@/app/components/rehearsal/AddSongModal';
 import { ScreenHeader, IconButton, SearchField, Card, Tag, BwSheet } from '@/app/components/bw/Screen';
 import { PillButton, PillField, Selector, FormError } from '@/app/components/bw/Form';
-import { openSongResource } from '@/lib/services/songFiles';
+import { isStoredSongFile, openSongResource } from '@/lib/services/songFiles';
 import { formatHoursMinutes, genresOf, parseGenres, songHasGenre } from '@/lib/songGenres';
 import { playTrack } from '@/lib/audioPlayer';
 import { t, useT } from '@/lib/i18n';
+import { userMessage } from '@/lib/userError';
 
 /** Readiness dots: 16 per row, one dot per song (scaled down past 48 songs). */
 const READINESS_COLS = 16;
@@ -105,10 +109,8 @@ const compactSets = (sets: number[]): number[] => {
   return sets.map((n) => distinct.indexOf(n) + 1);
 };
 
-const errorText = (error: unknown, fallback: string) =>
-  error && typeof error === 'object' && 'message' in error && (error as Error).message
-    ? `${fallback}: ${(error as Error).message}`
-    : `${fallback}. ${t('Try again.')}`;
+/** Translated reason, never the server's own text (src/lib/userError.ts). */
+const errorText = (error: unknown, fallback: string) => userMessage(error ?? new Error(''), fallback);
 
 /**
  * Setlist row that reorders by dragging its grip (pointer events, so it works
@@ -196,6 +198,9 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
   const [editorError, setEditorError] = useState<string | null>(null);
   /** The setlist couldn't be read: saving would wipe its songs, so it is blocked. */
   const [editorLoadFailed, setEditorLoadFailed] = useState(false);
+  /** Delete waiting for "Delete" in the confirm sheet, with what it takes along. */
+  const [confirmDelete, setConfirmDelete] = useState<{ kind: 'song' | 'setlist'; id: string; title: string; body: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [newSong, setNewSong] = useState({
     title: '',
@@ -263,6 +268,14 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     setSetlists(prev => [data, ...prev]);
     setNewSetlistName('');
     setShowAddSetlist(false);
+  };
+
+  /** Asks first, naming the setlists and upcoming gigs that lose the song. */
+  const requestDeleteSong = async (song: Song) => {
+    setActionMenuId(null);
+    const usage = await getSongUsage(song.id);
+    const hasFiles = isStoredSongFile(song.audio_url) || isStoredSongFile(song.chart_url);
+    setConfirmDelete({ kind: 'song', id: song.id, title: t('Delete {title}?', { title: song.title }), body: songDeleteText(usage, hasFiles) });
   };
 
   const handleDeleteSong = async (songId: string) => {
@@ -357,12 +370,13 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
           bpm: p.bpm,
           duration_seconds: p.duration,
           genre: p.genre,
-          status: 'ready' as const,
+          // Members suggest songs; an admin moves them to Learning / Ready.
+          status: isAdmin ? ('ready' as const) : ('suggested' as const),
           priority: 'medium' as const,
         })) as Parameters<typeof bulkCreateSongs>[1],
       );
       if (error) {
-        setImportStatus(t('Import failed: {error}', { error: error.message }), true);
+        setImportStatus(errorText(error, t('Import failed')), true);
         return;
       }
       setImportStatus(
@@ -383,7 +397,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
   };
 
   const handleSeedRepertoire = async () => {
-    if (!selectedBand?.id || seeding) return;
+    if (!selectedBand?.id || seeding || !isAdmin) return;
     setSeeding(true);
     const { count, error } = await seedRepertoireSongs(selectedBand.id);
     if (error) {
@@ -529,6 +543,30 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
       setSetlistEditorSaving(false);
     }
   }, [editingSetlistId, editingSetlistName, editorItems, editorSets, setlistEditorSaving, editorLoadFailed, t]);
+
+  const requestDeleteSetlist = async () => {
+    if (!editingSetlistId) return;
+    const { data: gigs } = await getUpcomingGigsForSetlists([editingSetlistId]);
+    setConfirmDelete({
+      kind: 'setlist',
+      id: editingSetlistId,
+      title: t('Delete {name}?', { name: editingSetlistName.trim() || t('Setlist') }),
+      body: setlistDeleteText(gigs),
+    });
+  };
+
+  const confirmDeletion = async () => {
+    const pending = confirmDelete;
+    if (!pending || deleting) return;
+    setDeleting(true);
+    try {
+      if (pending.kind === 'song') await handleDeleteSong(pending.id);
+      else await handleDeleteSetlist();
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(null);
+    }
+  };
 
   const handleDeleteSetlist = useCallback(async () => {
     if (!editingSetlistId) return;
@@ -781,9 +819,12 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                       <PillButton size="md" variant="outline" fullWidth={false} loading={importing} onClick={() => importInputRef.current?.click()}>
                         {t('Import list (CSV/TXT)')}
                       </PillButton>
-                      <PillButton size="md" variant="outline" fullWidth={false} loading={seeding} onClick={handleSeedRepertoire}>
-                        {t('Load 700+ songs')}
-                      </PillButton>
+                      {/* Straight in as Ready: admins only (members suggest songs). */}
+                      {isAdmin && (
+                        <PillButton size="md" variant="outline" fullWidth={false} loading={seeding} onClick={handleSeedRepertoire}>
+                          {t('Load 700+ songs')}
+                        </PillButton>
+                      )}
                     </div>
                   )}
                 </Card>
@@ -854,7 +895,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                                   ? [{ label: song.status === 'suggested' ? t('Approve · learning') : t('Back to learning'), icon: <Music2 className="w-4 h-4" />, run: () => handleSetSongStatus(song, 'learning') }]
                                   : []),
                                 ...(isAdmin
-                                  ? [{ label: t('Delete'), icon: <Trash2 className="w-4 h-4" />, run: () => handleDeleteSong(song.id), danger: true }]
+                                  ? [{ label: t('Delete'), icon: <Trash2 className="w-4 h-4" />, run: () => void requestDeleteSong(song), danger: true }]
                                   : []),
                               ]}
                             />
@@ -997,7 +1038,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                           disabled={exportingPdf || editorRows.length === 0}
                         />
                         {canEditSetlists && (
-                          <IconButton label={t('Delete setlist')} icon={<Trash2 />} className="text-destructive border-destructive" onClick={handleDeleteSetlist} />
+                          <IconButton label={t('Delete setlist')} icon={<Trash2 />} className="text-destructive border-destructive" onClick={() => void requestDeleteSetlist()} />
                         )}
                       </div>
                     }
@@ -1188,6 +1229,15 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
           </motion.div>
         )}
       </AnimatePresence>
+
+      <DeleteChatSheet
+        open={!!confirmDelete}
+        title={confirmDelete?.title}
+        body={confirmDelete?.body}
+        deleting={deleting}
+        onCancel={() => !deleting && setConfirmDelete(null)}
+        onConfirm={() => void confirmDeletion()}
+      />
     </motion.div>
   );
 };

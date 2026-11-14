@@ -7,7 +7,7 @@ import { LyricsText } from '@/app/components/ui/LyricsViewer';
 import { cn } from '@/app/components/ui/utils';
 import { chartBarCount, parseIrealLink, type SongChart } from '@/lib/ireal';
 import { browseIrealForum, canBrowseForumInApp, IREAL_FORUM_URL } from '@/lib/irealForum';
-import { pastedLyrics, readSongFile, SONG_FILE_ACCEPT, type ImportedSong, type SongFileError } from '@/lib/songImport';
+import { pastedLyrics, readSongFile, songFileTooLarge, SONG_FILE_ACCEPT, type ImportedSong, type SongFileError } from '@/lib/songImport';
 import { openExternal } from '@/lib/nativeFiles';
 import { takeReceivedChart, receivedChartName } from '@/lib/chartInbox';
 import { useT } from '@/lib/i18n';
@@ -62,8 +62,12 @@ export const ChordImportSheet: React.FC<{
 
   const names = React.useMemo(() => ({ verse: t('Verse'), chorus: t('Chorus'), bridge: t('Bridge') }), [t]);
 
+  // Reads still running when the sheet closes are dropped (see readFile).
+  const session = React.useRef(0);
   React.useEffect(() => {
+    session.current += 1;
     if (!open) return;
+    setPreview(null);
     const name = receivedChartName();
     setReceived(name);
     setTab(name && initialTab !== 'lyrics' ? 'file' : initialTab);
@@ -117,7 +121,7 @@ export const ChordImportSheet: React.FC<{
   const browse = async () => {
     setError(null);
     try {
-      const link = await browseIrealForum(t('iReal Pro forum'));
+      const link = await browseIrealForum(t('iReal Pro forum'), { close: t('Close'), back: t('Back') });
       if (link) readLink(link);
     } catch {
       setError(t('Could not open the forum. Try again.'));
@@ -133,15 +137,22 @@ export const ChordImportSheet: React.FC<{
   };
 
   const readFile = async (file: File) => {
-    setBusy(true);
     setError(null);
+    // Too big: refused before it is read into memory.
+    if (songFileTooLarge(file.name, file.size)) return setError(fileErrors['too-large']);
+    const mine = session.current;
+    setBusy(true);
     try {
-      offer(await readSongFile(new Uint8Array(await file.arrayBuffer()), file.name, names));
+      const song = await readSongFile(new Uint8Array(await file.arrayBuffer()), file.name, names);
+      // Closed (or closed and reopened) while reading: nothing is applied.
+      if (session.current !== mine) return;
+      offer(song);
     } catch (e) {
+      if (session.current !== mine) return;
       const code = (e as Error).message as SongFileError;
       setError(fileErrors[code] ?? fileErrors.unsupported);
     }
-    setBusy(false);
+    if (session.current === mine) setBusy(false);
   };
 
   const useReceived = () => {

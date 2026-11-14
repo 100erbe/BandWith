@@ -209,6 +209,15 @@ export const SONG_FILE_ACCEPT = '.musicxml,.mxl,.xml,.cho,.chordpro,.chopro,.pro
 
 const ext = (name: string) => (name.match(/\.([a-z0-9]+)$/i)?.[1] || '').toLowerCase();
 
+/**
+ * Checked before a picked file is read into memory: scores up to 20 MB
+ * (as musicxml.ts allows), ChordPro and text up to 1 MB.
+ */
+export function songFileTooLarge(fileName: string, size: number): boolean {
+  const e = ext(fileName);
+  return size > (['musicxml', 'mxl', 'xml'].includes(e) ? 20 : 1) * 1024 * 1024;
+}
+
 /** A picked file → lyrics and/or a chord chart. Throws a SongFileError code. */
 export async function readSongFile(bytes: Uint8Array, fileName: string, names: SectionNames): Promise<ImportedSong> {
   const e = ext(fileName);

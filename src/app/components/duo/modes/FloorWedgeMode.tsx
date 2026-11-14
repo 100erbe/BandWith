@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, Minus, PanelLeft, Plus, X } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { haptic } from '@/lib/haptics';
@@ -9,6 +10,7 @@ import { LyricsText, useLyricsSize } from '@/app/components/ui/LyricsViewer';
 import { useT } from '@/lib/i18n';
 import { useRailLayout } from '@/lib/deviceRegions';
 import { useStageBarHidden } from '@/lib/stageChrome';
+import { StageClickButton, StageClickFrame, useStageClickUi, type StageClickControls } from '@/app/components/dashboard/StageClick';
 
 /**
  * Floor wedge (Stage mode in Laptop pose): the phone stands on the stage
@@ -23,6 +25,8 @@ import { useStageBarHidden } from '@/lib/stageChrome';
  */
 
 export interface WedgeSong {
+  /** setlist_songs row id (the click belongs to a song). */
+  id?: string;
   title: string;
   artist?: string;
   key?: string | null;
@@ -31,6 +35,8 @@ export interface WedgeSong {
   duration?: string | number | null;
   /** songs.lyrics: the display can show them instead of the big title. */
   lyrics?: string | null;
+  /** Time signature for the click's accent. */
+  chart?: { time?: string } | null;
 }
 
 export interface FloorWedgeModeProps {
@@ -54,6 +60,8 @@ export interface FloorWedgeModeProps {
     bluetooth?: string;
     onToggle: (on: boolean) => void;
   };
+  /** Visual metronome (useStageLive().click): the button on the Deck, the glow above the wedge. */
+  click?: StageClickControls;
   /** When the set started (elapsed time); defaults to when the mode mounted. */
   startedAt?: Date | number;
   /** See FoldSplit. Default 125 (above Stage mode). */
@@ -74,6 +82,7 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
   index: controlledIndex,
   onIndexChange,
   follow,
+  click,
   startedAt,
   zIndex,
   onClose,
@@ -138,6 +147,7 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
     lyricsRef.current?.scrollTo?.({ top: 0 });
   }, [index, showLyrics]);
   const next = index + 1 < count ? songs[index + 1] : null;
+  const clickUi = useStageClickUi(click, song);
   const start = startedAt !== undefined ? new Date(startedAt).getTime() : mountedAt;
   const elapsed = clock(Math.max(0, (now - start) / 1000));
 
@@ -255,7 +265,7 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
                 aria-hidden
                 className={cn('w-2 h-2 rounded-full', follow.connected || follow.bluetooth === 'leading' ? 'bg-accent' : 'border border-white/60')}
               />
-              {follow.connected ? t('Band follows you') : follow.bluetooth === 'leading' ? 'Bluetooth' : t('Offline')}
+              {follow.connected ? t('Band follows you') : follow.bluetooth === 'leading' ? t('Bluetooth') : t('Offline')}
               {follow.connected && follow.bluetooth === 'leading' ? ' · BT' : ''}
             </span>
           ) : (
@@ -272,7 +282,13 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
               )}
             >
               <span aria-hidden className={cn('w-2 h-2 rounded-full', follow.following ? 'bg-accent-foreground' : 'border border-white')} />
-              {follow.following ? (follow.leaderSeen ? t('Following leader') : t('Waiting for leader')) : t('Follow leader')}
+              {!follow.following
+                ? t('Follow leader')
+                : !follow.leaderSeen
+                  ? t('Waiting for leader')
+                  : !follow.connected && follow.bluetooth !== 'connected'
+                    ? t('Offline')
+                    : t('Following leader')}
               {follow.bluetooth === 'connected' ? ' · BT' : ''}
             </button>
           )}
@@ -306,7 +322,7 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
           )}
         </div>
       )}
-      <div className="grid grid-cols-2 gap-3 flex-1 min-h-[88px]">
+      <div className={cn('grid gap-3 flex-1 min-h-[88px]', click ? 'grid-cols-[1fr_auto_1fr]' : 'grid-cols-2')}>
         <DeckButton
           size="pad"
           tone="muted"
@@ -317,6 +333,16 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
         >
           <ChevronLeft className="w-7 h-7" /> {t('Prev')}
         </DeckButton>
+        {click && (
+          <StageClickButton
+            bpm={song?.bpm ?? undefined}
+            running={clickUi.running}
+            following={clickUi.following}
+            hidden={clickUi.hidden}
+            onPress={clickUi.press}
+            accent="var(--accent)"
+          />
+        )}
         <DeckButton
           size="pad"
           tone="accent"
@@ -347,7 +373,17 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
     </div>
   );
 
-  return <FoldSplit zIndex={zIndex} variant="stage" displayLabel={t('Now playing')} deckLabel={t('Song controls')} display={display} deck={deck} />;
+  return (
+    <>
+      <FoldSplit zIndex={zIndex} variant="stage" displayLabel={t('Now playing')} deckLabel={t('Song controls')} display={display} deck={deck} />
+      {/* The click's glow goes above the wedge (Stage mode's own sits under it). */}
+      {click && clickUi.show && clickUi.state && typeof document !== 'undefined' &&
+        createPortal(
+          <StageClickFrame state={clickUi.state} offset={click.offset} accent="var(--accent)" onDone={clickUi.onDone} zIndex={(zIndex ?? 125) + 1} />,
+          document.body,
+        )}
+    </>
+  );
 };
 
 export default FloorWedgeMode;

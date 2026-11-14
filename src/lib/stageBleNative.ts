@@ -105,3 +105,20 @@ export function writeCachedSetlist(setlistId: string, songs: CachedSetlistSong[]
     }
   }
 }
+
+/**
+ * Sign-out: the band's setlists (with lyrics and charts) and the gigs'
+ * Bluetooth keys kept on this phone go too.
+ */
+export function clearStageCache() {
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith(SETLIST_PREFIX) || k.startsWith(KEY_PREFIX))) keys.push(k);
+    }
+    keys.forEach((k) => localStorage.removeItem(k));
+  } catch {
+    /* storage not available */
+  }
+}

@@ -65,6 +65,19 @@ describe('ireal', () => {
     expect(pl.songs.map((s) => [s.title, s.time])).toEqual([['One', '4/4'], ['Two', '3/4']]);
   });
 
+  it('reads older irealbook:// links (six fields, music not scrambled)', () => {
+    const one = ['Made Up Tune', 'Doe Jane', 'Bossa Nova', 'F', 'n', PLAIN].join('=');
+    const two = ['Second Tune', 'Roe Rick', 'Ballad', 'Bb-', 'n', '[T34C^7 |G7 Z'].join('=');
+    const pl = parseIrealLink(`irealbook://${encodeURIComponent(`${one}=${two}`)}`);
+    expect(pl.songs.map((c) => c.title)).toEqual(['Made Up Tune', 'Second Tune']);
+    expect(pl.songs[0]).toMatchObject({ composer: 'Doe Jane', style: 'Bossa Nova', key: 'F', time: '4/4' });
+    expect(pl.songs[0].sections.length).toBe(2);
+    expect(pl.songs[1]).toMatchObject({ key: 'Bb-', time: '3/4' });
+    expect(pl.songs[0].link?.startsWith('irealbook://')).toBe(true);
+    // Same song pasted as irealb:// still goes through the scrambled layout.
+    expect(parseIrealLink(link(songField('Made Up Tune', PLAIN))).songs[0].title).toBe('Made Up Tune');
+  });
+
   it('rejects text without a chart', () => {
     expect(findIrealLink('https://example.com')).toBeNull();
     expect(() => parseIrealLink('hello')).toThrow('not-ireal');

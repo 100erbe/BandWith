@@ -328,6 +328,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     { id?: string; songId?: string; setNumber?: number; title: string; artist?: string; duration?: string; key?: string; lyrics?: string; chart?: SongChart }[]
   >([]);
   const [setlistLoading, setSetlistLoading] = useState(false);
+  /** The setlist couldn't be fetched and no copy is kept on the device (offline). */
+  const [setlistError, setSetlistError] = useState(false);
 
   // event_members (declined kept), names from the band roster
   const {
@@ -378,6 +380,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   useEffect(() => {
     if (!event.setlistId || isPersonalGig) {
       setSetlistSongs([]);
+      setSetlistError(false);
       return;
     }
     let cancelled = false;
@@ -398,9 +401,12 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         // No internet (a venue with no signal): the copy kept on the phone, so
         // Stage mode still has the songs (and Bluetooth sync).
         if (error) {
-          setSetlistSongs(readCachedSetlist(setlistId) ?? []);
+          const cached = readCachedSetlist(setlistId);
+          setSetlistSongs(cached ?? []);
+          setSetlistError(!cached);
           return;
         }
+        setSetlistError(false);
         // An empty or failed query clears the list instead of keeping the
         // songs of the setlist shown before.
         if (!data || data.length === 0) {
@@ -426,7 +432,10 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           writeCachedSetlist(setlistId, songs);
         }
       } catch {
-        if (!cancelled) setSetlistSongs(readCachedSetlist(event.setlistId!) ?? []);
+        if (cancelled) return;
+        const cached = readCachedSetlist(event.setlistId!);
+        setSetlistSongs(cached ?? []);
+        setSetlistError(!cached);
       } finally {
         if (!cancelled) setSetlistLoading(false);
       }
@@ -2401,6 +2410,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
             ]}
             songs={stageLive.songs}
             songsLoading={setlistLoading}
+            songsError={setlistError}
+            onRetrySongs={() => setSetlistReloadKey((k) => k + 1)}
             live={stageLive}
             onClose={() => setIsStageOpen(false)}
           />
@@ -2417,6 +2428,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           title={event.title}
           index={stageLive.index}
           onIndexChange={stageLive.select}
+          click={stageLive.click}
           follow={{
             isLeader: stageLive.isLeader,
             following: stageLive.following,
