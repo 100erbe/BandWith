@@ -52,6 +52,8 @@ function clearPendingDeputyToken() {
 let memoryToken: string | null = null;
 let result: DeputyClaimResult | null = null;
 let claiming = false;
+/** The last try didn't reach the server (offline, weak signal). */
+let failed = false;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 const subscribe = (l: () => void) => {
@@ -68,17 +70,44 @@ const bump = () => {
 };
 
 /**
- * Claims the waiting token, if any. Network errors keep it for the next try;
- * any answer from the server (linked, taken…) clears it.
+ * After a failed try, try again when the connection comes back or the app
+ * returns to the foreground (instead of "Linking…" forever).
+ */
+let disarmRetry: (() => void) | null = null;
+function armRetry() {
+  if (disarmRetry || typeof window === 'undefined') return;
+  const again = () => {
+    if (document.visibilityState === 'hidden') return;
+    disarmRetry?.();
+    void claimPendingDeputyToken();
+  };
+  disarmRetry = () => {
+    disarmRetry = null;
+    window.removeEventListener('online', again);
+    document.removeEventListener('visibilitychange', again);
+  };
+  window.addEventListener('online', again);
+  document.addEventListener('visibilitychange', again);
+}
+
+/**
+ * Claims the waiting token, if any. Network errors keep it for the next try
+ * (made again when back online / in the foreground); any answer from the
+ * server (linked, taken…) clears it.
  */
 export async function claimPendingDeputyToken(): Promise<DeputyClaimResult | null> {
   const token = pendingDeputyToken();
   if (!token || claiming) return null;
   claiming = true;
+  failed = false;
   bump();
   try {
-    const { data, error } = await claimDeputy(token);
-    if (error || !data) return null;
+    const { data, error } = await claimDeputy(token).catch(() => ({ data: null, error: true }));
+    if (error || !data) {
+      failed = true;
+      armRetry();
+      return null;
+    }
     clearPendingDeputyToken();
     result = data;
     return data;
@@ -88,12 +117,23 @@ export async function claimPendingDeputyToken(): Promise<DeputyClaimResult | nul
   }
 }
 
-/** The last claim's result until dismissed, and whether one is still waiting or running. */
-export function useDeputyClaim(): { result: DeputyClaimResult | null; pending: boolean; dismiss: () => void } {
+/**
+ * The last claim's result until dismissed, whether one is still waiting or
+ * running, and whether the last try failed (`retry` tries again now).
+ */
+export function useDeputyClaim(): {
+  result: DeputyClaimResult | null;
+  pending: boolean;
+  failed: boolean;
+  retry: () => void;
+  dismiss: () => void;
+} {
   useSyncExternalStore(subscribe, snapshot, snapshot);
   return {
     result,
     pending: claiming || !!pendingDeputyToken(),
+    failed: failed && !claiming,
+    retry: () => void claimPendingDeputyToken(),
     dismiss: () => {
       result = null;
       bump();
@@ -106,5 +146,7 @@ export function resetDeputyClaimForTests() {
   clearPendingDeputyToken();
   result = null;
   claiming = false;
+  failed = false;
+  disarmRetry?.();
   version = 0;
 }

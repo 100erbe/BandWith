@@ -70,6 +70,11 @@ describe('backStack', () => {
     onEscapeKey(used);
     onEscapeKey(new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }));
     onEscapeKey(escape({ isComposing: true }));
+    // Escape typed in a text field stays with the field.
+    const field = document.createElement('textarea');
+    document.body.appendChild(field);
+    field.dispatchEvent(escape({ bubbles: true }));
+    field.remove();
     expect(app).not.toHaveBeenCalled();
   });
 

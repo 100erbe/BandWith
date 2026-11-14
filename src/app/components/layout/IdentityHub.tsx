@@ -38,6 +38,7 @@ import { updateBand } from '@/lib/services/bands';
 import { uploadBandBrandingAsset, getBandPricing, saveBandPricing } from '@/lib/services/pricing';
 import { personName, personInitials, hasRealName } from '@/lib/personName';
 import { useT } from '@/lib/i18n';
+import { useAppVersion } from '@/lib/appVersion';
 import { uuidToNumericId } from '@/lib/numericId';
 import { assetStatusParts, EMPTY_ASSET_STATUS, type AssetId, type AssetStatusCounts, type StatusPart } from '@/lib/assetStatus';
 
@@ -103,8 +104,11 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   onOpenDeputyGigs,
   onBandUpdated,
 }) => {
-  const { signOut, user, profile } = useAuth();
+  const { signOut, user, profile, userMode } = useAuth();
   const t = useT();
+  const appVersion = useAppVersion();
+  // Solo accounts get a personal-calendar placeholder, not a real band.
+  const isSolo = userMode === 'solo';
   const { mode, setMode, resolvedTheme } = useTheme();
   const {
     isAdmin: isBandAdmin,
@@ -268,9 +272,22 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   };
 
 
+  // Sending queued offline edits first can take a few seconds: one tap only.
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
   const handleLogout = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    setSignOutError(null);
     try {
-      await signOut();
+      const { error } = await signOut();
+      if (error) {
+        // Still signed in: reloading would only bring the session back.
+        console.error('Logout failed:', error);
+        setSignOutError(t('Couldn’t sign out. Try again.'));
+        setSigningOut(false);
+        return;
+      }
       onClose();
       window.location.href = '/';
     } catch (e) {
@@ -559,13 +576,19 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
 
                 <div className="flex flex-col min-w-0 flex-1 gap-2">
                   <h3 className="bw-h2 text-foreground line-clamp-2 break-words">
-                    {activeBandDetails?.name || selectedBand.name}
+                    {isSolo ? t('My calendar') : activeBandDetails?.name || selectedBand.name}
                   </h3>
                   <div className="flex items-center gap-1 flex-wrap">
-                    <Tag>
-                      {lineupCount === 1 ? t('{count} musician', { count: lineupCount }) : t('{count} musicians', { count: lineupCount })}
-                    </Tag>
-                    <Tag>{isAdmin ? t('Band admin') : t('Band member')}</Tag>
+                    {isSolo ? (
+                      <Tag>{t('Solo schedule')}</Tag>
+                    ) : (
+                      <>
+                        <Tag>
+                          {lineupCount === 1 ? t('{count} musician', { count: lineupCount }) : t('{count} musicians', { count: lineupCount })}
+                        </Tag>
+                        <Tag>{isAdmin ? t('Band admin') : t('Band member')}</Tag>
+                      </>
+                    )}
                   </div>
                   {(activeBandDetails?.home_base_address || activeBandDetails?.description) && (
                     <span className="bw-body-sm text-muted-foreground truncate">
@@ -806,7 +829,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
 
                   <div className="flex flex-col gap-2">
                     {bands.map((b) => {
-                      // By id: two bands can share a name.
+                      // By id: two bands can have the same name.
                       const isActive = b.id === selectedBand.id;
                       const matchedRealBand = realBandsList?.find((rb) => uuidToNumericId(rb.id) === b.id);
                       const itemInitials = b.initials || initialsOf(b.name);
@@ -1005,16 +1028,16 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
               />
             )}
 
-            {/* Help & Support */}
-            <ListRow
-              className="dark:bg-sheet"
-              icon={<Mail />}
-              title={t('Help & support')}
-              subtitle="support@bandwith.app"
-              onClick={() =>
-                window.open('mailto:support@bandwith.app?subject=BandWith%20Help%20Request', '_blank')
-              }
-            />
+            {/* Help & Support: the help page in Settings (bundled, works offline) */}
+            {onOpenSettings && (
+              <ListRow
+                className="dark:bg-sheet"
+                icon={<Mail />}
+                title={t('Help & support')}
+                subtitle={t('Answers and what you can do in the app')}
+                onClick={() => onOpenSettings('help')}
+              />
+            )}
 
             {/* Export My Data */}
             <ListRow
@@ -1031,9 +1054,15 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
             )}
 
             {/* Sign Out */}
+            {signOutError && (
+              <p role="alert" className="bw-body-sm text-destructive">
+                {signOutError}
+              </p>
+            )}
             <PillButton
               variant="outline"
               onClick={handleLogout}
+              loading={signingOut}
               title={t('Sign out ({email})', { email: displayEmail })}
               icon={<LogOut aria-hidden className="w-5 h-5" />}
               className="border-destructive text-destructive"
@@ -1042,7 +1071,9 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
             </PillButton>
 
             {/* Footer */}
-            <p className="bw-label-sm text-muted-foreground">{t('v{version} · All data encrypted', { version: '1.0.0' })}</p>
+            <p className="bw-label-sm text-muted-foreground">
+              {appVersion ? t('v{version} · All data encrypted', { version: appVersion }) : t('All data encrypted')}
+            </p>
 
             {/* Bottom clearance spacer ensuring the footer cleanly clears the floating navbar */}
             <div

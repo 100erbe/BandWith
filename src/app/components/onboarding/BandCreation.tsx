@@ -5,6 +5,7 @@ import { useOnboarding } from '@/lib/OnboardingContext';
 import { AuthScreen, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
 import { WizardTop, wizardStep } from './OnboardingChrome';
 import { useT } from '@/lib/i18n';
+import { resizeImageToDataUrl } from '@/lib/imageResize';
 
 interface BandCreationProps {
   onBack: () => void;
@@ -36,15 +37,17 @@ export const BandCreation: React.FC<BandCreationProps> = ({
       .slice(0, 2);
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // A 256 px thumbnail, not the full photo: it is uploaded to Storage once
+  // the band exists (completeOnboarding), and stays this small if it can't be.
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-        setAvatarUrl(reader.result as string); // In production, upload to storage
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    try {
+      const thumb = await resizeImageToDataUrl(file, 256);
+      setAvatarPreview(thumb);
+      setAvatarUrl(thumb);
+    } catch {
+      // Not an image the browser can read: keep the initials.
     }
   };
 

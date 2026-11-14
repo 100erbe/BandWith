@@ -20,6 +20,8 @@ import {
   parseInviteCode,
   previewInvitation,
 } from './services/invitations';
+import { createBand } from './services/bands';
+import { storeOnboardingBandLogo } from './onboardingBandLogo';
 import type { InviteData } from '@/app/components/onboarding/JoinerInviteLanding';
 
 // Onboarding step definitions
@@ -201,7 +203,7 @@ const initialState: OnboardingState = {
 export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
   children,
 }) => {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [state, setState] = useState<OnboardingState>(initialState);
 
   // Get steps based on path
@@ -308,6 +310,8 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
         duration_seconds: duration,
       });
 
+      // Joining switches a solo account to member (trigger 034).
+      await refreshProfile();
       setState((prev) => ({ ...prev, isComplete: true }));
       return;
     }
@@ -318,8 +322,10 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
     // ═══════════════════════════════════════════════════════════════
     // 2) Update profile — Branching Intent (Solo vs Band Admin)
     // ═══════════════════════════════════════════════════════════════
+    // Throws on failure: the completion screen stays, says so and offers to
+    // try again (nothing else has been saved yet at this point).
     if (state.profileData) {
-      await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
           full_name: state.profileData.fullName,
@@ -329,6 +335,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
           ...(isGoingSolo ? {} : { role: 'admin', sub_tier: 'single_band' }),
         })
         .eq('id', user.id);
+      if (profileError) throw profileError;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -340,6 +347,8 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
         duration_seconds: duration,
       });
 
+      // The app picks solo or band mode from the profile: read it again now.
+      await refreshProfile();
       setState((prev) => ({
         ...prev,
         isComplete: true,
@@ -399,6 +408,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
         duration_seconds: duration,
       });
 
+      await refreshProfile();
       setState((prev) => ({ ...prev, isComplete: true }));
       return;
     }
@@ -406,67 +416,59 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
     // ═══════════════════════════════════════════════════════════════
     // 5) Create band (User is validated)
     // ═══════════════════════════════════════════════════════════════
-    const slug = state.bandData!.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
+    // Same path as "Add band" in the app (services/bands.createBand).
+    const { data: band, error: bandError } = await createBand({
+      name: state.bandData!.name,
+      logo_url: state.bandData!.avatarUrl,
+    });
 
-    const { data: band, error: bandError } = await supabase
-      .from('bands')
-      .insert({
-        name: state.bandData!.name,
-        logo_url: state.bandData!.avatarUrl,
-        created_by: user.id,
-        slug: `${slug}-${Date.now().toString(36)}`,
-      })
-      .select('id, name, slug, created_by')
-      .single();
-
-    if (bandError) {
+    if (bandError || !band) {
       console.error('CRITICAL: Band Creation Failed:', bandError);
-      return;
+      throw bandError ?? new Error('Band creation failed');
     }
 
-    if (band) {
-      const { error: memberError } = await supabase
-        .from('band_members')
-        .upsert(
-          {
-            band_id: band.id,
-            user_id: user.id,
-            role: 'admin',
-            instrument: state.profileData?.instruments?.join(', '),
-          },
-          { onConflict: 'band_id,user_id' },
-        );
-
-      if (memberError) console.error('Member Upsert Error:', memberError);
-
-      // Invitations go through the invite-member edge function (admin check,
-      // band_invitations row, email with the invite link for new users).
-      for (const invite of state.invites) {
-        try {
-          await inviteToBand({
-            bandId: band.id,
-            email: invite.email,
-            role: invite.permission === 'admin' ? 'admin' : 'member',
-            inviterName: state.profileData?.fullName,
-          });
-        } catch (inviteError) {
-          console.error('Failed to send invitation to', invite.email, inviteError);
-        }
-      }
-
-      for (const song of state.songs) {
-        await supabase.from('songs').insert({
+    const { error: memberError } = await supabase
+      .from('band_members')
+      .upsert(
+        {
           band_id: band.id,
-          title: song.title,
-          artist: song.artist,
-          duration_seconds: song.duration,
-          bpm: song.bpm,
-          key: song.key,
+          user_id: user.id,
+          role: 'admin',
+          instrument: state.profileData?.instruments?.join(', '),
+        },
+        { onConflict: 'band_id,user_id' },
+      );
+
+    if (memberError) console.error('Member Upsert Error:', memberError);
+
+    // The photo was kept small and inline until the band existed: move it
+    // to Storage now, as its admin (stays inline if the upload isn't possible).
+    await storeOnboardingBandLogo(band.id, state.bandData!.avatarUrl);
+
+    // Invitations go through the invite-member edge function (admin check,
+    // band_invitations row, email with the invite link for new users).
+    for (const invite of state.invites) {
+      try {
+        await inviteToBand({
+          bandId: band.id,
+          email: invite.email,
+          role: invite.permission === 'admin' ? 'admin' : 'member',
+          inviterName: state.profileData?.fullName,
         });
+      } catch (inviteError) {
+        console.error('Failed to send invitation to', invite.email, inviteError);
       }
+    }
+
+    for (const song of state.songs) {
+      await supabase.from('songs').insert({
+        band_id: band.id,
+        title: song.title,
+        artist: song.artist,
+        duration_seconds: song.duration,
+        bpm: song.bpm,
+        key: song.key,
+      });
     }
 
     // Mark onboarding complete
@@ -475,11 +477,12 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
       duration_seconds: duration,
     });
 
+    await refreshProfile();
     setState((prev) => ({
       ...prev,
       isComplete: true,
     }));
-  }, [user, state]);
+  }, [user, state, refreshProfile]);
 
   // Data setters
   const setAccountData = useCallback(

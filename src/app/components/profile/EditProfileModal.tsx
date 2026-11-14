@@ -7,40 +7,12 @@ import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { realName } from '@/lib/personName';
 import { t, useT } from '@/lib/i18n';
+import { resizeImageToDataUrl } from '@/lib/imageResize';
 
 interface EditProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   onProfileUpdated?: () => void;
-}
-
-async function resizeImageToDataUrl(file: File, maxSize: number = 256): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = maxSize;
-        canvas.height = maxSize;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return reject(new Error('Canvas unavailable'));
-
-        // Center crop to square
-        const minSide = Math.min(img.width, img.height);
-        const sx = (img.width - minSide) / 2;
-        const sy = (img.height - minSide) / 2;
-
-        ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, maxSize, maxSize);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        resolve(dataUrl);
-      };
-      img.onerror = () => reject(new Error('Failed to load image file'));
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsDataURL(file);
-  });
 }
 
 /**
@@ -96,16 +68,23 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Populate form with current profile data
+  // Fill the form when it opens. Not on every profile refresh: uploading a
+  // photo refreshes the profile and must not undo the name typed meanwhile.
+  const filledRef = useRef(false);
   useEffect(() => {
-    if (profile) {
+    if (!isOpen) {
+      filledRef.current = false;
+      return;
+    }
+    if (profile && !filledRef.current) {
+      filledRef.current = true;
       setFullName(realName(profile.full_name, profile.email));
       setPhone(profile.phone || '');
       setInstrument(profile.instrument || '');
       setBio(profile.bio || '');
       setAvatarUrl(profile.avatar_url || null);
     }
-  }, [profile]);
+  }, [isOpen, profile]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -165,8 +144,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       setAvatarUrl(finalAvatarUrl);
       if (refreshProfile) await refreshProfile();
       if (onProfileUpdated) onProfileUpdated();
-    } catch (err: any) {
-      setError(err.message || t('Failed to upload photo'));
+    } catch {
+      setError(t('Failed to upload photo'));
     } finally {
       setUploadingAvatar(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -204,8 +183,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         onClose();
         setSuccess(false);
       }, 800);
-    } catch (err: any) {
-      setError(err.message || t('Failed to update profile'));
+    } catch {
+      setError(t('Failed to update profile'));
     } finally {
       setSaving(false);
     }

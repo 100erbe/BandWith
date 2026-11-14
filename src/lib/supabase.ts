@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
 import { createDemoClient } from './demo/demoClient';
+import { isOfflineAuthError, parseStoredSession } from './authSession';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 // Publishable key (sb_publishable_…): safe to ship in the app, RLS applies.
@@ -83,6 +84,9 @@ export const signUp = async (
     password,
     options: {
       data: metadata,
+      // With email confirmation on, the link brings the person back to the
+      // app (deep link on iOS/Android), not to the web page.
+      emailRedirectTo: getAuthCallbackUrl(),
     },
   });
   return { data, error };
@@ -150,7 +154,50 @@ export const signOut = async (opts?: { keepDeviceSession?: boolean }) => {
     }
   }
   const { error } = await supabase.auth.signOut();
+  if (!error) return { error: null };
+  // Offline (or the server unreachable) the server sign-out fails and the
+  // library keeps the session. Signing out must still work: end it on this
+  // device (the stored session is removed and SIGNED_OUT is emitted).
+  if (typeof auth._removeSession === 'function') {
+    try {
+      await auth._removeSession();
+      return { error: null };
+    } catch {
+      // fall through
+    }
+  }
   return { error };
+};
+
+/**
+ * The session stored on this device, without the network (see
+ * authSession.ts). Null in demo mode or when there is none.
+ */
+export const readStoredSession = async () => {
+  const auth = supabase.auth as unknown as {
+    storage?: { getItem: (key: string) => string | null | Promise<string | null> };
+    storageKey?: string;
+  };
+  if (!auth.storage || !auth.storageKey) return null;
+  try {
+    return parseStoredSession(await auth.storage.getItem(auth.storageKey));
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * `getSession()`, but offline it falls back to the stored session instead of
+ * reporting "signed out" (expired access token, refresh not possible).
+ */
+export const getSessionOfflineSafe = async () => {
+  const { data, error } = await supabase.auth.getSession();
+  if (data?.session) return { session: data.session, offline: false };
+  if (error && isOfflineAuthError(error)) {
+    const stored = await readStoredSession();
+    if (stored) return { session: stored, offline: true };
+  }
+  return { session: null, offline: false };
 };
 
 /** Deep-link (native) or web URL that Supabase redirects auth flows back to. */
@@ -186,9 +233,9 @@ const originalGetUser = supabase.auth.getUser.bind(supabase.auth);
 supabase.auth.getUser = (async (jwt?: string) => {
   if (!jwt) {
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData?.session?.user) {
-        return { data: { user: sessionData.session.user }, error: null } as any;
+      const { session } = await getSessionOfflineSafe();
+      if (session?.user) {
+        return { data: { user: session.user }, error: null } as any;
       }
     } catch {
       // Fall through to network getUser

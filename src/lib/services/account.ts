@@ -30,6 +30,6 @@ export async function deleteMyAccount(): Promise<DeleteAccountResult> {
   return {
     ok: false,
     reason: 'error',
-    message: t('We couldn’t delete your account. Check your connection and try again, or contact support@bandwith.app.'),
+    message: t('We couldn’t delete your account. Check your connection and try again. If it keeps failing, see Help & support in Settings.'),
   };
 }

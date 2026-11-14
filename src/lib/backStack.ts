@@ -64,6 +64,14 @@ export const setAppBack = (fn: AppBack) => {
 /** One back request: the app chain when the app is mounted, else the stack. */
 export const runBack = (mode: BackMode): boolean => (appBack ? appBack(mode) : handleBackFromStack());
 
+/** Escape typed in a field belongs to the field (clearing it, closing a picker). */
+export function isEditableTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el || typeof el.tagName !== 'string') return false;
+  const tag = el.tagName.toLowerCase();
+  return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable === true;
+}
+
 /**
  * Escape closes the top layer, like Android Back, through the same chain
  * (iPad with a hardware keyboard, desktop web). Fields and menus that use
@@ -72,6 +80,8 @@ export const runBack = (mode: BackMode): boolean => (appBack ? appBack(mode) : h
  */
 export const onEscapeKey = (e: KeyboardEvent) => {
   if (e.key !== 'Escape' || e.defaultPrevented || e.isComposing) return;
+  // Escape typed in a field is the field's (a draft is never closed by it).
+  if (isEditableTarget(e.target)) return;
   if (runBack('key')) e.preventDefault();
 };
 

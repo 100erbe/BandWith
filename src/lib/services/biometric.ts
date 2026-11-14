@@ -307,6 +307,24 @@ export const getQuickSignInOwner = async (): Promise<{ userId?: string; email: s
 };
 
 /**
+ * Forgets quick sign-in when it belongs to this account (deleted account:
+ * its session must not stay in the Keychain / Keystore). Another account's
+ * quick sign-in on this device is kept.
+ */
+export const forgetQuickSignInFor = async (userId: string | null | undefined, email?: string | null): Promise<void> => {
+  if (!userId) return;
+  try {
+    const owner = await getQuickSignInOwner();
+    if (!owner) return;
+    // Older builds stored only the address.
+    const mine = owner.userId ? owner.userId === userId : !!email && owner.email === email.toLowerCase();
+    if (mine) await deleteBiometricCredentials();
+  } catch {
+    // nothing stored / not available
+  }
+};
+
+/**
  * After a Face ID / fingerprint check, what to sign in with: the stored
  * refresh token (or, once, an old build's saved password).
  */

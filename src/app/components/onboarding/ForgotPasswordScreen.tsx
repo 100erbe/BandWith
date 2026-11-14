@@ -4,6 +4,7 @@ import { Mail, Send } from '@/app/components/icons';
 import { useAuth } from '@/lib/AuthContext';
 import { AuthScreen, BackButton, FormError, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
 import { useT } from '@/lib/i18n';
+import { authErrorMessage } from '@/lib/authErrors';
 
 interface ForgotPasswordScreenProps {
   onBack: () => void;
@@ -33,14 +34,14 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
     try {
       const { error } = await resetPassword(trimmed);
       if (error) {
-        setError(error.message);
+        setError(authErrorMessage(error));
         setLoading(false);
         return;
       }
       setSuccess(true);
       setLoading(false);
-    } catch (err: any) {
-      setError(err.message || t('An error occurred'));
+    } catch (err) {
+      setError(authErrorMessage(err));
       setLoading(false);
     }
   };
