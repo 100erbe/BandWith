@@ -108,8 +108,9 @@ describe('convertQuoteToEvent (078)', () => {
     const { data, error } = await convertQuoteToEvent('q1');
 
     expect(error).toBeNull();
-    expect(data).toEqual({ eventId: 'e1' });
-    const select = eventsQ.calls.find((c: { method: string }) => c.method === 'select');
-    expect(select.args).toEqual(['id']);
+    expect(data).toEqual({ eventId: 'e1', created: true });
+    const selects = eventsQ.calls.filter((c: { method: string }) => c.method === 'select');
+    expect(selects.length).toBeGreaterThan(0);
+    for (const select of selects) expect(select.args).toEqual(['id']);
   });
 });

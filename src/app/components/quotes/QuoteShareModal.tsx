@@ -33,6 +33,7 @@ import {
   uploadQuotePdfForSharing,
 } from '@/lib/services/quotePdf';
 import { parseLocalDate } from '@/lib/dates';
+import { DEFAULT_VAT_RATE, formatQuoteMoney } from '@/lib/services/quoteMath';
 import { currencySymbol } from '@/lib/currency';
 import { isUuid, sendQuote } from '@/lib/services/quotes';
 import { shareFile, saveFile, openExternal } from '@/lib/nativeFiles';
@@ -404,7 +405,9 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
           year: 'numeric',
         })
       : tr('TBD', { context: 'doc' });
-    const total = Math.round(quote.total || 0).toLocaleString(intlLocale(undefined, docLang));
+    // The same total, VAT and deposit as the PDF and the client's page, to the cent.
+    const snap = buildClientQuoteSnapshot(quote, docLang, settings);
+    const docMoney = (n: number) => formatQuoteMoney(n, sym, intlLocale('en-US', docLang));
     const validUntilStr = quote.validUntil
       ? parseLocalDate(quote.validUntil).toLocaleDateString(intlLocale('en-GB', docLang), {
           day: 'numeric',
@@ -420,7 +423,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
       .filter(Boolean)
       .join(', ');
 
-    const amount = `${sym}${total}`;
+    const amount = snap.totalLabel;
     const lines = [
       quote.clientName ? tr('Hi {name},', { name: quote.clientName }) : tr('Hi there,'),
       ``,
@@ -434,11 +437,11 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
       tr('• Lineup: {count} Musicians', { count: quote.musicianCount || (quote.musicians || []).length || 1 }),
       quote.vatExempt
         ? tr('• Total Proposal: {amount} (VAT Exempt)', { amount })
-        : tr('• Total Proposal: {amount} (incl. {rate}% VAT)', { amount, rate: quote.vatRate ?? settings.default_vat_rate ?? 22 }),
-      quote.depositRequired !== false && (quote.depositAmount || 0) > 0
+        : tr('• Total Proposal: {amount} (incl. {rate}% VAT)', { amount, rate: quote.reverseCharge ? 0 : quote.vatRate ?? settings.default_vat_rate ?? DEFAULT_VAT_RATE }),
+      snap.deposit
         ? tr('• Booking Deposit ({percent}%): {amount}', {
-            percent: quote.depositPercentage || settings.default_deposit_rate || 20,
-            amount: `${sym}${Math.round(quote.depositAmount || 0).toLocaleString(intlLocale(undefined, docLang))}`,
+            percent: snap.deposit.percent,
+            amount: docMoney(snap.deposit.amount),
           })
         : null,
       tr('• Valid Until: {date}', { date: validUntilStr }),

@@ -3,7 +3,15 @@ import { builtinText } from '@/lib/i18n/builtins';
 import { BandPricingSettings, DEFAULT_BAND_PRICING, DEFAULT_QUOTE_DISCLAIMER, bankAccountLine, bankDetailParts, hasBankAccount } from '@/lib/services/pricing';
 import { supabase } from '@/lib/supabase';
 import { formatDistance } from '@/lib/units';
-import { formatQuoteMoney, totalsForQuote, calculateDepositAmount } from '@/lib/services/quoteMath';
+import {
+  formatQuoteMoney,
+  totalsForQuote,
+  calculateDepositAmount,
+  DEFAULT_DEPOSIT_RATE,
+  DEFAULT_SET_MINUTES,
+  DEFAULT_SETS,
+  DEFAULT_VAT_RATE,
+} from '@/lib/services/quoteMath';
 import { ONLINE_DEPOSITS_ENABLED } from './pricing';
 import { intlLocale, translate, type Locale, type TranslateVars } from '@/lib/i18n';
 
@@ -248,8 +256,8 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
       : tr('(e.g. Drums, Bass, Keys, Guitar, Vocals)');
   const instrumentsDetail = builtinText(optionOverride?.instrumentsDetail, lang) || defaultInstrumentsText;
 
-  const numSets = quote.numberOfSets || 3;
-  const setDur = quote.setDuration || 45;
+  const numSets = quote.numberOfSets || DEFAULT_SETS;
+  const setDur = quote.setDuration || DEFAULT_SET_MINUTES;
   const setsDescription =
     numSets === 1
       ? tr('(Includes 1 set of {minutes} minutes or equivalent)', { minutes: setDur })
@@ -429,7 +437,7 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
 
   // Totals always come from the shared quote math (src/lib/services/quoteMath.ts), so the
   // PDF shows exactly what the wizard / detail modal show (clamped discount, cents rounding).
-  const vatRate = optionOverride ? optionOverride.vatRate : quote.vatRate ?? settings.default_vat_rate ?? 21;
+  const vatRate = optionOverride ? optionOverride.vatRate : quote.vatRate ?? settings.default_vat_rate ?? DEFAULT_VAT_RATE;
   const quoteTotals = totalsForQuote(
     {
       subtotal: quote.subtotal,
@@ -460,7 +468,7 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   const totalWithVat = optionOverride ? optionOverride.totalWithVat : quoteTotals.total;
   const depositPct = optionOverride
     ? optionOverride.depositPercentage
-    : quote.depositPercentage ?? settings.default_deposit_rate ?? 20;
+    : quote.depositPercentage ?? settings.default_deposit_rate ?? DEFAULT_DEPOSIT_RATE;
   const depositAmount = optionOverride
     ? optionOverride.depositAmount
     : calculateDepositAmount(totalWithVat, depositPct);
@@ -866,8 +874,8 @@ const renderProposalSummaryPage = (params: ProposalSummaryPageParams): string =>
   // Spacer gap between lineup & financials
   y += 22;
 
-  const vatRate = quote.vatRate ?? settings.default_vat_rate ?? 21;
-  const depositPct = quote.depositPercentage ?? settings.default_deposit_rate ?? 20;
+  const vatRate = quote.vatRate ?? settings.default_vat_rate ?? DEFAULT_VAT_RATE;
+  const depositPct = quote.depositPercentage ?? settings.default_deposit_rate ?? DEFAULT_DEPOSIT_RATE;
 
   drawCompRow(
     tr('Gross Fee'),
@@ -932,8 +940,8 @@ const renderProposalSummaryPage = (params: ProposalSummaryPageParams): string =>
   ctx.fillText(tr('Included Services & Terms of Agreement'), leftMargin + 14, y + 14);
   y += termsHeaderH;
 
-  const numSets = quote.numberOfSets || 3;
-  const setDur = quote.setDuration || 45;
+  const numSets = quote.numberOfSets || DEFAULT_SETS;
+  const setDur = quote.setDuration || DEFAULT_SET_MINUTES;
   const guestsLabel = quote.guestCount || 150;
   const validityDays = quote.validityDays || settings.default_validity_days || 30;
   const bandTerms = quote.paymentTermsText || settings.default_payment_terms;
