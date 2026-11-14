@@ -68,7 +68,7 @@ export const DeputyGigsScreen: React.FC<{
   footer?: React.ReactNode;
 }> = ({ onClose, standalone = false, focusId, footer }) => {
   const t = useT();
-  const { result, pending, dismiss } = useDeputyClaim();
+  const { result, pending, failed, retry, dismiss } = useDeputyClaim();
   const { data, error, reload, update } = useMyDeputyGigs(true);
 
   // A claim that just finished: show its gigs.
@@ -83,9 +83,17 @@ export const DeputyGigsScreen: React.FC<{
 
   const body = (
     <div className="flex flex-col gap-5 px-4 pt-2 max-w-[960px] w-full mx-auto" style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}>
-      {pending && !result && (
+      {pending && !result && !failed && (
         <p className="bw-body-md text-muted-foreground" role="status">
           {t('Linking your account to the band…')}
+        </p>
+      )}
+      {pending && !result && failed && (
+        <p className="bw-body-md text-muted-foreground" role="alert">
+          {t('Couldn’t link your account to the band. Check your connection.')}{' '}
+          <button type="button" className="underline underline-offset-2 text-foreground min-h-[32px]" onClick={retry}>
+            {t('Try again')}
+          </button>
         </p>
       )}
       {message && (
