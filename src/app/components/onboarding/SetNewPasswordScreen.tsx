@@ -4,6 +4,7 @@ import { Eye, EyeOff, Lock } from '@/app/components/icons';
 import { DuoAuthLayout } from './DuoAuthLayout';
 import { AuthScreen, FormError, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
 import { useT } from '@/lib/i18n';
+import { authErrorMessage } from '@/lib/authErrors';
 
 const MIN_LENGTH = 8;
 
@@ -40,7 +41,7 @@ export default function SetNewPasswordScreen() {
     const { error: updateError } = await completePasswordRecovery(password);
     setSaving(false);
     if (updateError) {
-      setError(updateError.message || t('Could not update your password. Please try again.'));
+      setError(authErrorMessage(updateError));
       return;
     }
     setDone(true);
@@ -108,9 +109,13 @@ export default function SetNewPasswordScreen() {
           error={fieldError?.field === 'confirm' ? fieldError.message : null}
         />
         <div className="flex-1 min-h-6" />
-        <div style={{ paddingBottom: 'var(--safe-bottom)' }}>
+        <div className="flex flex-col gap-2" style={{ paddingBottom: 'var(--safe-bottom)' }}>
           <PillButton type="submit" loading={saving}>
             {saving ? t('Saving…') : t('Save new password')}
+          </PillButton>
+          {/* Opened the link by mistake, or it's an old one: keep the current password. */}
+          <PillButton variant="ghost" size="md" onClick={dismissPasswordRecovery} disabled={saving} className="text-muted-foreground">
+            {t('Keep my current password')}
           </PillButton>
         </div>
       </form>
