@@ -1407,20 +1407,37 @@ export const useExpandedQuotesData = (bandId: string | null) => {
 // ============================================
 
 export const useChats = (bandId?: string) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [chats, setChats] = useState<chatsService.ChatWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  // Last list on this device (per account), shown offline and while loading.
+  const cacheKey = getCacheKey(user?.id, bandId, 'chats_list');
+
+  useEffect(() => {
+    let isMounted = true;
+    getOfflineItem<chatsService.ChatWithDetails[]>(cacheKey).then((cached) => {
+      if (isMounted && cached?.length) {
+        setChats((prev) => (prev.length ? prev : cached));
+        setLoading(false);
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, [cacheKey]);
 
   const fetchChats = useCallback(async () => {
     if (!isAuthenticated) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await chatsService.getChats(bandId);
-    setChats(data || []);
+    // A failed refetch (offline, network blip) keeps the list on screen.
+    if (data) {
+      setChats(data);
+      setOfflineItem(cacheKey, data).catch(() => {});
+    }
     setError(error);
     setLoading(false);
-  }, [isAuthenticated, bandId]);
+  }, [isAuthenticated, bandId, cacheKey]);
 
   useEffect(() => {
     fetchChats();

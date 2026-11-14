@@ -37,6 +37,10 @@ interface ChatViewProps {
   onDeleteChat?: (chat: ChatItem) => Promise<void> | void;
   /** Tablet, two panes: the chat open beside the list (highlighted). */
   selectedChatUuid?: string | null;
+  /** The list is being fetched (no empty state yet). */
+  loading?: boolean;
+  /** The last fetch failed (offline): the empty state says so. */
+  loadFailed?: boolean;
 }
 
 const FILTERS = [
@@ -118,6 +122,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onStartChat,
   onDeleteChat,
   selectedChatUuid = null,
+  loading = false,
+  loadFailed = false,
 }) => {
   const t = useT();
   const [openRowId, setOpenRowId] = useState<ChatItem['id'] | null>(null);
@@ -445,8 +451,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
               </SwipeRow>
             );
           })
+        ) : loading && !chatSearch.trim() ? (
+          <div className="flex items-center justify-center py-16" role="status" aria-label={t('Loading chats')}>
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
         ) : (
-          <EmptyState />
+          <EmptyState
+            icon={<MessageSquare className="w-8 h-8" />}
+            title={loadFailed ? t('Could not load your chats') : t('No chats yet')}
+            description={loadFailed ? t('Check your connection and try again.') : t('Start a conversation with your band or an admin.')}
+          />
         )}
       </div>
 

@@ -3784,6 +3784,11 @@ const dict: Dictionary = {
   "You no longer have access to this chat.": "Du hast keinen Zugriff mehr auf diesen Chat.",
   // RSVP from a notification: removed from the event
   "You are no longer on this event, so there is nothing to answer.": "Du bist bei diesem Event nicht mehr dabei, es gibt also nichts zu beantworten.",
+  // Chat list: loading, offline and empty states
+  "Loading chats": "Chats werden geladen",
+  "Could not load your chats": "Deine Chats konnten nicht geladen werden",
+  "No chats yet": "Noch keine Chats",
+  "Start a conversation with your band or an admin.": "Starte einen Chat mit deiner Band oder einem Admin.",
 };
 
 export default dict;
