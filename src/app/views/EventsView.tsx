@@ -1024,7 +1024,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
               key={`${year}-${month}-${day}`}
               type="button"
               disabled={!isInteractive}
-              aria-label={`${dateKeyStr}${hasEvents ? `, ${eventsOnDay.length > 1 ? t('{count} events', { count: eventsOnDay.length }) : t('{count} event', { count: eventsOnDay.length })}` : ''}${onlyDrafts ? `, ${t('draft')}` : ''}${isToday ? `, ${t('today')}` : ''}`}
+              aria-label={`${dateName(new Date(year, month, day), { weekday: 'long', month: 'long', day: 'numeric' })}${hasEvents ? `, ${eventsOnDay.length > 1 ? t('{count} events', { count: eventsOnDay.length }) : t('{count} event', { count: eventsOnDay.length })}` : ''}${onlyDrafts ? `, ${t('draft')}` : ''}${isToday ? `, ${t('today')}` : ''}`}
               aria-current={isToday ? 'date' : undefined}
               onClick={() => {
                 if (!isInteractive) return;

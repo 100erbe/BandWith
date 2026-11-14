@@ -341,6 +341,10 @@ export default function AuthenticatedApp() {
 
   // Navigation
   const [activeTab, setActiveTab] = useState<TabName>("Home");
+  const activeTabRef = useRef<TabName>("Home");
+  activeTabRef.current = activeTab;
+  /** Where a gig opened from another tab returns on close (see navigateToEvent). */
+  const eventReturnTabRef = useRef<TabName | null>(null);
   // iPhone Duo rail (Figma "Duo"): the switch-band sheet keeps the tabs, the inbox hides them.
   const { twoPane, rail: railLayout, wide: wideLayout } = useRailLayout();
   useEffect(() => {
@@ -1033,6 +1037,10 @@ export default function AuthenticatedApp() {
     handleEventCardClickRef.current(item);
   }, []);
   const navigateToEvent = useCallback(async (eventDbId: string) => {
+    // One pane: closing the gig goes back to the tab it was opened from
+    // (Home's "Review payouts", a notification) instead of the calendar.
+    const from = activeTabRef.current;
+    eventReturnTabRef.current = !twoPaneRef.current && from !== "Events" ? from : null;
     setActiveTab("Events");
     setEventLoadError(null);
     setTimeout(async () => {
@@ -1057,6 +1065,19 @@ export default function AuthenticatedApp() {
       }
     }, 200);
   }, [refetchEvents, explainMissingEvent]);
+
+  // A gig that couldn't open leaves nothing to return from.
+  useEffect(() => {
+    if (eventLoadError) eventReturnTabRef.current = null;
+  }, [eventLoadError]);
+  const closeSelectedEventRef = useRef(() => {});
+  closeSelectedEventRef.current = () => {
+    setSelectedEvent(null);
+    setSelectedEventMembership(null);
+    const back = eventReturnTabRef.current;
+    eventReturnTabRef.current = null;
+    if (back) setActiveTab(back);
+  };
 
   // "Go live" (Home's next gig): open the gig straight in Stage mode.
   const [stageOnOpen, setStageOnOpen] = useState<string | null>(null);
@@ -2173,7 +2194,7 @@ export default function AuthenticatedApp() {
 
       // 1. Transient Notifications & Popups
       // The urgent popup only shows when no RSVP or poll sheet covers it.
-      if (s.urgentNotification && !s.rsvpNotification && !s.pollNotification) {
+      if (s.urgentNotification && !s.rsvpNotification && !s.pollNotification && !s.showAdminTour) {
         setUrgentNotification(null);
         return true;
       }
@@ -2268,8 +2289,7 @@ export default function AuthenticatedApp() {
         return true;
       }
       if (s.selectedEvent) {
-        setSelectedEvent(null);
-        setSelectedEventMembership(null);
+        closeSelectedEventRef.current();
         return true;
       }
       if (s.expandedCard) {
@@ -3433,10 +3453,6 @@ export default function AuthenticatedApp() {
   // Render
   const isMenuOpen = isIdentityOpen || isControlDeckOpen;
   const isHeaderHidden = !!expandedCard || isMenuOpen;
-  // Figma "Duo Next / Home – readiness & Go live" (open): Home is the Calendar
-  // on the leading page, with the next gig and its readiness on the trailing
-  // one (homeAutoDetail). Closed, laptop and iPad keep the dashboard.
-  const duoHomeCalendar = twoPane && !wideLayout && activeTab === "Home";
   const userRole: UserRole = isAdmin ? "admin" : "member";
   const permissions = getPermissions(userRole);
 
@@ -3720,7 +3736,7 @@ export default function AuthenticatedApp() {
         WebkitMaskImage: scrollerMask,
       }}>
         <Header
-          activeTab={duoHomeCalendar ? "Events" : activeTab} selectedBand={selectedBand}
+          activeTab={activeTab} selectedBand={selectedBand}
           bands={realBands.length > 0 ? realBands.map((b) => ({ id: uuidToNumericId(b.id), name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: b.genre || "", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
           onOpenBandSwitcher={() => setIsBandSwitcherOpen(true)}
           filteredEventsCount={visuallyFilteredEvents.length} totalEventsCount={events.length}
@@ -3739,7 +3755,7 @@ export default function AuthenticatedApp() {
         />
 
         <AnimatePresence mode="wait">
-          {((activeTab === "Home" && !duoHomeCalendar) || activeTab === "More") && (
+          {(activeTab === "Home" || activeTab === "More") && (
             <HomeView key={`dashboard-${isSolo ? 'solo' : selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={computedDashboardData} dashboardLoading={dashboardLoading && !masterEventsList?.length} isAdmin={isAdmin} onViewChange={(tab) => setActiveTab(tab as TabName)} onSelectEvent={navigateToEvent} onGoLive={handleGoLive} onReviewPayouts={handleReviewPayouts} onFilterEvents={(filter) => {
               setEventFilter(filter);
               setActiveTab("Events");
@@ -3781,7 +3797,7 @@ export default function AuthenticatedApp() {
           {activeTab === "Chat" && !isSolo && (
             <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => { c.unread = 0; setSelectedChat(c); }} onStartChat={() => setShowNewChat(true)} selectedChatUuid={wideLayout && twoPane ? selectedChat?.uuid : null} loading={chatsLoading && !realChats?.length} loadFailed={!!chatsError && !realChats?.length} onDeleteChat={async (c) => { if (!c.uuid) return; const { error } = await deleteChatService(c.uuid); if (error) setSaveToast({ message: t('Could not delete the chat. Try again.'), type: 'error' }); else refetchChats?.(); }} />
           )}
-          {(activeTab === "Events" || duoHomeCalendar) && (
+          {activeTab === "Events" && (
             <EventsView key="events" loading={eventsLoading} eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={calendarEvents} rawEvents={events} onEventClick={handleEventCardClick} selectedEventId={wideLayout && twoPane ? selectedEvent?.eventId ?? null : null} onCreateEvent={(type: 'gig' | 'rehearsal' | 'quote' = 'gig', date?: string) => {
               if (date) {
                 setCreateEventInitialDate(date);
@@ -4529,7 +4545,7 @@ export default function AuthenticatedApp() {
             startInStage={!!stageOnOpen && stageOnOpen === selectedEvent.eventId}
             startOnFee={!!feeOnOpen && feeOnOpen === selectedEvent.eventId}
             currentUserId={user?.id}
-            onClose={() => { setSelectedEvent(null); setSelectedEventMembership(null); }}
+            onClose={() => closeSelectedEventRef.current()}
             onOpenBandSettings={isAdmin ? () => { setPricingModalInitialTab('branding'); setPricingReturnTo(null); setShowPricingModal(true); } : undefined}
             userResponse={selectedEventMembership?.status === "confirmed" ? "accepted" : selectedEventMembership?.status === "declined" ? "declined" : selectedEventMembership?.status === "maybe" ? "maybe" : selectedEventMembership?.status === "pending" ? "pending" : "accepted"}
             onAccept={handleEventAccept}
@@ -4698,7 +4714,8 @@ export default function AuthenticatedApp() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {urgentNotification && !rsvpNotification && !pollNotification && (
+        {/* Waits for the welcome tour: one layer at a time on first launch. */}
+        {urgentNotification && !rsvpNotification && !pollNotification && !showAdminTour && (
           <UrgentNotificationPopup
             key={urgentNotification.id}
             notification={urgentNotification}

@@ -220,7 +220,7 @@ export const AuthScreen: React.FC<{
   bodyClassName?: string;
 }> = ({ children, footer, top, className, bodyClassName }) => (
   <div
-    className={cn('min-h-[100dvh] bg-background text-foreground flex flex-col', className)}
+    className={cn('bw-auth-screen min-h-[100dvh] bg-background text-foreground flex flex-col', className)}
     style={{ paddingTop: 'var(--safe-top)' }}
   >
     {top && <div className="h-14 shrink-0 flex items-center px-4 bw-status-clear">{top}</div>}

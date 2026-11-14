@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import {
   Plus,
@@ -962,7 +963,10 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
       </div>
 
       {/* Add Song Modal */}
-      {selectedBand?.id && (
+      {/* Rendered on <body>: inside this list-column hub a fixed layer is
+          clipped to the hub on iPadOS / the open Duo, so the trailing-pane
+          form was invisible (only the keyboard showed). */}
+      {selectedBand?.id && createPortal(
         <AddSongModal
           isOpen={showAddSong}
           onClose={() => {
@@ -973,7 +977,8 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
           bandId={selectedBand.id}
           song={editingSong}
           onSongAdded={fetchData}
-        />
+        />,
+        document.body,
       )}
 
       {/* New setlist (Figma Sheet, Style=Dark) */}
@@ -1005,6 +1010,8 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
       </BwSheet>
 
       {/* ═══ SETLIST EDITOR ═══ */}
+      {/* On <body>, not inside the list-column hub, which clips fixed layers. */}
+      {createPortal(
       <AnimatePresence>
         {editingSetlistId && (
           <motion.div
@@ -1231,7 +1238,9 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
             )}
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body,
+      )}
 
       <DeleteChatSheet
         open={!!confirmDelete}
