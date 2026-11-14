@@ -58,7 +58,7 @@
   --sheet: #050505;
   --sheet-fg: #FFFFFF;
   --muted: #D3D1CE;
-  --muted-fg: #5C5B5A;
+  --muted-fg: #5A5958; /* 4.59:1 on --muted (was #5C5B5A, 4.45:1) */
 
   /* ── Brand accent — Signal Lime ── */
   --primary: #D5FB46;
@@ -101,12 +101,12 @@
   --dot-mid: #737373;
 
   /* ── Semantic ── */
-  --success: #0E8A4A;
+  --success: #0A7340; /* WCAG AA text: 4.63:1 on bg, 5.22:1 on card (was #0E8A4A, 3.45:1) */
   --success-fg: #FFFFFF;
   --destructive: #C41414;
   --destructive-solid: #C41414;
   --destructive-fg: #FFFFFF;
-  --warning: #A15C00;
+  --warning: #8F5100; /* 4.90:1 on bg, 5.52:1 on card (was #A15C00, 4.05:1) */
   --warning-fg: #FFFFFF;
   --amber: #A15C00;
   --info: #0147FF;
@@ -163,13 +163,13 @@
 
   --success: #1FC16B;
   --success-fg: #000000;
-  --destructive: #FF6B6B;
+  --destructive: #FF8080; /* 4.61:1 on card (was #FF6B6B, 4.04:1) */
   --destructive-solid: #E02A2A;
   --destructive-fg: #000000;
   --warning: #FFB020;
   --warning-fg: #000000;
   --amber: #FFB020;
-  --info: #6F95FF;
+  --info: #8AA8FF; /* 4.87:1 on card (was #6F95FF, 3.96:1) */
   --surface-inverse: #FFFFFF;
   --surface-inverse-fg: #000000;
   --border: rgba(255, 255, 255, 0.15);

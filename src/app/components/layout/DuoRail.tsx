@@ -416,6 +416,8 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
           onKeyDown={(e) => {
             search?.onKeyDown?.(e);
             if (e.key === 'Escape' || e.key === 'Enter') {
+              // Escape closes the search field, not the screen beneath.
+              if (e.key === 'Escape') e.preventDefault();
               setFieldOpen(false);
               inputRef.current?.blur();
             }

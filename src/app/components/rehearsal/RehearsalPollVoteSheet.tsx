@@ -29,6 +29,7 @@ import { ErrorState } from '@/app/components/ui/ErrorState';
 import { FindADateMode } from '@/app/components/duo';
 import { personName } from '@/lib/personName';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
+import { useSystemBack } from '@/lib/backStack';
 import { useT, dateName, intlLocale, formatList } from '@/lib/i18n';
 
 interface RehearsalPollVoteSheetProps {
@@ -54,6 +55,8 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
 }) => {
   const t = useT();
   const drag = useSheetDrag(onClose);
+  // Android Back and Escape close this sheet, not the screen beneath.
+  useSystemBack(true, onClose);
   const [poll, setPoll] = useState<RehearsalPoll | null>(null);
   const [loading, setLoading] = useState(true);
   const [votingOptionId, setVotingOptionId] = useState<string | null>(null);

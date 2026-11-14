@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowUpRight,
@@ -19,11 +19,9 @@ import { ExpandedCardWrapper, ExpandedTopBar } from './ExpandedCardWrapper';
 import { EventItem } from '@/app/data/events';
 import { RehearsalViewMode } from '@/app/types';
 import { useEventTasks } from '@/lib/services/eventTasks';
-import { getSetlist } from '@/lib/services/songs';
+import { useRehearsalSetlist } from '@/app/components/rehearsal/useRehearsalSetlist';
 import { MapsLink } from '@/app/components/ui/MapsLink';
 import { useT } from '@/lib/i18n';
-
-type RehearsalSong = { id: string; title: string; key?: string; bpm?: number; duration?: string };
 
 const hhmm = (time?: string) => (time ? time.slice(0, 5) : '');
 
@@ -91,33 +89,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
 
   // Real data of the rehearsal shown: its saved tasks and setlist.
   const { tasks, toggle: toggleTask, error: tasksError } = useEventTasks(currentRehearsal?.eventId);
-  const setlistId = currentRehearsal?.setlistId;
-  const [setlist, setSetlist] = useState<RehearsalSong[]>([]);
-  useEffect(() => {
-    if (!setlistId) {
-      setSetlist([]);
-      return;
-    }
-    let cancelled = false;
-    getSetlist(setlistId).then(({ data }) => {
-      if (cancelled) return;
-      setSetlist(
-        (data?.songs || []).map((row: any) => {
-          const secs = row.song?.duration_seconds;
-          return {
-            id: row.id,
-            title: row.song?.title || t('Untitled song'),
-            key: row.song?.key || undefined,
-            bpm: row.song?.bpm || undefined,
-            duration: typeof secs === 'number' && secs > 0 ? `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}` : undefined,
-          };
-        }),
-      );
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [setlistId, t]);
+  const setlist = useRehearsalSetlist(currentRehearsal?.setlistId);
 
   const timeline = useMemo(() => {
     const steps: { time: string; label: string; active?: boolean }[] = [];

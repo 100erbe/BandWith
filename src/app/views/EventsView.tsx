@@ -1459,7 +1459,10 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     placeholder={t('Search title, venue, city, client…')}
                     autoFocus
                     onKeyDown={(e) => {
-                      if (e.key === 'Escape') closeSearch();
+                      if (e.key === 'Escape') {
+                        e.preventDefault();
+                        closeSearch();
+                      }
                       if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur();
                     }}
                   />

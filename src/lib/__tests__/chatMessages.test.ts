@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mergeLatestPage, prependOlder, normalizeChatType, appendIncoming } from '../chatMessages';
+import { mergeLatestPage, prependOlder, normalizeChatType, appendIncoming, isReplySwipe, SWIPE_REPLY_PX } from '../chatMessages';
 import type { Message } from '@/lib/services/chats';
 
 const msg = (i: number, over: Partial<Message> = {}): Message => ({
@@ -97,5 +97,16 @@ describe('normalizeChatType', () => {
     expect(normalizeChatType('group')).toBe('band');
     expect(normalizeChatType('event')).toBe('event');
     expect(normalizeChatType(undefined)).toBeNull();
+  });
+});
+
+describe('isReplySwipe', () => {
+  it('answers a message dragged far enough to the right', () => {
+    expect(isReplySwipe(SWIPE_REPLY_PX, 4)).toBe(true);
+    expect(isReplySwipe(SWIPE_REPLY_PX - 1, 0)).toBe(false);
+  });
+  it('ignores leftward and mostly vertical drags (scrolling)', () => {
+    expect(isReplySwipe(-80, 0)).toBe(false);
+    expect(isReplySwipe(60, 90)).toBe(false);
   });
 });

@@ -7,6 +7,7 @@ import { t } from '@/lib/i18n';
 import { RailHeaderActions, useRailAction, useRailBack, useRailHeaderSlot, useRailOwnsChrome, useRailSearch } from '@/lib/railActions';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 import { useRailLayout } from '@/lib/deviceRegions';
+import { useSystemBack } from '@/lib/backStack';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Screen building blocks, 1:1 with the Figma components:
@@ -419,12 +420,29 @@ export const BwSheet: React.FC<BwSheetProps> = ({
   // had it; where that screen has a Back, Back closes the sheet first.
   useRailBack(open ? onClose : undefined, closeLabel, open && zIndex < 190, true, true);
   const drag = useSheetDrag(onClose);
+  // Android Back and Escape close the top sheet first, before the screen
+  // beneath it (registered on open, so above its parent's handler).
+  useSystemBack(open, () => {
+    onClose();
+    return true;
+  });
+  // Focus moves into the sheet when it opens (screen readers, keyboard) and
+  // returns to what opened it when it closes.
+  const sheetRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+    const opener = document.activeElement as HTMLElement | null;
+    const id = window.requestAnimationFrame(() => {
+      const el = sheetRef.current;
+      if (el && !el.contains(document.activeElement)) el.focus({ preventScroll: true });
+    });
+    return () => {
+      window.cancelAnimationFrame(id);
+      // Not back into a text field: that would raise the on-screen keyboard.
+      const typing = opener?.matches?.('input, textarea, select, [contenteditable="true"]');
+      if (opener && opener.isConnected && opener !== document.body && !typing) opener.focus({ preventScroll: true });
+    };
+  }, [open]);
 
   const sheet = (
     <AnimatePresence>
@@ -441,14 +459,16 @@ export const BwSheet: React.FC<BwSheetProps> = ({
           />
           <motion.div
             key="bw-sheet"
+            ref={sheetRef}
             role="dialog"
             aria-modal="true"
+            tabIndex={-1}
             initial={enter}
             animate={card ? { opacity: 1, y: 0, scale: 1 } : { y: 0 }}
             exit={enter}
             transition={{ type: 'tween', duration: card ? 0.22 : 0.3, ease: [0.32, 0.72, 0, 1] }}
             className={cn(
-              'bw-rail-sheet bw-sheet fixed inset-x-0 bottom-0 max-h-[88vh] flex flex-col rounded-t-[32px]',
+              'bw-rail-sheet bw-sheet fixed inset-x-0 bottom-0 max-h-[88vh] flex flex-col rounded-t-[32px] outline-none',
               leading && 'bw-leading-sheet',
               picker && 'bw-picker',
               navAnchor && 'bw-nav-popover',

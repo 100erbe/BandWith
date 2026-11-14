@@ -16,6 +16,7 @@ import {
   type InventoryItem,
 } from '@/lib/services/inventory';
 import { useT } from '@/lib/i18n';
+import { useSystemBack } from '@/lib/backStack';
 import { useRailLayout } from '@/lib/deviceRegions';
 import { todayLocal } from '@/lib/dates';
 import { summarizeKit, type EventGearKit, type GearKit, type GearKitItemLink, type KitGig } from '@/lib/gearKits';
@@ -200,6 +201,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId, ca
   useEffect(() => {
     if (tab === 'kits' && twoPane && !wide && !openKitId && kits.length > 0) setOpenKitId(kits[0].id);
   }, [tab, twoPane, wide, openKitId, kits]);
+  // Android Back and Escape close a kit first, then Inventory (not on the open
+  // Duo, where a kit is always shown beside the list).
+  useSystemBack(!!openKitId && !(twoPane && !wide), () => setOpenKitId(null));
 
   const openKitEditor = (kit: GearKit | 'new') => {
     setKitFormError(null);

@@ -392,8 +392,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Escape typed in a field is the field's (keyboard on web / iPad).
-      if (e.key === 'Escape' && !isEditableTarget(e.target)) {
+      // Escape typed in a field is the field's (keyboard on web / iPad), and
+      // not when a sheet above already took it (lib/backStack).
+      if (e.key === 'Escape' && !e.defaultPrevented && !isEditableTarget(e.target)) {
         handleBack();
       }
     };

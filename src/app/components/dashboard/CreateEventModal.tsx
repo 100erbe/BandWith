@@ -1454,8 +1454,17 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         return (
           <div key={member.id} className="flex items-center gap-3 py-2 min-h-[57px]">
             <div
+              role="checkbox"
+              aria-checked={isSelected}
+              aria-disabled={isLocked || undefined}
+              tabIndex={0}
               onClick={() => !isLocked && toggleMember(member.id)}
-              className={cn('flex items-center gap-3 min-w-0 flex-1', !isLocked && 'cursor-pointer')}
+              onKeyDown={(e) => {
+                if (e.key !== ' ' && e.key !== 'Enter') return;
+                e.preventDefault();
+                if (!isLocked) toggleMember(member.id);
+              }}
+              className={cn('flex items-center gap-3 min-w-0 flex-1 rounded-[12px] outline-none focus-visible:ring-2 focus-visible:ring-ring', !isLocked && 'cursor-pointer')}
             >
               <DotCheckbox
                 checked={isSelected}

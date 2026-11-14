@@ -283,6 +283,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setDeleteText('');
     setDeleteError(null);
   };
+  // Android Back and Escape cancel the delete confirm before leaving the section.
+  useSystemBack(showDeleteConfirm, closeDeleteConfirm);
 
   const handleDeleteAccount = async () => {
     if (deleteText.trim().toUpperCase() !== 'DELETE' || deleting) return;
@@ -755,7 +757,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => { if (e.key === 'Escape') closeDeleteConfirm(); }}
               className="w-full max-w-[342px] rounded-[24px] bg-[var(--bg)] text-foreground p-6 flex flex-col gap-4"
             >
               <div className="w-14 h-14 rounded-full bg-destructive-solid text-white flex items-center justify-center shrink-0">

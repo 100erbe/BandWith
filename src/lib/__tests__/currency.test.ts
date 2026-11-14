@@ -6,7 +6,9 @@ import {
   moneyShort,
   currencySymbol,
   findCountryPreset,
+  countryName,
 } from '@/lib/currency';
+import { setLocalePref } from '@/lib/i18n';
 
 describe('currency', () => {
   beforeEach(() => setActiveCurrency('EUR', 'band-a', true));
@@ -40,5 +42,17 @@ describe('currency', () => {
     expect(findCountryPreset('GB')).toMatchObject({ currency: 'GBP', vatRate: 20 });
     expect(findCountryPreset('US')).toMatchObject({ currency: 'USD', vatRate: 0 });
     expect(findCountryPreset('ZZ')).toBeUndefined();
+  });
+});
+
+describe('countryName', () => {
+  it('names the tax country in the app language', () => {
+    setLocalePref('en');
+    expect(countryName(findCountryPreset('DE')!)).toBe('Germany');
+    setLocalePref('it');
+    expect(countryName(findCountryPreset('DE')!)).toBe('Germania');
+    setLocalePref('fr');
+    expect(countryName(findCountryPreset('US')!)).toBe('États-Unis');
+    setLocalePref('en');
   });
 });

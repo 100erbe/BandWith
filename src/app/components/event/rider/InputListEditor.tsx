@@ -171,7 +171,7 @@ const ChannelRow: React.FC<{
         <button
           type="button"
           aria-label={t('Reorder {title}', { title: c.source || channelLabel(index) })}
-          className="w-6 h-10 -ml-1 flex items-center justify-center text-muted-foreground cursor-grab touch-none shrink-0"
+          className="relative after:absolute after:-inset-x-2.5 after:-inset-y-0.5 after:content-[''] w-6 h-10 -ml-1 flex items-center justify-center text-muted-foreground cursor-grab touch-none shrink-0"
           {...attributes}
           {...listeners}
         >

@@ -192,6 +192,18 @@
   right: 1rem;
 }
 
+/* ── Landscape cutouts ─────────────────────────────────────────────────────
+   A phone turned sideways (Stage mode on a music stand, a chat, a wizard) has
+   its notch / camera cutout on the left or right edge, and the page is drawn
+   under it (viewport-fit=cover). Full-screen layers pad that inset; in
+   portrait it is 0. On the iPhone Duo the rail and the status-column
+   clearances above already keep content out of the system column, so this
+   stays off there (it would clear the column twice). */
+:root:not([data-bw-rail-host]):not([data-bw-status-column]) :is(.bw-pane-detail, .bw-pane-hub, .bw-sheet, .bw-safe-inline) {
+  padding-left: var(--safe-left, 0px);
+  padding-right: var(--safe-right, 0px);
+}
+
 /* ── Foldable postures (see src/lib/posture.ts) ───────────────────────────
    `data-bw-posture` on <html>: closed | open-flat | book | tabletop | split,
    absent on ordinary phones. Laptop pose (tabletop) splits at a horizontal

@@ -24,7 +24,7 @@ import { PillButton, PillField, Selector } from '@/app/components/bw/Form';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { useBand } from '@/lib/BandContext';
 import { updateBand } from '@/lib/services/bands';
-import { CURRENCIES, COUNTRY_TAX_PRESETS, currencySymbol as symbolFor, findCountryPreset, type CurrencyCode } from '@/lib/currency';
+import { CURRENCIES, COUNTRY_TAX_PRESETS, countryName, currencySymbol as symbolFor, findCountryPreset, type CurrencyCode } from '@/lib/currency';
 import type { PerformanceType } from '@/app/data/quotes';
 import {
   DEFAULT_BAND_PRICING,
@@ -1523,7 +1523,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                         })
                       }
                     >
-                      {c.name}
+                      {countryName(c)}
                     </Selector>
                   ))}
                   <Selector
@@ -1543,7 +1543,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                   }))}
                   onSelect={(code) => setSettings({ ...settings, currency: code })}
                 />
-                {countryPreset?.note && <p className="bw-body-sm text-muted-foreground">{countryPreset.note}</p>}
+                {countryPreset?.note && <p className="bw-body-sm text-muted-foreground">{t(countryPreset.note)}</p>}
               </Section>
 
               <Section title={t('2. Seasonal pricing')} hint={t('Optional peak / off-peak adjustments based on the event month.')}>
@@ -1611,10 +1611,10 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
 
               <Section title={t('3. Tax, deposit & validity')} hint={t('Default VAT rate, booking deposit and quote expiry window.')}>
                 <SettingRow
-                  label={countryPreset ? t('Default {tax} rate', { tax: countryPreset.taxLabel }) : t('Default tax / VAT rate')}
+                  label={countryPreset ? t('Default {tax} rate', { tax: t(countryPreset.taxLabel) }) : t('Default tax / VAT rate')}
                   hint={
                     countryPreset && countryPreset.vatRate !== settings.default_vat_rate
-                      ? t('Standard rate in {country} is {rate}%. Applied to the net total on client quotes', { country: countryPreset.name, rate: countryPreset.vatRate })
+                      ? t('Standard rate in {country} is {rate}%. Applied to the net total on client quotes', { country: countryName(countryPreset), rate: countryPreset.vatRate })
                       : t('Applied to the net total on client quotes. Live shows may qualify for a reduced rate: check with your accountant')
                   }
                 >

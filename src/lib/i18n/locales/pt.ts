@@ -3835,10 +3835,16 @@ const dict: Dictionary = {
   "Upcoming gigs that play it: {gigs}.": "Próximos shows que a tocam: {gigs}.",
   "{count} more": "mais {count}",
   "“{title}” is already in your library. Save again to add a second copy.": "“{title}” já está na sua biblioteca. Salve de novo para adicionar uma segunda cópia.",
+  // Shell, rehearsal summary, tax country (audit fixes)
+  "My calendar": "Meu calendário",
+  "My band": "Minha banda",
+  "No feedback given during this rehearsal.": "Nenhum feedback dado durante este ensaio.",
+  "Not checked in": "Check-in não feito",
+  "Sales tax": "Imposto sobre vendas",
+  "Sales tax depends on the state (and is often not charged on live performances). Set your local rate if it applies.": "O imposto sobre vendas depende do estado (e muitas vezes não é cobrado em apresentações ao vivo). Defina sua alíquota local se for o caso.",
   // Sign-in, onboarding and account (audit A)
   "Couldn’t link your account to the band. Check your connection.": "Não foi possível vincular sua conta à banda. Confira sua conexão.",
   "Couldn’t sign out. Try again.": "Não foi possível sair. Tente de novo.",
-  "My calendar": "Meu calendário",
   "Answers and what you can do in the app": "Respostas e o que você pode fazer no app",
   "All data encrypted": "Todos os dados criptografados",
   "This invite is for {email}": "Este convite é para {email}",

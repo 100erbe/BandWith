@@ -35,6 +35,7 @@ import { PillButton } from '@/app/components/bw/Form';
 import { personName } from '@/lib/personName';
 import { DeputiesSection } from '@/app/components/band/DeputiesSection';
 import { useT } from '@/lib/i18n';
+import { useSystemBack } from '@/lib/backStack';
 
 /** Small stat card (Figma: label + 24pt dot value). */
 const StatCard: React.FC<{ label: string; value: number; delay: number }> = ({ label, value, delay }) => (
@@ -126,6 +127,8 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
   const { selectedBand, isAdmin } = useBand();
   const { profile: currentProfile, user: authUser } = useAuth();
   const [detailId, setDetailId] = useState<string | null>(null);
+  // Android Back and Escape close the member detail first, then Members.
+  useSystemBack(!!detailId, () => setDetailId(null));
   const [members, setMembers] = useState<BandMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);

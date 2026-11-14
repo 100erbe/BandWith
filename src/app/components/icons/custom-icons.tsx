@@ -103,6 +103,11 @@ export const SkipForward = dotIcon('SkipForward', {
   d: 'M5 6v12l9-6zM18.5 6V18',
 });
 
+export const SkipBack = dotIcon('SkipBack', {
+  fill: 'M19 6v12l-9-6z',
+  d: 'M19 6v12l-9-6zM5.5 6V18',
+});
+
 export const Radio = dotIcon('Radio', {
   d:
     arc(12, 12, 5, -40, 40) +

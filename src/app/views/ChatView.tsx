@@ -283,7 +283,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   setShowSearchResults(false);
                 }}
                 aria-label={t('Clear search')}
-                className="w-7 h-7 -mr-1 rounded-full flex items-center justify-center hover:bg-foreground/10 shrink-0 cursor-pointer"
+                className="relative after:absolute after:-inset-2 after:content-[''] w-7 h-7 -mr-1 rounded-full flex items-center justify-center hover:bg-foreground/10 shrink-0 cursor-pointer"
               >
                 <X className="w-4 h-4 text-muted-foreground" />
               </button>

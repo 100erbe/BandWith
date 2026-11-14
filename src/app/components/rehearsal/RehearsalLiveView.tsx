@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  X, Play, Pause, Square, SkipForward, Mic2, MessageSquare,
+  X, Play, Pause, SkipBack, SkipForward, MessageSquare,
   CheckCircle2, AlertTriangle, XCircle, RotateCcw, Clock,
   Plus, Minus, FileText
 } from '@/app/components/icons';
@@ -9,61 +9,87 @@ import { cn } from '@/app/components/ui/utils';
 import { Card, IconButton, PillButton } from '@/app/components/bw';
 import { RailCover, useRailAction, useRailTone } from '@/lib/railActions';
 import { setStatusBarTone } from '@/lib/systemBars';
-import { RehearsalSong } from './types';
 import { useT } from '@/lib/i18n';
+import type { EventItem } from '@/app/data/events';
+import { useRehearsalSetlist } from './useRehearsalSetlist';
+import {
+  elapsedSeconds, endSession, formatClock, scheduledStart, sessionKey, startSession, togglePause, updateSession,
+  type RehearsalSession, type SongVerdict,
+} from '@/lib/rehearsalSession';
 
-// Mock Data for Live Session
-const LIVE_SETLIST: RehearsalSong[] = [
-  { id: 's1', title: "Sweet Child O' Mine", artist: "Guns N' Roses", duration: "5:56", priority: 'high', type: 'song', status: 'played' },
-  { id: 's2', title: "Bohemian Rhapsody", artist: "Queen", duration: "6:07", priority: 'medium', type: 'song', status: 'playing' },
-  { id: 's3', title: "Purple Rain", artist: "Prince", duration: "8:41", priority: 'high', type: 'song', status: 'pending' },
-  { id: 'b1', title: "Set Break", artist: "", duration: "15:00", priority: 'low', type: 'break', status: 'pending' },
-  { id: 's4', title: "Hotel California", artist: "Eagles", duration: "6:30", priority: 'low', type: 'song', status: 'pending' },
-];
-
-const ATTENDANCE = [
-  { id: '1', initials: 'GB', status: 'arrived', time: '21:00' },
-  { id: '2', initials: 'CE', status: 'arrived', time: '21:05' },
-  { id: '3', initials: 'MR', status: 'arrived', time: '21:02' },
-  { id: '4', initials: 'LB', status: 'late', time: '' },
-];
+/** A member on the rehearsal's lineup. */
+export interface RehearsalLineupMember {
+  userId: string;
+  name: string;
+}
 
 interface Props {
+  rehearsal: EventItem;
+  lineup: RehearsalLineupMember[];
   onClose: () => void;
   onFinish: () => void;
 }
 
-export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
+const hhmm = (ms: number) => {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
+export const RehearsalLiveView: React.FC<Props> = ({ rehearsal, lineup, onClose, onFinish }) => {
   const t = useT();
   const exitInRail = useRailAction(onClose, { label: t('Exit live mode'), icon: <X /> });
   // Dark canvas: light system icons, and the iPhone Duo rail in dark glass.
   useEffect(() => setStatusBarTone('dark'), []);
   useRailTone('dark');
-  const [elapsed, setElapsed] = useState(2843); // 47m 23s
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [activeSongIndex, setActiveSongIndex] = useState(1);
+  // This rehearsal's session: it keeps running when live mode is left and
+  // reopened, and the summary reads it after End session.
+  const key = sessionKey(rehearsal.eventId ?? rehearsal.id, rehearsal.date);
+  const [session, setSession] = useState<RehearsalSession>(() =>
+    startSession(key, scheduledStart(rehearsal.date, rehearsal.time)),
+  );
+  const update = (patch: (s: RehearsalSession) => Partial<RehearsalSession>) => {
+    const next = updateSession(key, patch);
+    if (next) setSession(next);
+  };
+  const setlist = useRehearsalSetlist(rehearsal.setlistId);
+  const [now, setNow] = useState(() => Date.now());
   const [showMetronome, setShowMetronome] = useState(false);
   const [bpm, setBpm] = useState(120);
+  const isPlaying = session.pausedAt === undefined;
 
   // Timer effect
   useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsed(e => e + 1);
-    }, 1000);
+    const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const formatTime = (sec: number) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
+  const activeSongIndex = Math.min(session.current, Math.max(setlist.length - 1, 0));
+  const currentSong = setlist[activeSongIndex];
+  const goTo = (i: number) => update((s) => ({ current: i, reached: Math.max(s.reached, i) }));
+  const verdict = currentSong ? session.verdicts[currentSong.id] : undefined;
+  const setVerdict = (v: SongVerdict) => {
+    if (!currentSong) return;
+    update((s) => {
+      const verdicts = { ...s.verdicts };
+      if (verdicts[currentSong.id] === v) delete verdicts[currentSong.id];
+      else verdicts[currentSong.id] = v;
+      return { verdicts };
+    });
   };
-
-  const currentSong = LIVE_SETLIST[activeSongIndex];
+  const toggleArrival = (userId: string) =>
+    update((s) => {
+      const arrivals = { ...s.arrivals };
+      if (arrivals[userId]) delete arrivals[userId];
+      else arrivals[userId] = Date.now();
+      return { arrivals };
+    });
+  const songMeta = currentSong
+    ? [currentSong.artist, currentSong.key, currentSong.bpm ? `${currentSong.bpm} BPM` : null].filter(Boolean).join(' · ')
+    : '';
 
   return (
     <div
-      className="dark fixed inset-0 z-[185] bg-sheet text-foreground flex flex-col"
+      className="bw-safe-inline dark fixed inset-0 z-[185] bg-sheet text-foreground flex flex-col"
       style={{
         paddingTop: 'var(--safe-top)',
         paddingBottom: 'var(--safe-bottom)',
@@ -88,106 +114,141 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
       <div className="flex-1 overflow-y-auto px-4 pb-6 flex flex-col gap-4">
         {/* Timer */}
         <div className="flex flex-col items-center gap-2 py-6">
-          <span className="bw-value-xl">{formatTime(elapsed)}</span>
+          <span className="bw-value-xl tabular-nums">{formatClock(elapsedSeconds(session, now))}</span>
           <span className="bw-label-sm text-muted-foreground">{t('Total elapsed time')}</span>
         </div>
 
-        {/* Now Playing */}
-        <Card className="p-5 gap-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex flex-col gap-1 min-w-0">
-              <span className="bw-label-sm text-accent">{t('Now playing')}</span>
-              <h2 className="bw-h1 [overflow-wrap:anywhere]">{currentSong.title}</h2>
-              <p className="bw-body-lg text-muted-foreground">{currentSong.artist}</p>
+        {/* Now Playing: the rehearsal's own setlist */}
+        {currentSong ? (
+          <Card className="p-5 gap-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col gap-1 min-w-0">
+                <span className="bw-label-sm text-accent">{t('Now playing')}</span>
+                <h2 className="bw-h1 [overflow-wrap:anywhere]">{currentSong.title}</h2>
+                {songMeta && <p className="bw-body-lg text-muted-foreground">{songMeta}</p>}
+              </div>
+              <span className="w-14 h-14 rounded-full bg-accent text-accent-foreground bw-value-md flex items-center justify-center shrink-0">
+                {activeSongIndex + 1}
+              </span>
             </div>
-            <span className="w-14 h-14 rounded-full bg-accent text-accent-foreground bw-value-md flex items-center justify-center shrink-0">
-              {activeSongIndex + 1}
-            </span>
-          </div>
 
-          {/* Progress (mock) */}
-          <div className="relative h-12 rounded-full bg-foreground/[0.08] overflow-hidden flex items-center px-4">
-            <div className="absolute inset-y-0 left-0 w-[60%] bg-accent/25" />
-            <div className="relative w-full flex justify-between bw-label-md">
-              <span>3:42</span>
-              <span>{currentSong.duration}</span>
+            <div className="relative h-12 rounded-full bg-foreground/[0.08] overflow-hidden flex items-center px-4">
+              <div
+                className="absolute inset-y-0 left-0 bg-accent/25"
+                style={{ width: `${((activeSongIndex + 1) / setlist.length) * 100}%` }}
+                aria-hidden="true"
+              />
+              <div className="relative w-full flex justify-between gap-3 bw-label-md">
+                <span>{t('Song {index} of {count}', { index: activeSongIndex + 1, count: setlist.length })}</span>
+                {currentSong.duration && <span>{currentSong.duration}</span>}
+              </div>
             </div>
-          </div>
 
-          {/* Controls */}
+            {/* Controls */}
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                aria-label={t('Previous song')}
+                disabled={activeSongIndex === 0}
+                onClick={() => goTo(activeSongIndex - 1)}
+                className="h-16 rounded-full bg-foreground/[0.08] flex items-center justify-center active:scale-[0.97] transition-transform disabled:opacity-40"
+              >
+                <SkipBack className="w-7 h-7 fill-current" />
+              </button>
+              <button
+                type="button"
+                aria-label={isPlaying ? t('Pause') : t('Play')}
+                onClick={() => {
+                  const next = togglePause(key);
+                  if (next) setSession(next);
+                }}
+                className="h-16 rounded-full bg-accent text-accent-foreground flex items-center justify-center active:scale-[0.97] transition-transform"
+              >
+                {isPlaying ? <Pause className="w-7 h-7 fill-current" /> : <Play className="w-7 h-7 fill-current" />}
+              </button>
+              <button
+                type="button"
+                aria-label={t('Next song')}
+                disabled={activeSongIndex >= setlist.length - 1}
+                onClick={() => goTo(activeSongIndex + 1)}
+                className="h-16 rounded-full bg-foreground/[0.08] flex items-center justify-center active:scale-[0.97] transition-transform disabled:opacity-40"
+              >
+                <SkipForward className="w-7 h-7 fill-current" />
+              </button>
+            </div>
+          </Card>
+        ) : (
+          <Card className="p-5 gap-2">
+            <h2 className="bw-h3">{t('No setlist yet')}</h2>
+            <p className="bw-body-sm text-muted-foreground">{t('No songs picked for this rehearsal yet.')}</p>
+          </Card>
+        )}
+
+        {/* Quick Feedback on the song on screen */}
+        {currentSong && (
           <div className="grid grid-cols-4 gap-2">
-            <button
-              type="button"
-              aria-label={isPlaying ? t('Pause') : t('Play')}
-              onClick={() => setIsPlaying(!isPlaying)}
-              className="h-16 rounded-full bg-accent text-accent-foreground flex items-center justify-center active:scale-[0.97] transition-transform"
-            >
-              {isPlaying ? <Pause className="w-7 h-7 fill-current" /> : <Play className="w-7 h-7 fill-current" />}
-            </button>
-            <button
-              type="button"
-              aria-label={t('Stop')}
-              className="h-16 rounded-full bg-foreground/[0.08] flex items-center justify-center active:scale-[0.97] transition-transform"
-            >
-              <Square className="w-6 h-6 fill-current" />
-            </button>
-            <button
-              type="button"
-              aria-label={t('Next song')}
-              onClick={() => setActiveSongIndex((i) => Math.min(i + 1, LIVE_SETLIST.length - 1))}
-              className="h-16 rounded-full bg-foreground/[0.08] flex items-center justify-center active:scale-[0.97] transition-transform"
-            >
-              <SkipForward className="w-7 h-7 fill-current" />
-            </button>
-            <button
-              type="button"
-              aria-label={t('Record')}
-              className="h-16 rounded-full bg-foreground/[0.08] text-destructive flex items-center justify-center active:scale-[0.97] transition-transform"
-            >
-              <Mic2 className="w-6 h-6" />
-            </button>
+            {([
+              { id: 'nailed', label: t('Nailed it'), icon: CheckCircle2, color: 'text-success' },
+              { id: 'work', label: t('Needs work'), icon: AlertTriangle, color: 'text-warning' },
+              { id: 'problem', label: t('Problems'), icon: XCircle, color: 'text-destructive' },
+              { id: 'redo', label: t('Redo'), icon: RotateCcw, color: 'text-[var(--accent-rehearsal-ink)]' },
+            ] as const).map((fb) => (
+              <button
+                key={fb.id}
+                type="button"
+                aria-pressed={verdict === fb.id}
+                onClick={() => setVerdict(fb.id)}
+                className={cn(
+                  'flex flex-col items-center justify-center gap-2 p-3 rounded-[16px] bg-card active:scale-[0.97] transition-transform',
+                  verdict === fb.id && 'ring-2 ring-foreground',
+                )}
+              >
+                <fb.icon className={cn('w-6 h-6', fb.color)} />
+                <span className="bw-label-xs text-muted-foreground text-center">{fb.label}</span>
+              </button>
+            ))}
           </div>
-        </Card>
+        )}
 
-        {/* Quick Feedback */}
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            { label: t('Nailed it'), icon: CheckCircle2, color: 'text-success' },
-            { label: t('Needs work'), icon: AlertTriangle, color: 'text-warning' },
-            { label: t('Problems'), icon: XCircle, color: 'text-destructive' },
-            { label: t('Redo'), icon: RotateCcw, color: 'text-[var(--accent-rehearsal-ink)]' },
-          ].map((fb) => (
-            <button
-              key={fb.label}
-              type="button"
-              className="flex flex-col items-center justify-center gap-2 p-3 rounded-[16px] bg-card active:scale-[0.97] transition-transform"
-            >
-              <fb.icon className={cn('w-6 h-6', fb.color)} />
-              <span className="bw-label-xs text-muted-foreground text-center">{fb.label}</span>
-            </button>
-          ))}
-        </div>
+        {rehearsal.notes?.trim() && (
+          <Card>
+            <h3 className="bw-label-sm text-muted-foreground">{t('Notes')}</h3>
+            <p className="bw-body-md whitespace-pre-line [overflow-wrap:anywhere]">{rehearsal.notes}</p>
+          </Card>
+        )}
 
         {/* Attendance & Tools */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <h3 className="bw-label-sm text-muted-foreground">{t('Check-in')}</h3>
-            <div className="flex flex-col gap-2">
-              {ATTENDANCE.map((m) => (
-                <div key={m.id} className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-3">
-                    <span
-                      className={cn(
-                        'w-2 h-2 rounded-full',
-                        m.status === 'arrived' ? 'bg-success' : 'bg-warning animate-pulse'
-                      )}
-                    />
-                    <span className="bw-label-md">{m.initials}</span>
-                  </span>
-                  <span className="bw-label-sm text-muted-foreground">{m.time || t('Not yet')}</span>
-                </div>
-              ))}
-            </div>
+            {lineup.length === 0 ? (
+              <p className="bw-body-sm text-muted-foreground">{t('No one invited yet')}</p>
+            ) : (
+              <div className="flex flex-col">
+                {lineup.map((m) => {
+                  const arrived = session.arrivals[m.userId];
+                  return (
+                    <button
+                      key={m.userId}
+                      type="button"
+                      role="checkbox"
+                      aria-checked={!!arrived}
+                      onClick={() => toggleArrival(m.userId)}
+                      className="min-h-11 flex items-center justify-between gap-3 text-left"
+                    >
+                      <span className="flex items-center gap-3 min-w-0">
+                        <span
+                          className={cn('w-2 h-2 rounded-full shrink-0', arrived ? 'bg-success' : 'bg-warning')}
+                          aria-hidden="true"
+                        />
+                        <span className="bw-label-md truncate">{m.name}</span>
+                      </span>
+                      <span className="bw-label-sm text-muted-foreground shrink-0">{arrived ? hhmm(arrived) : t('Not yet')}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </Card>
 
           <Card>
@@ -214,7 +275,10 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
 
         <PillButton
           variant="outline"
-          onClick={onFinish}
+          onClick={() => {
+            endSession(key);
+            onFinish();
+          }}
           className="mt-2 border-destructive text-destructive"
         >
           {t('End session')}

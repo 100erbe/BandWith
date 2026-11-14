@@ -34,6 +34,7 @@ import { notificationBandId, notificationTarget, notificationTargetLabel } from 
 import { SwipeRow } from '@/app/components/bw/SwipeRow';
 import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
 import { haptic } from '@/lib/haptics';
+import { useSystemBack } from '@/lib/backStack';
 import { t, useT, intlLocale, getLocale } from '@/lib/i18n';
 import { localizePushLabel, pushLanguage } from '@/lib/pushLabels';
 
@@ -310,6 +311,9 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
   };
 
   const backToList = () => setViewingIndex(null);
+  // Android Back and Escape from an opened item return to the list, like its
+  // Back button (two pages show both, so there it closes the inbox).
+  useSystemBack(isOpen && viewingIndex !== null && !split, backToList);
 
   const handleAction = (action: string, notificationId?: string) => {
     setViewingIndex(null);
