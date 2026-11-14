@@ -840,9 +840,10 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const heroMonth = hasHeroDate
     ? dateName(heroDate!, { month: 'short' }).toUpperCase()
     : t('TBD');
-  const heroDateTime = `${hasHeroDate ? formatEventDateFull(event.date) : t('DATE TBD')}${
-    showTime !== 'TBD' ? ` · ${showTime}${endTimeFormatted ? `–${endTimeFormatted}` : ''}` : ''
-  }`;
+  // Date and time are kept whole: on a narrow phone the chip breaks
+  // between them, never inside "11:30 PM".
+  const heroDatePart = hasHeroDate ? formatEventDateFull(event.date) : t('DATE TBD');
+  const heroTimePart = showTime !== 'TBD' ? `${showTime}${endTimeFormatted ? `–${endTimeFormatted}` : ''}` : '';
 
   // ─── Money ───
   const bandFeeNum = parseAmount(event.price);
@@ -1177,7 +1178,13 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     className="mt-1.5 min-h-5 px-2 py-1 rounded-[4px] bw-label-xs inline-block max-w-full"
                     style={heroTintStyle}
                   >
-                    {heroDateTime}
+                    <span className="whitespace-nowrap">{heroDatePart}</span>
+                    {heroTimePart && (
+                      <>
+                        {' · '}
+                        <span className="whitespace-nowrap">{heroTimePart}</span>
+                      </>
+                    )}
                   </span>
                 </div>
 
