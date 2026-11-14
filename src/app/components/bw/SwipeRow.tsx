@@ -3,6 +3,7 @@ import { motion, animate, useMotionValue, useTransform } from 'motion/react';
 import { Trash2 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { haptic } from '@/lib/haptics';
+import { useT } from '@/lib/i18n';
 
 const ACTION_W = 80;
 const ACTION_GAP = 16;
@@ -20,6 +21,7 @@ export const SwipeRow: React.FC<{
   surfaceClassName?: string;
   children: React.ReactNode;
 }> = ({ open, onOpenChange, onDelete, deleteLabel, surfaceClassName = 'bg-background', children }) => {
+  const t = useT();
   const x = useMotionValue(0);
   // Hidden at rest so no red edge peeks out next to the row.
   const actionOpacity = useTransform(x, [-REVEAL, -6, 0], [1, 1, 0]);
@@ -42,7 +44,7 @@ export const SwipeRow: React.FC<{
         style={{ width: ACTION_W, opacity: actionOpacity }}
       >
         <Trash2 className="w-5 h-5" aria-hidden />
-        Delete
+        {t('Delete')}
       </motion.button>
       <motion.div
         drag="x"

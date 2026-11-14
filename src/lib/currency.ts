@@ -60,6 +60,17 @@ export const COUNTRY_TAX_PRESETS: CountryTaxPreset[] = [
 export const findCountryPreset = (code?: string | null): CountryTaxPreset | undefined =>
   code ? COUNTRY_TAX_PRESETS.find((c) => c.code === code) : undefined;
 
+/** The country's name in the app's language ("Italia", "Allemagne"…); the English name where Intl can't name it. */
+export const countryName = (c: Pick<CountryTaxPreset, 'code' | 'name'>): string => {
+  try {
+    // Intl.DisplayNames is ES2020+; the project's TS lib target is older.
+    const DisplayNames = (Intl as unknown as { DisplayNames: new (l: string[], o: object) => { of: (code: string) => string | undefined } }).DisplayNames;
+    return new DisplayNames([intlLocale('en') ?? 'en'], { type: 'region' }).of(c.code) || c.name;
+  } catch {
+    return c.name;
+  }
+};
+
 export const currencySymbol = (code?: string | null): string =>
   CURRENCIES.find((c) => c.code === code)?.symbol ?? '€';
 

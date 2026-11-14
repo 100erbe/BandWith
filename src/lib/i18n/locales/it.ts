@@ -3836,6 +3836,13 @@ const dict: Dictionary = {
   "Upcoming gigs that play it: {gigs}.": "Prossimi gig che lo suonano: {gigs}.",
   "{count} more": "altri {count}",
   "“{title}” is already in your library. Save again to add a second copy.": "“{title}” è già nella tua libreria. Salva di nuovo per aggiungerne una seconda copia.",
+  // Shell, rehearsal summary, tax country (audit fixes)
+  "My calendar": "Il mio calendario",
+  "My band": "La mia band",
+  "No feedback given during this rehearsal.": "Nessun feedback dato durante questa prova.",
+  "Not checked in": "Check-in non fatto",
+  "Sales tax": "Imposta sulle vendite",
+  "Sales tax depends on the state (and is often not charged on live performances). Set your local rate if it applies.": "L'imposta sulle vendite dipende dallo stato (e spesso non si applica alle esibizioni dal vivo). Imposta l'aliquota locale se serve.",
 };
 
 export default dict;
