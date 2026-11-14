@@ -1320,7 +1320,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               )}
 
               {tab === 'money' && (
-                <section className="dark bg-sheet text-sheet-foreground rounded-[24px] p-6 flex flex-col gap-3 max-w-[720px] w-full" aria-label={t('Fee & payouts')}>
+                <section className="dark bg-sheet text-sheet-foreground rounded-[24px] p-6 flex flex-col gap-3 w-full" aria-label={t('Fee & payouts')}>
                   <span className="bw-label-xs text-muted-foreground">{t('Admin only')}</span>
                   <FeePayoutsContent
                     isAdmin
