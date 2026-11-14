@@ -3772,6 +3772,11 @@ const dict: Dictionary = {
   "Start the click": "Lancer le clic",
   "Stop the click": "Arrêter le clic",
   "Focus, note & tasks": "Objectifs, note et tâches",
+  "Share": "Partager",
+  "Send quote": "Envoyer le devis",
+  "Sending the quote to {email}…": "Envoi du devis à {email}…",
+  "Preparing the quote…": "Préparation du devis…",
+  "The quote could not be sent automatically. Pick a channel below.": "Le devis n'a pas pu être envoyé automatiquement. Choisissez un canal ci-dessous.",
 };
 
 export default dict;

@@ -1307,6 +1307,8 @@ export default function AuthenticatedApp() {
   const [pricingModalInitialTab, setPricingModalInitialTab] = useState<PricingModalTabType>('rates');
   const [pricingReturnTo, setPricingReturnTo] = useState<'settings' | 'control_deck' | 'identity_hub' | null>(null);
   const [sharingQuote, setSharingQuote] = useState<Partial<Quote> | null>(null);
+  // "Send quote" in the iPad composer: the share sheet emails the client's link by itself.
+  const [sharingAutoSend, setSharingAutoSend] = useState(false);
   const [showAdminTour, setShowAdminTour] = useState(false);
 
   // Auto-launch Admin Guided Tour for first-time admins
@@ -4060,6 +4062,7 @@ export default function AuthenticatedApp() {
                     }
                   }
                   if (wantsShare) {
+                    setSharingAutoSend(!!opts?.send);
                     setSharingQuote({ ...q, id: savedQuote.id, quoteNumber: savedQuote.quote_number, status: 'DRAFT' });
                   }
                   refetchExpandedQuotes();
@@ -4086,8 +4089,9 @@ export default function AuthenticatedApp() {
             {sharingQuote && (
               <QuoteShareModal
                 isOpen={!!sharingQuote}
-                onClose={() => setSharingQuote(null)}
+                onClose={() => { setSharingQuote(null); setSharingAutoSend(false); }}
                 quote={sharingQuote}
+                autoSendEmail={sharingAutoSend}
                 onSent={() => { refetchExpandedQuotes(); }}
                 bandId={realBand?.id ? String(realBand.id) : (selectedBand?.id ? String(selectedBand.id) : 'default')}
                 bandName={realBand?.name || selectedBand?.name || 'Band'}
