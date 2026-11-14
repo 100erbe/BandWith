@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyOrder, indexOf, isNewer, moveItem, parseStageState, reorderRows, sameOrder, stageTopic } from '../stageLive';
+import { applyOrder, indexOf, isNewer, moveItem, nextSeq, parseStageState, reorderRows, sameOrder, stageTopic } from '../stageLive';
 
 const songs = [
   { id: 'a', songId: 'sa', setNumber: 1, title: 'A' },
@@ -19,6 +19,31 @@ describe('stageLive', () => {
     expect(isNewer({ seq: 1, from: 'z' }, { seq: 2, from: 'a' })).toBe(false);
     expect(isNewer({ seq: 3, from: 'b' }, { seq: 3, from: 'a' })).toBe(true);
     expect(isNewer({ seq: 3, from: 'a' }, { seq: 3, from: 'a' })).toBe(false);
+  });
+
+  it('keeps a reopened leader newer than what the band has seen (clock floor)', () => {
+    const t0 = Date.UTC(2026, 10, 13, 20, 0, 0);
+    // First session: three taps within a tenth of a second still count up.
+    let seq = nextSeq(null, t0);
+    const first = seq;
+    seq = nextSeq(seq, t0 + 30);
+    seq = nextSeq(seq, t0 + 60);
+    expect(seq).toBe(first + 2);
+    // ...and a slower tap jumps to the clock.
+    seq = nextSeq(seq, t0 + 900);
+    expect(seq).toBe(first + 9);
+    // Stage mode closed and reopened ten seconds later: the old seq is gone.
+    const reopened = nextSeq(null, t0 + 10_000);
+    expect(isNewer({ seq: reopened, from: 'a' }, { seq, from: 'z' })).toBe(true);
+    // Rapid taps still count up one by one.
+    expect(nextSeq(reopened + 50, t0 + 10_000)).toBe(reopened + 51);
+  });
+
+  it('fits the 4-byte Bluetooth seq for years', () => {
+    expect(nextSeq(null, Date.UTC(2036, 0, 1))).toBeLessThan(2 ** 32);
+    expect(nextSeq(2 ** 32 + 5, Date.now())).toBe(0xffffffff);
+    // A clock set before 2024 falls back to the plain Lamport clock.
+    expect(nextSeq(7, Date.UTC(2020, 0, 1))).toBe(8);
   });
 
   it('drops malformed payloads', () => {

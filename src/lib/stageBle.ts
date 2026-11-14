@@ -12,9 +12,15 @@
  *   [0]      format version (1)
  *   [1..4]   seq (Lamport clock)
  *   [5]      sender id length L (≤ 16), then L ASCII bytes
- *   4 bytes  fingerprint of the saved setlist (row ids in saved order)
- *   1 byte   current song, as an index into the saved order (255 = none)
- *   1 byte   n, then n indexes into the saved order (n = 0: saved order)
+ *   4 bytes  fingerprint of the setlist's songs (row ids, sorted)
+ *   1 byte   current song, as an index into the sorted ids (255 = none)
+ *   1 byte   n, then n indexes into the sorted ids: the leader's order
+ *
+ * Version 2 refers to the songs by their sorted ids, not the saved order,
+ * and always sends the order: a reorder the leader saves online then still
+ * reaches members who are offline with the old saved order (version 1
+ * rejected every state after it). Only a song added or removed is a
+ * different setlist.
  *   8 bytes  HMAC-SHA256(key, everything before), truncated
  *
  * The service UUID is derived from the gig's key, so a member's app only
@@ -23,7 +29,7 @@
  */
 import type { StageLiveState } from './stageLive';
 
-export const STAGE_BLE_VERSION = 1;
+export const STAGE_BLE_VERSION = 2;
 /** Characteristic carrying the state (same for every gig). */
 export const STAGE_BLE_CHARACTERISTIC = 'b7d50001-5b1e-4c6a-9b3d-6e0a2f7c1d42';
 const SERVICE_SUFFIX = '-5b1e-4c6a-9b3d-6e0a2f7c1d42';
@@ -62,9 +68,12 @@ export async function stageServiceUuid(keyB64: string): Promise<string> {
   return `${hex(tag)}${SERVICE_SUFFIX}`;
 }
 
-/** 4 bytes identifying the saved setlist (row ids in saved order). */
+/** The setlist's row ids in a fixed order, whatever order they are saved in. */
+const sortedIds = (ids: string[]) => [...ids].sort();
+
+/** 4 bytes identifying the setlist's songs (row ids, in any order). */
 export async function setlistFingerprint(savedIds: string[]): Promise<Uint8Array> {
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bs(enc.encode(savedIds.join(',')))));
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bs(enc.encode(sortedIds(savedIds).join(',')))));
   return digest.slice(0, 4);
 }
 
@@ -85,16 +94,15 @@ export async function encodeStageState(
   keyB64: string,
 ): Promise<Uint8Array | null> {
   if (savedIds.length > MAX_SONGS || !/^[\x20-\x7e]{1,16}$/.test(state.from)) return null;
-  const index = new Map(savedIds.map((id, i) => [id, i]));
+  const index = new Map(sortedIds(savedIds).map((id, i) => [id, i]));
   const current = state.songId === null ? NONE : index.get(state.songId);
   if (current === undefined) return null;
+  // No live order: the leader's saved order, which a member offline may not have.
   const order: number[] = [];
-  if (state.order) {
-    for (const id of state.order) {
-      const i = index.get(id);
-      if (i === undefined) return null;
-      order.push(i);
-    }
+  for (const id of state.order ?? savedIds) {
+    const i = index.get(id);
+    if (i === undefined) return null;
+    order.push(i);
   }
   const from = enc.encode(state.from);
   const fp = await setlistFingerprint(savedIds);
@@ -123,7 +131,7 @@ export type DecodeResult =
   | { ok: true; state: StageLiveState }
   | { ok: false; reason: 'format' | 'auth' | 'setlist' };
 
-/** Checks and reads a state; `savedIds` is this phone's saved setlist. */
+/** Checks and reads a state; `savedIds` is this phone's saved setlist (any order). */
 export async function decodeStageState(bytes: Uint8Array, savedIds: string[], keyB64: string): Promise<DecodeResult> {
   if (bytes.length < 1 + 4 + 1 + 4 + 1 + 1 + MAC_BYTES || bytes[0] !== STAGE_BLE_VERSION) return { ok: false, reason: 'format' };
   const body = bytes.slice(0, bytes.length - MAC_BYTES);
@@ -148,15 +156,16 @@ export async function decodeStageState(bytes: Uint8Array, savedIds: string[], ke
   if (o + n !== body.length) return { ok: false, reason: 'format' };
   const mine = await setlistFingerprint(savedIds);
   if (hex(fp) !== hex(mine)) return { ok: false, reason: 'setlist' };
-  if (current !== NONE && current >= savedIds.length) return { ok: false, reason: 'format' };
+  const ids = sortedIds(savedIds);
+  if (current !== NONE && current >= ids.length) return { ok: false, reason: 'format' };
   const order: string[] = [];
   for (let i = 0; i < n; i++) {
     const idx = body[o + i];
-    if (idx >= savedIds.length) return { ok: false, reason: 'format' };
-    order.push(savedIds[idx]);
+    if (idx >= ids.length) return { ok: false, reason: 'format' };
+    order.push(ids[idx]);
   }
   return {
     ok: true,
-    state: { seq, from, songId: current === NONE ? null : savedIds[current], order: n > 0 ? order : null },
+    state: { seq, from, songId: current === NONE ? null : ids[current], order: n > 0 ? order : null },
   };
 }

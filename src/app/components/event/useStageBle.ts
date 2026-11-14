@@ -9,9 +9,11 @@ import type { StageLiveState } from '@/lib/stageLive';
  * - off: not running (web, demo, closed, no key);
  * - leading: the admin's phone is advertising;
  * - searching / connected: a member's phone looking for / linked to the leader;
- * - unavailable: Bluetooth off, not allowed, or not supported.
+ * - unavailable: Bluetooth off, not allowed, or not supported;
+ * - outdated: linked, but the leader's setlist has other songs than the one
+ *   on this phone (songs added or removed while it was offline).
  */
-export type StageBleStatus = 'off' | 'leading' | 'searching' | 'connected' | 'unavailable';
+export type StageBleStatus = 'off' | 'leading' | 'searching' | 'connected' | 'unavailable' | 'outdated';
 
 interface Options {
   eventId?: string;
@@ -77,10 +79,15 @@ export function useStageBle({ eventId, savedIds, open, isLeader, onState }: Opti
       if (cancelled || !key) return;
       keyRef.current = key;
       const serviceUuid = await stageServiceUuid(key);
-      listener = await StageBle.addListener('stateChange', ({ state }) => {
+      const handle = await StageBle.addListener('stateChange', ({ state }) => {
         setStatus(state === 'on' ? 'leading' : state === 'unknown' ? 'off' : 'unavailable');
       });
-      if (cancelled) return;
+      // Closed while the listener was being added: the cleanup has already run.
+      if (cancelled) {
+        void handle.remove();
+        return;
+      }
+      listener = handle;
       try {
         // Empty until the first move; members ignore it. Asks for Bluetooth the first time.
         const { state } = await StageBle.start({ serviceUuid, characteristicUuid: STAGE_BLE_CHARACTERISTIC, value: '', notify: '' });
@@ -119,7 +126,14 @@ export function useStageBle({ eventId, savedIds, open, isLeader, onState }: Opti
       try {
         const view = await BleClient.read(id, serviceUuid, STAGE_BLE_CHARACTERISTIC);
         const result = await decodeStageState(new Uint8Array(view.buffer, view.byteOffset, view.byteLength), savedRef.current, key);
-        if (!cancelled && result.ok) onStateRef.current(result.state);
+        if (cancelled) return;
+        if (result.ok) {
+          setStatus('connected');
+          onStateRef.current(result.state);
+        } else if (result.reason === 'setlist') {
+          // Not silently "connected": this phone needs the setlist again (internet).
+          setStatus('outdated');
+        }
       } catch {
         /* a dropped link is handled by onDisconnect */
       }
@@ -179,9 +193,20 @@ export function useStageBle({ eventId, savedIds, open, isLeader, onState }: Opti
       try {
         // Asks for Bluetooth the first time; Android 12+ never uses it for location.
         await BleClient.initialize({ androidNeverForLocation: true });
-        if (!(await BleClient.isEnabled())) throw new Error('off');
       } catch {
-        if (cancelled) return;
+        // Not allowed or not supported: don't ask again while Stage mode is open.
+        if (!cancelled) setStatus('unavailable');
+        return;
+      }
+      let enabled = false;
+      try {
+        enabled = await BleClient.isEnabled();
+      } catch {
+        /* treated as off */
+      }
+      if (cancelled) return;
+      if (!enabled) {
+        // Bluetooth off: look again in a moment (turning it on needs no prompt).
         setStatus('unavailable');
         retry = setTimeout(() => void boot(), 5000);
         return;

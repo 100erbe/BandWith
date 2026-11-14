@@ -31,10 +31,16 @@ describe('stageBle', () => {
     expect(await decodeStageState(bytes!, ids, KEY)).toEqual({ ok: true, state });
   });
 
-  it('keeps "saved order" and "no song" as such', async () => {
+  it('keeps "no song" and sends the leader\'s saved order', async () => {
     const state = { seq: 1, from: 'x', songId: null, order: null };
     const bytes = await encodeStageState(state, ids, KEY);
-    expect(await decodeStageState(bytes!, ids, KEY)).toEqual({ ok: true, state });
+    expect(await decodeStageState(bytes!, ids, KEY)).toEqual({ ok: true, state: { ...state, order: ids } });
+  });
+
+  it('still syncs a member whose saved order is older (reordered online)', async () => {
+    const leaderSaved = ['c3', 'a1', 'd4', 'b2'];
+    const bytes = await encodeStageState({ seq: 7, from: 'lead', songId: 'd4', order: null }, leaderSaved, KEY);
+    expect(await decodeStageState(bytes!, ids, KEY)).toEqual({ ok: true, state: { seq: 7, from: 'lead', songId: 'd4', order: leaderSaved } });
   });
 
   it('stays small for a long set', async () => {
@@ -49,7 +55,8 @@ describe('stageBle', () => {
     const tampered = bytes.slice();
     tampered[4] ^= 1;
     expect(await decodeStageState(tampered, ids, KEY)).toEqual({ ok: false, reason: 'auth' });
-    expect(await decodeStageState(bytes, ['a1', 'c3', 'b2', 'd4'], KEY)).toEqual({ ok: false, reason: 'setlist' });
+    expect(await decodeStageState(bytes, ['a1', 'c3', 'b2', 'e5'], KEY)).toEqual({ ok: false, reason: 'setlist' });
+    expect(await decodeStageState(bytes, ['a1', 'b2', 'c3'], KEY)).toEqual({ ok: false, reason: 'setlist' });
     expect(await decodeStageState(new Uint8Array([9, 9, 9]), ids, KEY)).toEqual({ ok: false, reason: 'format' });
   });
 

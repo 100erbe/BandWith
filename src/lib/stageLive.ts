@@ -23,6 +23,19 @@ export interface StageLiveState {
   order: string[] | null;
 }
 
+/** Start of the clock floor below (2024-01-01 UTC). */
+const SEQ_EPOCH_MS = Date.UTC(2024, 0, 1);
+
+/**
+ * Next seq for a sender: one more than the newest it has seen, and never
+ * below the time in tenths of a second since 2024 (fits the 4 bytes of the
+ * Bluetooth state until 2037). A leader that reopens Stage mode or restarts
+ * the app forgets its old seq; the floor keeps its new states newer than
+ * the ones the band already has, so members keep following.
+ */
+export const nextSeq = (last: number | null | undefined, now: number = Date.now()) =>
+  Math.min(0xffffffff, Math.max((last ?? 0) + 1, Math.floor((now - SEQ_EPOCH_MS) / 100)));
+
 /** True when `next` should replace `current` (it is newer). */
 export const isNewer = (next: Pick<StageLiveState, 'seq' | 'from'>, current: Pick<StageLiveState, 'seq' | 'from'> | null) =>
   !current || next.seq > current.seq || (next.seq === current.seq && next.from > current.from);
