@@ -21,6 +21,7 @@ import {
   Sliders,
   Music,
   Edit3,
+  Send,
   Share2,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
@@ -399,7 +400,15 @@ interface QuoteCreationWizardProps {
    * buttons as busy until it settles; the parent closes the wizard on success
    * and leaves it open (with everything typed) on failure.
    */
-  onCreate: (quote: Partial<Quote>, opts?: { share?: boolean; askAvailability?: boolean }) => void | Promise<void>;
+  onCreate: (
+    quote: Partial<Quote>,
+    opts?: {
+      share?: boolean;
+      askAvailability?: boolean;
+      /** "Send quote" (iPad composer): also email the client's link once it is ready. */
+      send?: boolean;
+    },
+  ) => void | Promise<void>;
   initialEventId?: string;
   initialEventTitle?: string;
   initialClientName?: string;
@@ -1450,7 +1459,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
   // A save is running: the buttons show a spinner and a second tap does nothing.
   const [submitting, setSubmitting] = useState(false);
-  const handleCreate = (sendImmediately = true) => {
+  const handleCreate = (sendImmediately = true, sendToClient = false) => {
     if (submitting) return;
     const finalEventName = getEffectiveTitle();
     const finalClientName = clientName.trim() || 'Client';
@@ -1548,7 +1557,11 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       updatedAt: new Date().toISOString(),
       eventTitle: finalEventName,
     };
-    const pending = onCreate(quoteData, { share: sendImmediately, askAvailability: !isEditing && askAvailability });
+    const pending = onCreate(quoteData, {
+      share: sendImmediately,
+      askAvailability: !isEditing && askAvailability,
+      ...(sendToClient ? { send: true } : {}),
+    });
     if (pending && typeof (pending as Promise<void>).then === 'function') {
       setSubmitting(true);
       (pending as Promise<void>).catch(() => {}).finally(() => setSubmitting(false));
@@ -3409,16 +3422,29 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         caption={t('As the client sees it')}
         className={cn(landscape && 'sticky top-0 min-h-[min(720px,calc(100dvh-140px))]')}
         footer={
-          <PillButton
-            size="lg"
-            icon={<Share2 className="w-5 h-5" />}
-            loading={submitting}
-            disabled={!canSend}
-            onClick={() => handleCreate(true)}
-            style={{ backgroundColor: 'var(--accent-gig)', color: 'var(--accent-gig-fg)' }}
-          >
-            {t('Save & share')}
-          </PillButton>
+          // Figma iPad · 06: Share (PDF, link, any channel) and Send quote
+          // (the client's link by email, straight away). Both save first.
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-3">
+            <PillButton
+              size="lg"
+              variant="outline"
+              icon={<Share2 className="w-5 h-5" />}
+              disabled={!canSend || submitting}
+              onClick={() => handleCreate(true)}
+            >
+              {t('Share')}
+            </PillButton>
+            <PillButton
+              size="lg"
+              icon={<Send className="w-5 h-5" />}
+              loading={submitting}
+              disabled={!canSend}
+              onClick={() => handleCreate(true, true)}
+              style={{ backgroundColor: 'var(--accent-gig)', color: 'var(--accent-gig-fg)' }}
+            >
+              {t('Send quote')}
+            </PillButton>
+          </div>
         }
       >
         {paper}

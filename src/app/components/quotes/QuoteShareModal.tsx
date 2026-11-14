@@ -73,6 +73,12 @@ export interface QuoteShareModalProps {
   kind?: QuoteMessageKind;
   /** The client's link changed (sent, reminded, new link). */
   onLinkChanged?: () => void;
+  /**
+   * "Send quote" in the iPad composer (Figma iPad · 06 "Quote / New"): email
+   * the client's link once, as soon as the link and the PDF are ready. Without
+   * the client's email it says so and the other channels stay available.
+   */
+  autoSendEmail?: boolean;
 }
 
 const isIOS = () =>
@@ -88,6 +94,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
   onSent,
   kind = 'sent',
   onLinkChanged,
+  autoSendEmail = false,
 }) => {
   const t = useT();
   const [settings, setSettings] = useState<BandPricingSettings>(DEFAULT_BAND_PRICING);
@@ -119,7 +126,15 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
   const [emailing, setEmailing] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
+  // "Send quote": what happened, kept at the top of the sheet (the flash
+  // below the channels is easy to miss when nobody tapped anything).
+  const [autoNote, setAutoNote] = useState<{ text: string; tone: 'ok' | 'error' | 'busy' } | null>(null);
+  const autoPendingRef = useRef(false);
   const flash = (text: string, tone: 'ok' | 'error' = 'ok') => {
+    if (autoPendingRef.current) {
+      autoPendingRef.current = false;
+      setAutoNote({ text, tone });
+    }
     setShareFeedback({ text, tone });
     setTimeout(() => setShareFeedback(null), tone === 'error' ? 5000 : 3000);
   };
@@ -198,6 +213,8 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, canLink, quote.id]);
 
+  // The PDF upload finished (with or without a link): "Send quote" can go.
+  const uploadTriedRef = useRef(false);
   // Upload as soon as the PDF exists, so WhatsApp / copy / email can run
   // synchronously inside the tap (iOS blocks clipboard and popups after an await).
   useEffect(() => {
@@ -206,9 +223,39 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     setIsUploading(true);
     uploadQuotePdfForSharing(String(bandId), quote.quoteNumber || 'DRAFT', pdfResult.pdfBlob, pdfResult.fileName)
       .then((url) => { if (!cancelled && url) setUploadedUrl(url); })
-      .finally(() => { if (!cancelled) setIsUploading(false); });
+      .finally(() => {
+        uploadTriedRef.current = true;
+        if (!cancelled) setIsUploading(false);
+      });
     return () => { cancelled = true; };
   }, [isOpen, pdfResult, canUpload, bandId, quote.quoteNumber, uploadedUrl]);
+
+  // "Send quote": one email to the client once everything is ready.
+  const emailLinkRef = useRef<(() => Promise<void>) | null>(null);
+  const autoSentRef = useRef(false);
+  useEffect(() => {
+    if (isOpen) return;
+    autoSentRef.current = false;
+    uploadTriedRef.current = false;
+    autoPendingRef.current = false;
+    setAutoNote(null);
+  }, [isOpen]);
+  const autoSendReady =
+    isOpen && autoSendEmail && !!link && !link.revoked && !isGenerating && !!pdfResult && !isUploading && (!canUpload || !!uploadedUrl || uploadTriedRef.current);
+  useEffect(() => {
+    if (!autoSendReady || autoSentRef.current) return;
+    autoSentRef.current = true;
+    autoPendingRef.current = true;
+    if (quote.clientEmail) setAutoNote({ text: t('Sending the quote to {email}…', { email: quote.clientEmail }), tone: 'busy' });
+    void emailLinkRef.current?.().finally(() => {
+      // Nothing was flashed (e.g. the link went away): don't leave "Sending…".
+      if (autoPendingRef.current) {
+        autoPendingRef.current = false;
+        setAutoNote(null);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSendReady]);
 
   useSystemBack(isOpen, onClose);
 
@@ -308,6 +355,8 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
       setEmailing(false);
     }
   };
+
+  emailLinkRef.current = emailLink;
 
   const newLink = async () => {
     if (!isUuid(quote.id)) return;
@@ -654,6 +703,36 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
               />
             </div>
           </header>
+
+          {autoSendEmail && (() => {
+            const note =
+              autoNote ??
+              (linkError || generateError || !canLink
+                ? { text: t('The quote could not be sent automatically. Pick a channel below.'), tone: 'error' as const }
+                : null);
+            return (
+            <p
+              role="status"
+              aria-live="polite"
+              className={`flex items-center gap-2 min-h-11 px-4 py-2 rounded-[16px] bw-body-sm ${
+                note?.tone === 'error'
+                  ? 'bg-destructive-solid text-white'
+                  : note?.tone === 'ok'
+                    ? 'bg-success text-success-foreground'
+                    : 'bg-card text-muted-foreground'
+              }`}
+            >
+              {note?.tone === 'error' ? (
+                <AlertCircle className="w-4 h-4 shrink-0" />
+              ) : note?.tone === 'ok' ? (
+                <Check className="w-4 h-4 shrink-0" />
+              ) : (
+                <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
+              )}
+              <span className="min-w-0 [overflow-wrap:anywhere]">{note?.text ?? t('Preparing the quote…')}</span>
+            </p>
+            );
+          })()}
 
           {/* A4 preview */}
           <section className="bg-card rounded-[24px] p-4 flex flex-col items-center gap-3">
