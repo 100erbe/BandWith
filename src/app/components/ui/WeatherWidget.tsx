@@ -92,6 +92,17 @@ function extractLocationCandidates(locationStr: string): string[] {
   return candidates;
 }
 
+type GeocodeResult = { latitude?: number; longitude?: number; name?: string; population?: number };
+
+/**
+ * The best-known place among the matches: "Milano" alone first returns
+ * Milano, Texas (pop. 400); the most populous match is Milan.
+ */
+export function pickGeocodeResult(results: GeocodeResult[] | undefined): GeocodeResult | undefined {
+  if (!results?.length) return undefined;
+  return results.reduce((best, r) => ((r.population ?? 0) > (best.population ?? 0) ? r : best), results[0]);
+}
+
 async function geocodeLocation(locationStr: string): Promise<{ lat: number; lng: number; name: string } | null> {
   const normalizedKey = locationStr.trim().toLowerCase();
   if (geoCache.has(normalizedKey)) {
@@ -103,11 +114,11 @@ async function geocodeLocation(locationStr: string): Promise<{ lat: number; lng:
   for (const candidate of candidates) {
     try {
       const res = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(candidate)}&count=1&language=en&format=json`
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(candidate)}&count=10&language=en&format=json`
       );
       if (res.ok) {
         const data = await res.json();
-        const topResult = data.results?.[0];
+        const topResult = pickGeocodeResult(data.results);
         if (topResult && typeof topResult.latitude === 'number' && typeof topResult.longitude === 'number') {
           const coords = {
             lat: topResult.latitude,
