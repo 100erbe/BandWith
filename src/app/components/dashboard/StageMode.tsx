@@ -18,8 +18,8 @@ import { timelineDates } from '@/lib/gigTiming';
 import { cn } from '@/app/components/ui/utils';
 import { TransposeControl, TransposeProvider, useSongTranspose } from '@/app/components/ui/Transpose';
 import { keyLabel } from '@/lib/ireal';
-import { beatsInBar, type ClickState } from '@/lib/stageClick';
-import { StageClickButton, StageClickFrame } from './StageClick';
+import { StageClickButton, StageClickFrame, useStageClickUi, type StageClickControls } from './StageClick';
+import { useKeepAwake } from '@/lib/posture';
 import type { StageSaveState } from '@/app/components/event/useStageLive';
 import type { StageBleStatus } from '@/app/components/event/useStageBle';
 
@@ -69,12 +69,7 @@ export interface StageLiveControls {
   move: (from: number, to: number) => void;
   saveState: StageSaveState;
   /** Visual metronome (useStageLive): newest click, ours or the leader's. */
-  click?: {
-    state: ClickState | null;
-    mine: boolean;
-    offset: number;
-    setOn: (on: boolean, opts?: { bpm: number; beats: number; bars?: number | null }) => void;
-  };
+  click?: StageClickControls;
 }
 
 interface StageModeProps {
@@ -88,6 +83,9 @@ interface StageModeProps {
   steps: StageStep[];
   songs: StageSong[];
   songsLoading?: boolean;
+  /** The setlist couldn't be loaded (offline, nothing kept on the device). */
+  songsError?: boolean;
+  onRetrySongs?: () => void;
   accentColor?: string;
   live?: StageLiveControls;
   onClose: () => void;
@@ -117,11 +115,16 @@ export const StageMode: React.FC<StageModeProps> = ({
   steps,
   songs,
   songsLoading,
+  songsError,
+  onRetrySongs,
   accentColor = 'var(--accent-gig, #D5FB46)',
   live,
   onClose,
 }) => {
   const t = useT();
+  // The screen stays on while Stage mode is open (lyrics and chords are read
+  // hands-free; a locked leader's phone stops the band's sync too).
+  useKeepAwake(true);
   const [now, setNow] = useState(() => new Date());
   const [reordering, setReordering] = useState(false);
   const current = live && songs.length > 0 ? live.index : -1;
@@ -146,20 +149,8 @@ export const StageMode: React.FC<StageModeProps> = ({
   // Visual metronome: shows while a click runs on the current song.
   const click = live?.click;
   const currentSong = songs[Math.max(0, current)];
-  const clickState = click?.state;
-  const clickRunning = !!clickState?.on && !!currentSong && (clickState.songId == null || clickState.songId === currentSong.id);
-  const [clickHidden, setClickHidden] = useState(false);
-  const [clickDone, setClickDone] = useState<number | null>(null);
-  // A new click (or a new song) shows again.
-  useEffect(() => setClickHidden(false), [clickState?.seq, clickState?.from]);
-  const showClick = clickRunning && !clickHidden && clickDone !== clickState?.seq;
-  const pressClick = () => {
-    haptic.tap();
-    if (!click) return;
-    if (clickRunning && !click.mine) return setClickHidden((h) => !h);
-    if (clickRunning) return click.setOn(false);
-    if (currentSong?.bpm) click.setOn(true, { bpm: currentSong.bpm, beats: beatsInBar(currentSong.chart?.time) });
-  };
+  const clickUi = useStageClickUi(click, currentSong);
+  const { state: clickState, running: clickRunning, hidden: clickHidden, show: showClick, press: pressClick } = clickUi;
   const lyricsRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     lyricsRef.current?.scrollTo?.({ top: 0 });
@@ -399,7 +390,7 @@ export const StageMode: React.FC<StageModeProps> = ({
                         : live.connected
                           ? `${t('Live')}${live.bluetooth === 'leading' ? ' · BT' : ''}`
                           : live.bluetooth === 'leading'
-                            ? 'Bluetooth'
+                            ? t('Bluetooth')
                             : t('Offline')
                     }
                     hint={live.connected ? t('Band follows you') : undefined}
@@ -424,7 +415,7 @@ export const StageMode: React.FC<StageModeProps> = ({
                       className={cn('w-2 h-2 rounded-full shrink-0', live.following ? 'bg-black' : 'border border-white')}
                     />
                     <span className="truncate">
-                      {live.following ? (live.leaderSeen ? t('Following leader') : t('Waiting for leader')) : t('Follow leader')}
+                      {followLabel(live, t)}
                       {live.bluetooth === 'connected' ? ' · BT' : ''}
                     </span>
                   </button>
@@ -449,6 +440,11 @@ export const StageMode: React.FC<StageModeProps> = ({
               </span>
             )}
           </div>
+          {live && songs.length > 0 && bluetoothHint(live, t) && (
+            <p className="bw-body-sm text-white/70 shrink-0 pb-2" role="status">
+              {bluetoothHint(live, t)}
+            </p>
+          )}
           {showLyrics && lyricsSong ? (
             <div className="flex flex-col flex-1 min-h-0" role="tabpanel" aria-label={showChords ? t('Chords · {title}', { title: lyricsSong.title }) : t('Lyrics · {title}', { title: lyricsSong.title })}>
               <div className="flex items-center gap-3 shrink-0 pb-2">
@@ -507,7 +503,23 @@ export const StageMode: React.FC<StageModeProps> = ({
             </div>
           ) : (
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain -mx-4 px-4">
-            {songs.length === 0 && !songsLoading ? (
+            {songs.length === 0 && !songsLoading && songsError ? (
+              <div className="flex flex-col items-start gap-3">
+                <p className="bw-body-md text-white/70">{t('Offline: the setlist couldn’t be loaded.')}</p>
+                {onRetrySongs && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      haptic.tap();
+                      onRetrySongs();
+                    }}
+                    className="min-h-11 px-4 rounded-full border border-white/40 text-white bw-label-sm"
+                  >
+                    {t('Try again')}
+                  </button>
+                )}
+              </div>
+            ) : songs.length === 0 && !songsLoading ? (
               <p className="bw-body-md text-white/70">{t('No setlist attached to this gig.')}</p>
             ) : (
               <ol className="flex flex-col">
@@ -636,11 +648,29 @@ export const StageMode: React.FC<StageModeProps> = ({
         )}
       </div>
       {showClick && clickState && click && (
-        <StageClickFrame state={clickState} offset={click.offset} accent={accentColor} onDone={() => setClickDone(clickState.seq)} />
+        <StageClickFrame state={clickState} offset={click.offset} accent={accentColor} onDone={clickUi.onDone} />
       )}
     </motion.div>
   );
 };
+
+/** A member's follow button: says so when nothing can reach this phone any more. */
+const followLabel = (live: StageLiveControls, t: ReturnType<typeof useT>) =>
+  !live.following
+    ? t('Follow leader')
+    : !live.leaderSeen
+      ? t('Waiting for leader')
+      : !live.connected && live.bluetooth !== 'connected'
+        ? t('Offline')
+        : t('Following leader');
+
+/** Why the Bluetooth sync (offline on stage) isn't running, when it matters. */
+const bluetoothHint = (live: StageLiveControls, t: ReturnType<typeof useT>) =>
+  live.bluetooth === 'outdated'
+    ? t('This phone has an older setlist. Connect to the internet once to follow over Bluetooth.')
+    : live.bluetooth === 'unavailable' && !live.connected
+      ? t('Bluetooth is off or not allowed. Turn it on in Settings to stay in sync without internet.')
+      : null;
 
 const saveLabel = (state: StageSaveState, t: ReturnType<typeof useT>) =>
   state === 'saving' ? t('Saving…') : state === 'error' ? t('Not saved') : state === 'saved' ? t('Saved') : t('Live');

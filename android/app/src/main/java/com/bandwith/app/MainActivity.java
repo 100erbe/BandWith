@@ -10,6 +10,7 @@ public class MainActivity extends BridgeActivity {
         // App-local plugins (not npm packages) are registered before the bridge starts.
         registerPlugin(StageBlePlugin.class);
         registerPlugin(IrealForumPlugin.class);
+        registerPlugin(KeepAwakePlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

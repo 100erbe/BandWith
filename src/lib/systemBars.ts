@@ -12,7 +12,13 @@ import { Capacitor, SystemBars, SystemBarsStyle } from '@capacitor/core';
 export type BarTone = 'light' | 'dark';
 
 let baseTone: BarTone = 'light';
-let overrideTone: BarTone | null = null;
+/**
+ * Overrides, newest last: a layer opened over another (Stage mode over a gig
+ * hero) wins, and closing it gives the one underneath back, not the theme.
+ */
+let overrides: { id: number; tone: BarTone }[] = [];
+let overrideSeq = 0;
+const currentTone = () => overrides[overrides.length - 1]?.tone ?? baseTone;
 
 async function apply(tone: BarTone): Promise<void> {
   if (typeof document !== 'undefined') {
@@ -38,20 +44,21 @@ async function apply(tone: BarTone): Promise<void> {
 /** Called by the theme provider whenever light/dark mode changes. */
 export async function syncSystemBarsAppearance(resolvedTheme: BarTone): Promise<void> {
   baseTone = resolvedTheme;
-  await apply(overrideTone ?? baseTone);
+  await apply(currentTone());
 }
 
 /**
  * Temporarily match the icons to a coloured block that sits under the status
  * bar (an event hero, an offline banner…). Returns a function that restores the
- * theme default; call it on unmount.
+ * tone underneath (an earlier override, or the theme default); call it on unmount.
  */
 export function setStatusBarTone(tone: BarTone): () => void {
-  overrideTone = tone;
+  const id = ++overrideSeq;
+  overrides = [...overrides, { id, tone }];
   void apply(tone);
   return () => {
-    if (overrideTone === tone) overrideTone = null;
-    void apply(overrideTone ?? baseTone);
+    overrides = overrides.filter((o) => o.id !== id);
+    void apply(currentTone());
   };
 }
 
