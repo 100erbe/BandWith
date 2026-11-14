@@ -3777,6 +3777,13 @@ const dict: Dictionary = {
   "Sending the quote to {email}…": "Angebot wird an {email} gesendet…",
   "Preparing the quote…": "Angebot wird vorbereitet…",
   "The quote could not be sent automatically. Pick a channel below.": "Das Angebot konnte nicht automatisch gesendet werden. Wähle unten einen Kanal.",
+  "Could not load your answer. Check your connection.": "Deine Antwort konnte nicht geladen werden. Prüf deine Verbindung.",
+  "Couldn't save your answer. Try again.": "Deine Antwort konnte nicht gespeichert werden. Versuch es noch mal.",
+  "This band has no other admin to notify.": "Diese Band hat keinen anderen Admin, der benachrichtigt werden kann.",
+  "Only band admins can delete this event.": "Nur Admins der Band können dieses Event löschen.",
+  "No connection. Try again when you are online.": "Keine Verbindung. Versuch es noch mal, wenn du online bist.",
+  "{title} setlist": "Setlist {title}",
+  "Event setlist": "Setlist des Events",
 };
 
 export default dict;

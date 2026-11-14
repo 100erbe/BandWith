@@ -70,7 +70,7 @@ import { Header } from "@/app/components/layout/Header";
 import BottomNavigation from "@/app/components/layout/BottomNavigation";
 import { useRailLayout } from "@/lib/deviceRegions";
 import { syncOpenEvent } from '@/lib/openEventSync';
-import { homeAutoDetail } from "@/lib/homeAutoDetail";
+import { homeAutoDetail, nextAutoDetailEvent } from "@/lib/homeAutoDetail";
 import { HeaderAction, NavBackButton } from "@/app/components/bw/Screen";
 import { IdentityHub } from "@/app/components/layout/IdentityHub";
 import { PendingInvitesPrompt } from "@/app/components/notifications/PendingInvitesPrompt";
@@ -893,15 +893,18 @@ export default function AuthenticatedApp() {
   const [previewDraftId, setPreviewDraftId] = useState<string | null>(null);
   const previewDraft = previewDraftId ? myEventDrafts.find((d) => d.id === previewDraftId) || null : null;
 
+  // The viewer's own fee on gigs of bands they don't manage (per event's
+  // band: someone can be admin of one band and a member of another).
   const userFeeMap = useMemo(() => {
-    if (isAdmin || !user?.id) return {};
+    if (!user?.id) return {};
     const map: Record<string, number> = {};
-    Object.entries(eventMembersMap).forEach(([eventId, members]) => {
-      const me = members.find(m => m.userId === user.id);
-      if (me?.fee) map[eventId] = me.fee;
-    });
+    for (const e of events) {
+      if (!e.eventId || !e.band_id || isAdminOfBand(e.band_id)) continue;
+      const me = (eventMembersMap[e.eventId] || []).find(m => m.userId === user.id);
+      if (me?.fee) map[e.eventId] = me.fee;
+    }
     return map;
-  }, [eventMembersMap, user?.id, isAdmin]);
+  }, [events, eventMembersMap, user?.id, isAdminOfBand]);
 
   const eventsRef = useRef(events);
   eventsRef.current = events;
@@ -2333,7 +2336,7 @@ export default function AuthenticatedApp() {
           .eq('id', selectedEvent.eventId)
           .select('id');
         if (error) throw error;
-        if (!deleted?.length) throw new Error('Only band admins can delete this event.');
+        if (!deleted?.length) throw new Error(t('Only band admins can delete this event.'));
         // The quote that holds this date: deleting a quote deletes it too (no
         // orphan draft left in Quotes); deleting a gig keeps the quote as a
         // record but drops its link to the gone event.
@@ -2346,13 +2349,30 @@ export default function AuthenticatedApp() {
         } else {
           await supabase.from('quotes').update({ converted_to_event_id: null }).eq('converted_to_event_id', selectedEvent.eventId);
         }
+        // Every gig and rehearsal gets its own setlist when it is saved: drop
+        // it with the event (unless another event still uses it), so it does
+        // not linger in the band's setlists and the wizard's saved setlists.
+        const setlistId = selectedEvent.setlistId;
+        if (setlistId) {
+          try {
+            const { data: others } = await supabase.from('events').select('id').eq('setlist_id', setlistId).limit(1);
+            if (others && others.length === 0) await deleteSetlist(setlistId);
+          } catch (setlistErr) {
+            console.warn('[handleEventDelete] Setlist cleanup failed:', setlistErr);
+          }
+        }
       }
       setSaveToast({ message: t('Event deleted'), type: 'success' });
       refetchEvents();
       refetchDashboard?.();
     } catch (err: any) {
       console.error('Delete error:', err);
-      setSaveToast({ message: t('Could not delete the event: {error}', { error: err?.message || t('unknown error') }), type: 'error' });
+      setSaveToast({
+        message: isOfflineError(err)
+          ? t('No connection. Try again when you are online.')
+          : t('Could not delete the event: {error}', { error: err?.message || t('unknown error') }),
+        type: 'error',
+      });
       return; // keep the detail open
     }
     setSelectedEvent(null);
@@ -2535,8 +2555,8 @@ export default function AuthenticatedApp() {
       setPreviewDraftId(event.draftId);
       return;
     }
-    // If not admin, verify user is added to this event before opening
-    if (!isAdmin && user?.id && event.eventId) {
+    // If not admin of the event's band, verify user is added to this event before opening
+    if (!isAdminOfBand(event.band_id) && user?.id && event.eventId) {
       const cached = eventMembersMap[event.eventId] || [];
       const isMember = cached.some(m => m.userId === user.id && m.status !== 'declined');
       if (cached.length > 0 && !isMember) {
@@ -2566,10 +2586,7 @@ export default function AuthenticatedApp() {
   // homeAutoDetail), so a closed detail stays closed.
   const homeAutoDetailRef = useRef(false);
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const next = [...visuallyFilteredEvents]
-      .filter((e) => e.date >= today && e.status !== 'DRAFT' && e.status !== 'QUOTE')
-      .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')))[0];
+    const next = nextAutoDetailEvent(visuallyFilteredEvents, todayLocal());
     const { done, open } = homeAutoDetail(homeAutoDetailRef.current, {
       twoPane,
       // A hub (members, settings…) covers Home: don't open a gig behind it.
@@ -2584,8 +2601,19 @@ export default function AuthenticatedApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [twoPane, activeTab, hubOpen, eventsLoading, visuallyFilteredEvents, selectedEvent]);
 
+  /**
+   * The member's own lineup row is still loading (weak signal) or could not
+   * be read: say so and keep the event open instead of closing as if saved.
+   */
+  const rsvpNotLoaded = (): never => {
+    const message = t('Could not load your answer. Check your connection.');
+    setSaveToast({ message, type: 'error' });
+    throw new Error(message);
+  };
+
   const handleEventAccept = async () => {
-    if (!selectedEventMembership?.id || !selectedEvent) return;
+    if (!selectedEvent) return;
+    if (!selectedEventMembership?.id) return rsvpNotLoaded();
 
     const eventId = selectedEvent.eventId || selectedEvent.id?.toString();
 
@@ -2628,7 +2656,8 @@ export default function AuthenticatedApp() {
         if (creator?.user_id && user?.id) {
           const memberName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Member");
           const eventType = selectedEvent.status === "REHEARSAL" ? "rehearsal" : selectedEvent.status === "QUOTE" || selectedEvent.status === "QUOTED" ? "quote" : "gig";
-          await notifyEventResponse([creator.user_id], realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "confirmed");
+          // The event's own band: the active one may be another band.
+          await notifyEventResponse([creator.user_id], selectedEvent.band_id || realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "confirmed");
         }
       }
     } catch (pushErr) {
@@ -2648,11 +2677,12 @@ export default function AuthenticatedApp() {
   };
 
   const handleEventMaybe = async () => {
-    if (!selectedEventMembership?.id || !selectedEvent) return;
+    if (!selectedEvent) return;
+    if (!selectedEventMembership?.id) return rsvpNotLoaded();
     const eventId = selectedEvent.eventId || selectedEvent.id?.toString();
     const { data: updated, error } = await respondToEventInvite(selectedEventMembership.id, "maybe");
     if (error || !updated) {
-      throw new Error(error?.message || "Couldn't save your answer. Try again.");
+      throw new Error(t("Couldn't save your answer. Try again."));
     }
     if (isOpenEvent(eventId)) setSelectedEventMembership((prev: any) => (prev ? { ...prev, status: "maybe" } : prev));
     if (eventId && user?.id) {
@@ -2674,7 +2704,7 @@ export default function AuthenticatedApp() {
       .eq('is_active', true);
     if (error) throw new Error(error.message);
     const ids = (admins || []).map((a: any) => a.user_id).filter((id: string) => id && id !== user?.id);
-    if (!ids.length) throw new Error('This band has no other admin to notify.');
+    if (!ids.length) throw new Error(t('This band has no other admin to notify.'));
     const bandEvent = events.find((e) => e.eventId === eventId);
     const who = personFirstName(profile, 'A member');
     const when = bandEvent ? `${bandEvent.date}${bandEvent.time ? `, ${bandEvent.time}` : ''}` : '';
@@ -2690,7 +2720,8 @@ export default function AuthenticatedApp() {
   };
 
   const handleEventDecline = async () => {
-    if (!selectedEventMembership?.id || !selectedEvent) return;
+    if (!selectedEvent) return;
+    if (!selectedEventMembership?.id) return rsvpNotLoaded();
     haptic.delete();
 
     // ═══════════════════════════════════════════════════════════════
@@ -2732,8 +2763,9 @@ export default function AuthenticatedApp() {
       const realEventId = selectedEvent.eventId;
       if (realEventId && user?.id) {
         const memberName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Member");
+        // The event's own band's admins, not the active band's.
         await notifyMemberDroppedOut(
-          realBand?.id || "",
+          selectedEvent.band_id || realBand?.id || "",
           realEventId,
           selectedEvent.title,
           selectedEvent.date,
@@ -2800,11 +2832,13 @@ export default function AuthenticatedApp() {
       const street = addressWithoutCity(venueAddress, venueCity);
       const sameAsCity = !!venueCity && street.toLocaleLowerCase() === String(venueCity).trim().toLocaleLowerCase();
       const fullAddress = [sameAsCity ? '' : street, venueCity].filter(Boolean).join(', ') || null;
-      const venueFinal = location || "TBD";
+      // No venue yet: stored empty (the app shows a translated "TBD"), so
+      // calendar feeds and other languages never get the English word.
+      const venueFinal = location || null;
       const timeFinal = time || "20:00";
       const eventData: Record<string, any> = {
         band_id: realBand.id,
-        title: title || "Untitled Event",
+        title: title || t('Untitled Event'),
         event_type: eventType,
         status: isRehearsalWizard ? (data.status === 'draft' ? 'confirmed' : (data.status || 'confirmed')) : (data.status || 'confirmed'),
         event_date: date,
@@ -2950,7 +2984,9 @@ export default function AuthenticatedApp() {
         // song of the gig's saved setlist while editing.
         if (songs.length === 0 && !(data._setlistCleared && data._editing)) return null;
 
-        const name = `${title || (isRehearsalWizard ? 'Rehearsal' : 'Event')} setlist`;
+        const name = title
+          ? t('{title} setlist', { title })
+          : isRehearsalWizard ? t('Rehearsal setlist') : t('Event setlist');
         if (data._editing && data._editingEventId) {
           const { data: ev } = await supabase
             .from('events')
