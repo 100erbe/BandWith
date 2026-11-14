@@ -53,12 +53,23 @@ export interface GigPayouts {
 
 const PLAYED = new Set(['confirmed', 'completed']);
 
+/**
+ * Band events that are not gigs. The gig wizards save the gig's kind
+ * (club, wedding, pub…) in event_type, so a gig is any band event that is
+ * not one of these.
+ */
+export const NOT_GIG_TYPES = ['rehearsal', 'quote'] as const;
+
+export function isGigType(eventType: string | null | undefined): boolean {
+  return !(NOT_GIG_TYPES as readonly string[]).includes((eventType || '').toLowerCase());
+}
+
 export function payoutsDue(input: PayoutsDueInput): GigPayouts[] {
   const statusOf = new Map(input.members.map((m) => [`${m.event_id}:${m.user_id}`, (m.status || '').toLowerCase()]));
   const result: GigPayouts[] = [];
 
   for (const gig of input.gigs) {
-    if (!gig.band_id || (gig.event_type || '').toLowerCase() !== 'gig') continue;
+    if (!gig.band_id || !isGigType(gig.event_type)) continue;
     if (!PLAYED.has((gig.status || '').toLowerCase())) continue;
     const date = gig.event_date || '';
     if (!date || !isGigOver({ date, start: gig.start_time, end: gig.end_time }, input.now)) continue;
