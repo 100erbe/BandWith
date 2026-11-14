@@ -333,8 +333,13 @@
   margin-left: auto;
   margin-right: auto;
 }
-:root[data-bw-status-block]:not([data-bw-status-edge="left"]) .bw-event-detail .bw-ed-hero > div > :nth-child(2) {
+:root[data-bw-status-block]:not([data-bw-rail-edge="left"]) .bw-event-detail .bw-ed-hero > div > :nth-child(2) {
   padding-inline-end: max(0px, calc(var(--bw-display-head-x, 0px) - 16px));
+}
+/* Rail on the left: the clock block sits in the top-left corner, so the
+   title row steps aside on its leading side instead. */
+:root[data-bw-status-block][data-bw-rail-edge="left"] .bw-event-detail .bw-ed-hero > div > :nth-child(2) {
+  padding-inline-start: max(0px, calc(var(--bw-display-head-x, 0px) - 16px));
 }
 /* The time tiles move up to the Display, under the title, tinted like the
    hero's chips. */
