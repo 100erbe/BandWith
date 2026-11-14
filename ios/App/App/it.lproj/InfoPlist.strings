@@ -1,0 +1,5 @@
+"CFBundleDisplayName" = "BandWith";
+"NSFaceIDUsageDescription" = "BandWith usa Face ID per sbloccare l'app e farti accedere in modo rapido e sicuro.";
+"NSBluetoothAlwaysUsageDescription" = "In modalità palco, BandWith usa il Bluetooth perché il telefono del leader tenga tutti sullo stesso brano quando non c'è internet.";
+"NSCameraUsageDescription" = "BandWith usa la fotocamera quando scatti una foto per il profilo, il logo della band o la firma.";
+"NSPhotoLibraryUsageDescription" = "BandWith usa le tue foto quando scegli un'immagine per il profilo, il logo della band o la firma.";
