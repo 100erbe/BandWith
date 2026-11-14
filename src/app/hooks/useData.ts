@@ -928,6 +928,8 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
     } | null;
     upcomingEvents: eventsService.Event[];
     recentQuotes: quotesService.Quote[];
+    /** Band the data belongs to (the band-agnostic fallback cache needs it). */
+    bandId?: string | null;
   }>({
     eventStats: null,
     quoteStats: null,
@@ -935,26 +937,36 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
     upcomingEvents: [],
     recentQuotes: [],
   });
+  // The band shown now: answers for a band the user switched away from are dropped.
+  const bandIdRef = useRef(bandId);
+  bandIdRef.current = bandId;
 
-  // Seed from cache immediately on mount
+  // Seed from cache immediately on mount and on a band switch
   useEffect(() => {
     let isMounted = true;
+    // Another band: nothing of the previous one (drafts, quote stats) stays on screen.
+    setData((prev) => (prev.bandId && bandId && prev.bandId !== bandId
+      ? { eventStats: null, quoteStats: null, memberStats: null, upcomingEvents: [], recentQuotes: [], bandId }
+      : prev));
     Promise.all([
       getOfflineItem<typeof data>(cacheKey),
       getOfflineItem<typeof data>(fallbackCacheKey),
     ]).then(([cached, fallbackCached]) => {
       if (!isMounted) return;
+      // The fallback is the last band fetched on this device: only for that
+      // band, or before the band is known (cold start).
+      const fallback = fallbackCached && (!bandId || fallbackCached.bandId === bandId) ? fallbackCached : null;
       const source = (cached && (cached.eventStats || cached.memberStats || cached.upcomingEvents?.length))
         ? cached
-        : fallbackCached;
+        : fallback;
       if (source && (source.eventStats || source.memberStats || source.upcomingEvents?.length)) {
-        setData(source);
+        setData({ ...source, bandId: bandId ?? source.bandId ?? null });
         hasLoadedOnce.current = true;
         setLoading(false);
       }
     }).catch(() => {});
     return () => { isMounted = false; };
-  }, [cacheKey, fallbackCacheKey]);
+  }, [cacheKey, fallbackCacheKey, bandId]);
 
   const fetchData = useCallback(async (isBackground = false) => {
     if (!isAuthenticated || (!bandId && !userId)) { setLoading(false); return; }
@@ -981,6 +993,7 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
       }
 
       const results = await Promise.all(promises);
+      if (bandIdRef.current !== bandId) return;
       const [eventStatsRes, quoteStatsRes, upcomingEventsRes, recentQuotesRes] = results;
       const memberStatsRes = userId ? results[4] : null;
 
@@ -993,7 +1006,12 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
       );
 
       setData(prev => {
+        // Parts that failed keep the previous value only if it is this band's.
+        if (prev.bandId && bandId && prev.bandId !== bandId) {
+          prev = { eventStats: null, quoteStats: null, memberStats: null, upcomingEvents: [], recentQuotes: [], bandId };
+        }
         const nextData = {
+          bandId: bandId ?? null,
           eventStats: (!eventStatsRes?.error && !eventStatsRes?.skipped && eventStatsRes?.data)
             ? eventStatsRes.data
             : prev.eventStats,
