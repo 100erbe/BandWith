@@ -15,9 +15,9 @@ const FEEDBACK = [
 ] as const;
 
 const ATTENDANCE = [
-  { id: '1', name: 'Gianluca', status: 'ok', time: '21:00' },
-  { id: '2', name: 'Centerbe', status: 'ok', time: '21:05' },
-  { id: '3', name: 'Marco', status: 'ok', time: '21:02' },
+  { id: '1', name: 'Leo', status: 'ok', time: '21:00' },
+  { id: '2', name: 'Noa', status: 'ok', time: '21:05' },
+  { id: '3', name: 'Ivo', status: 'ok', time: '21:02' },
   { id: '4', name: 'Luca', status: 'late', time: '21:20' },
 ];
 

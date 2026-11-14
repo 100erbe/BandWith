@@ -70,7 +70,7 @@ export function demoQuoteApi(state: string) {
       ],
     };
   }
-  if (state === 'accepted') v = { ...v, status: 'accepted', accepted_name: 'Anna Conti', accepted_at: ago(20) };
+  if (state === 'accepted') v = { ...v, status: 'accepted', accepted_name: 'Leo M.', accepted_at: ago(20) };
   if (state === 'declined') v = { ...v, status: 'declined', declined_at: ago(30), decline_reason: 'We chose another date.' };
   if (state === 'expired') v = { ...v, expired: true, quote: { ...v.quote, validUntil: day(-5) } };
 

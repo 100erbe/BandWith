@@ -299,11 +299,11 @@ export interface Quote {
 
 // Available band members for selection
 export const BAND_MEMBERS: QuoteMusician[] = [
-  { id: 'm1', name: 'Gianluca Boccia', instrument: 'Guitar / Vocals', isExternal: false, isAvailable: true },
-  { id: 'm2', name: 'Centerbe', instrument: 'Drums', isExternal: false, isAvailable: true },
-  { id: 'm3', name: 'Marco Rossi', instrument: 'Bass', isExternal: false, isAvailable: true },
-  { id: 'm4', name: 'Sara Bianchi', instrument: 'Keyboards', isExternal: false, isAvailable: false },
-  { id: 'm5', name: 'Andrea Verdi', instrument: 'Saxophone', isExternal: false, isAvailable: true },
+  { id: 'm1', name: 'Leo M.', instrument: 'Guitar / Vocals', isExternal: false, isAvailable: true },
+  { id: 'm2', name: 'Noa B.', instrument: 'Drums', isExternal: false, isAvailable: true },
+  { id: 'm3', name: 'Luca T.', instrument: 'Bass', isExternal: false, isAvailable: true },
+  { id: 'm4', name: 'Ivo M.', instrument: 'Keyboards', isExternal: false, isAvailable: false },
+  { id: 'm5', name: 'Mia S.', instrument: 'Saxophone', isExternal: false, isAvailable: true },
 ];
 
 // Music genres available
@@ -595,9 +595,9 @@ export const QUOTES_DATA: Quote[] = [
     bandId: 'band-1',
     quoteNumber: 'BW-2026-0042',
     status: 'SENT',
-    clientName: 'Mario Rossi',
-    clientEmail: 'mario.rossi@email.com',
-    clientPhone: '+39 333 1234567',
+    clientName: 'Client A',
+    clientEmail: 'client.a@example.com',
+    clientPhone: '+39 000 0000000',
     eventName: 'Wedding Reception',
     eventType: 'wedding',
     eventDate: '2026-03-15',
@@ -662,8 +662,8 @@ export const QUOTES_DATA: Quote[] = [
     bandId: 'band-1',
     quoteNumber: 'BW-2026-0038',
     status: 'DRAFT',
-    clientName: 'RedBull Events',
-    clientEmail: 'events@redbull.com',
+    clientName: 'Client B',
+    clientEmail: 'client.b@example.com',
     eventName: 'Summer Festival',
     eventType: 'festival',
     eventDate: '2026-07-20',
@@ -720,9 +720,9 @@ export const QUOTES_DATA: Quote[] = [
     bandId: 'band-1',
     quoteNumber: 'BW-2026-0035',
     status: 'ACCEPTED',
-    clientName: 'Generali Insurance',
-    clientEmail: 'events@generali.it',
-    clientCompany: 'Generali SpA',
+    clientName: 'Client C',
+    clientEmail: 'client.c@example.com',
+    clientCompany: 'Company C',
     eventName: 'Corporate Dinner Gala',
     eventType: 'corporate',
     eventDate: '2026-02-28',
