@@ -7,6 +7,8 @@ import { t } from '@/lib/i18n';
 export type NotificationTarget =
   | { screen: 'chat'; chatId: string }
   | { screen: 'event'; eventId?: string }
+  // A rehearsal poll to vote on (its sheet, like the inbox).
+  | { screen: 'poll'; pollId: string }
   // quoteId: the quote a client answered on its page (migration 099).
   | { screen: 'quotes'; quoteId?: string }
   | { screen: 'finance' }
@@ -49,7 +51,10 @@ export function notificationTarget(
   ) {
     return { screen: 'event', eventId };
   }
-  if (kind === 'rehearsal_poll' || kind === 'rehearsal_proposal') return { screen: 'event' };
+  if (kind === 'rehearsal_poll' || kind === 'rehearsal_proposal') {
+    const pollId = str(d.poll_id) || str(d.pollId);
+    return pollId ? { screen: 'poll', pollId } : { screen: 'event' };
+  }
   if (kind.startsWith('quote_')) {
     const quoteId = str(d.quote_id) || str(d.quoteId);
     return quoteId ? { screen: 'quotes', quoteId } : { screen: 'quotes' };
@@ -71,6 +76,8 @@ export function notificationTargetLabel(target: NotificationTarget): string {
       return t('Open chat');
     case 'event':
       return target.eventId ? t('Open event') : t('Open calendar');
+    case 'poll':
+      return t('Vote now');
     case 'quotes':
       return t('Open quotes');
     case 'finance':
@@ -94,8 +101,14 @@ export function notificationBandId(n: { band_id?: string | null; data?: Record<s
 /**
  * Opens the target. `bandId` is the band the notification belongs to: when it
  * isn't the active band, the app asks whether to switch first.
+ * `notificationId`: an inbox row that goes away once its screen is open
+ * (kept when the user cancels the band switch).
  */
-export function navigateToNotificationTarget(target: NotificationTarget | null, bandId?: string): void {
-  const detail = target ? { ...target, ...(bandId ? { bandId } : {}) } : { screen: 'home' };
+export function navigateToNotificationTarget(target: NotificationTarget | null, bandId?: string, notificationId?: string): void {
+  const detail = {
+    ...(target ?? { screen: 'home' }),
+    ...(target && bandId ? { bandId } : {}),
+    ...(notificationId ? { notificationId } : {}),
+  };
   window.dispatchEvent(new CustomEvent('push-navigate', { detail }));
 }

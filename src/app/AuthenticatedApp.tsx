@@ -458,7 +458,10 @@ export default function AuthenticatedApp() {
   const [rsvpNotification, setRsvpNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
   const [pollNotification, setPollNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
   const { notifications: realNotifications, loading: notificationsLoading, refetch: refetchNotifications, setNotifications: setRealNotifications } = useNotifications({
+    // The inbox: chat messages are not in it (the Chat tab has them), so 20
+    // means 20 inbox items however busy the band chat is.
     limit: 20,
+    excludeChat: true,
     onNewEventInvite: (notif) => {
       if (notif.data?.creator_id !== user?.id) {
         setUrgentNotification(notif);
@@ -551,7 +554,17 @@ export default function AuthenticatedApp() {
       setPollNotification(notif);
     }
   }, [realNotifications, refetchNotifications, setRealNotifications]);
-  const { chats: realChats, loading: chatsLoading, refetch: refetchChats } = useChats();
+  const { chats: realChats, loading: chatsLoading, error: chatsError, refetch: refetchChats } = useChats();
+  // Back from the background: realtime missed while suspended is not replayed,
+  // so the chat list, previews, tab badge and inbox are fetched again.
+  useEffect(() => {
+    if (!isNative) return;
+    const sub = App.addListener("resume", () => {
+      refetchChats?.();
+      refetchNotifications?.(true);
+    });
+    return () => { void sub.then((h) => h.remove()); };
+  }, [isNative, refetchChats, refetchNotifications]);
   const onlineUserIds = useOnlinePresence(user?.id);
 
   const [eventMembersMap, setEventMembersMap] = useState<Record<string, { name: string; userId: string; fee?: number; status?: string }[]>>({});
@@ -1099,14 +1112,18 @@ export default function AuthenticatedApp() {
   // Push navigation - deep link to the relevant screen
   const isAdminRef = useRef(isAdmin);
   isAdminRef.current = isAdmin;
+  // Set below, once removeNotifications exists.
+  const removeNotificationsRef = useRef<(ids: string[]) => void>(() => {});
   useEffect(() => {
     const handler = async (ev: globalThis.Event) => {
       const d = (ev as CustomEvent).detail;
+      // An inbox row goes once its screen is open; it stays when the user cancels.
+      const done = () => { if (d.notificationId) removeNotificationsRef.current([d.notificationId]); };
       // Another band's notification: band screens (quotes, finance, members)
       // show the active band, so they need the switch; events and chats can
       // also just be viewed from here.
       if (d.bandId && d.screen !== "invites" && d.screen !== "home") {
-        const viewable = d.screen === "event" || d.screen === "chat";
+        const viewable = d.screen === "event" || d.screen === "chat" || d.screen === "poll";
         const choice = await askBandForRef.current(
           d.bandId,
           viewable ? "act on it" : "open it",
@@ -1124,7 +1141,10 @@ export default function AuthenticatedApp() {
           setSelectedChat(known ? { ...known, unread: 0 } : { id: Date.now(), uuid: d.chatId, type: "direct", name: t("Chat"), initials: "CH", lastMessage: "", time: "now", unread: 0, status: "received" });
         }, 100);
       } else if (d.screen === "event" && d.eventId) {
-        navigateToEvent(d.eventId);
+        // After it: a deleted event is named from this notification.
+        await navigateToEvent(d.eventId);
+      } else if (d.screen === "poll" && d.pollId) {
+        setVotePollId(String(d.pollId));
       } else if (d.screen === "event") {
         setActiveTab("Events");
       } else if (d.screen === "quotes") {
@@ -1148,6 +1168,7 @@ export default function AuthenticatedApp() {
         setShowDeputyGigs(true);
         window.dispatchEvent(new CustomEvent("bw:refresh-deputy-gigs"));
       } else if (d.screen === "home") setActiveTab("Home");
+      done();
     };
     window.addEventListener("push-navigate", handler);
     return () => window.removeEventListener("push-navigate", handler);
@@ -1379,6 +1400,7 @@ export default function AuthenticatedApp() {
       refetchNotifications?.();
     });
   }, [refetchNotifications]);
+  removeNotificationsRef.current = removeNotifications;
 
   const handleOpenNotifications = useCallback(() => {
     const seen = new Set<string>();
@@ -4127,8 +4149,8 @@ export default function AuthenticatedApp() {
             onNavigate={(notif) => {
               setSelectedNotification(null);
               setSelectedNotifications([]); setInboxOpen(false);
-              removeNotifications([notif.id]);
-              navigateToNotificationTarget(notificationTarget(notif.type, notif.data), notificationBandId(notif));
+              // Removed once its screen is open (not if the band switch is cancelled).
+              navigateToNotificationTarget(notificationTarget(notif.type, notif.data), notificationBandId(notif), notif.id);
             }}
             onClearAll={() => {
               const ids = [selectedNotification?.id, ...selectedNotifications.map((n) => n.id)].filter(Boolean) as string[];

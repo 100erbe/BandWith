@@ -760,6 +760,8 @@ export const useSetlist = (setlistId: string | null) => {
 export const useNotifications = (options?: {
   unreadOnly?: boolean;
   limit?: number;
+  /** Inbox only: chat rows stay out of the list (and of realtime inserts). */
+  excludeChat?: boolean;
   onNewEventInvite?: (notification: notificationsService.Notification) => void;
   onNewRehearsalPoll?: (notification: notificationsService.Notification) => void;
 }) => {
@@ -772,6 +774,8 @@ export const useNotifications = (options?: {
   onNewEventInviteRef.current = options?.onNewEventInvite;
   const onNewRehearsalPollRef = useRef(options?.onNewRehearsalPoll);
   onNewRehearsalPollRef.current = options?.onNewRehearsalPoll;
+  const excludeChatRef = useRef(options?.excludeChat);
+  excludeChatRef.current = options?.excludeChat;
 
   const fetchNotifications = useCallback(async (isBackground = false) => {
     if (!isAuthenticated) { setLoading(false); return; }
@@ -801,6 +805,7 @@ export const useNotifications = (options?: {
       // On INSERT - add new notification
       (notification) => {
         console.log('[useNotifications] Realtime INSERT:', notification.title);
+        if (excludeChatRef.current && notificationsService.isChatNotificationType(notification.type)) return;
         setNotifications(prev => {
           if (prev.some(n => n.id === notification.id)) return prev;
           const eventId = notification.data?.event_id;
