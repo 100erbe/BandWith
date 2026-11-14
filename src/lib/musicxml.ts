@@ -24,9 +24,32 @@ const u32 = (b: Uint8Array, o: number) => (b[o] | (b[o + 1] << 8) | (b[o + 2] <<
 
 const isZip = (b: Uint8Array) => b.length > 4 && b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04;
 
-const inflateRaw = async (data: Uint8Array): Promise<Uint8Array> => {
+/**
+ * Inflates one entry, stopping as soon as it passes `limit` bytes: a small
+ * zip that expands hugely (broken or hostile) never fills the memory.
+ */
+const inflateRaw = async (data: Uint8Array, limit: number): Promise<Uint8Array> => {
   const stream = new Response(data as BlobPart).body!.pipeThrough(new DecompressionStream('deflate-raw'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.length;
+    if (size > limit) {
+      void reader.cancel().catch(() => {});
+      throw new Error('too-large');
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(size);
+  let o = 0;
+  for (const c of chunks) {
+    out.set(c, o);
+    o += c.length;
+  }
+  return out;
 };
 
 /** The files of a zip archive, by name (stored or deflated entries). */
@@ -49,14 +72,17 @@ export async function unzip(buf: Uint8Array): Promise<Map<string, Uint8Array>> {
     if (u32(buf, p) !== 0x02014b50) throw new Error('not-musicxml');
     const method = u16(buf, p + 10);
     const size = u32(buf, p + 20);
+    const declared = u32(buf, p + 24);
     const nameLen = u16(buf, p + 28);
     const name = dec.decode(buf.subarray(p + 46, p + 46 + nameLen));
     const local = u32(buf, p + 42);
     p += 46 + nameLen + u16(buf, p + 30) + u16(buf, p + 32);
     if (name.endsWith('/')) continue;
+    // Checked before inflating (the declared size), and again while inflating.
+    if (total + declared > MAX_BYTES) throw new Error('too-large');
     const start = local + 30 + u16(buf, local + 26) + u16(buf, local + 28);
     const data = buf.subarray(start, start + size);
-    const file = method === 0 ? data : method === 8 ? await inflateRaw(data) : null;
+    const file = method === 0 ? data : method === 8 ? await inflateRaw(data, MAX_BYTES - total) : null;
     if (!file) continue;
     total += file.length;
     if (total > MAX_BYTES) throw new Error('too-large');

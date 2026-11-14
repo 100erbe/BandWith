@@ -9,9 +9,16 @@
  */
 import { Capacitor } from '@capacitor/core';
 import type { SongChart } from './ireal';
-import { readMusicXml } from './musicxml';
+import { parseMusicXmlSong, readMusicXml } from './musicxml';
 
 let received: SongChart | null = null;
+/**
+ * Why the last file opened with the app gave no chart, so the app can say so
+ * instead of doing nothing: 'lyrics-only' (a score with lyrics but no chord
+ * symbols), 'no-chords' (neither), 'unreadable' (not MusicXML, too large…).
+ */
+export type ReceivedFileProblem = 'lyrics-only' | 'no-chords' | 'unreadable';
+let problem: ReceivedFileProblem | null = null;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((fn) => fn());
 
@@ -30,8 +37,27 @@ export const takeReceivedChart = (): SongChart | null => {
 
 export const setReceivedChart = (c: SongChart | null) => {
   received = c;
+  if (c) problem = null;
   emit();
 };
+
+export const receivedFileProblem = () => problem;
+
+export const setReceivedFileProblem = (p: ReceivedFileProblem | null) => {
+  problem = p;
+  emit();
+};
+
+/** Why a score gave no chart (see ReceivedFileProblem). */
+export async function fileProblem(bytes: Uint8Array, fileName: string | undefined, error: unknown): Promise<ReceivedFileProblem> {
+  if ((error as Error)?.message !== 'no-chords') return 'unreadable';
+  try {
+    const { lyrics } = await parseMusicXmlSong(bytes, fileName || 'score.musicxml', { verse: 'Verse' });
+    return lyrics ? 'lyrics-only' : 'no-chords';
+  } catch {
+    return 'no-chords';
+  }
+}
 
 export const onReceivedChart = (fn: () => void) => {
   listeners.add(fn);
@@ -61,18 +87,21 @@ const fileNameOf = (url: string) => {
 
 /**
  * Reads a file the OS opened with the app. Resolves the chart, or null when
- * the file is not a MusicXML score with chords (it is then ignored).
+ * the file is not a MusicXML score with chords (the reason is then kept for
+ * ReceivedChartSheet to show, see receivedFileProblem).
  */
 export async function receiveChartFile(url: string): Promise<SongChart | null> {
   if (!Capacitor.isNativePlatform() || !isOpenedFileUrl(url)) return null;
+  let bytes: Uint8Array | null = null;
   try {
     const { Filesystem } = await import('@capacitor/filesystem');
     const { data } = await Filesystem.readFile({ path: url });
-    const bytes = typeof data === 'string' ? base64ToBytes(data) : new Uint8Array(await data.arrayBuffer());
+    bytes = typeof data === 'string' ? base64ToBytes(data) : new Uint8Array(await data.arrayBuffer());
     const chart = await readMusicXml(bytes, fileNameOf(url));
     setReceivedChart(chart);
     return chart;
-  } catch {
+  } catch (e) {
+    setReceivedFileProblem(bytes ? await fileProblem(bytes, fileNameOf(url), e) : 'unreadable');
     return null;
   }
 }

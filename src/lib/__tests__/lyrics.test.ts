@@ -25,6 +25,13 @@ describe('lyrics', () => {
     expect(parseLyrics('[Bridge]\nla')).toEqual([{ name: 'Bridge', lines: ['la'] }]);
   });
 
+  it('keeps section names as text whatever the JSON holds', () => {
+    const s = parseLyrics('[{"name":{"en":"Verse"},"lines":["La la"]},{"title":2,"lines":["Oh"]},{"section":["x"],"text":"Hey"}]');
+    expect(s.map((x) => x.name)).toEqual([null, '2', null]);
+    expect(s.every((x) => x.name === null || typeof x.name === 'string')).toBe(true);
+    expect(s[0].lines).toEqual(['La la']);
+  });
+
   it('splits bold and italic without HTML', () => {
     expect(parseInline('a **b** *c* <i>d</i>')).toEqual([
       { text: 'a ' },

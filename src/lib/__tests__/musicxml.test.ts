@@ -71,6 +71,30 @@ const zip = (files: Record<string, string>) => {
   ]);
 };
 
+/** One-entry zip with raw `data` (method 8 = deflated) and the uncompressed size it claims. */
+const zipEntry = (name: string, data: Uint8Array, method: number, declared: number) => {
+  const le = (n: number, len: number) => Array.from({ length: len }, (_, i) => (n >>> (8 * i)) & 0xff);
+  const nameB = Array.from(enc.encode(name));
+  const local = [...le(0x04034b50, 4), ...le(20, 2), ...le(0, 2), ...le(method, 2), ...le(0, 4), ...le(0, 4)];
+  local.push(...le(data.length, 4), ...le(declared, 4), ...le(nameB.length, 2), ...le(0, 2), ...nameB);
+  const central = [...le(0x02014b50, 4), ...le(20, 2), ...le(20, 2), ...le(0, 2), ...le(method, 2), ...le(0, 4), ...le(0, 4)];
+  central.push(...le(data.length, 4), ...le(declared, 4), ...le(nameB.length, 2), ...le(0, 2), ...le(0, 2));
+  central.push(...le(0, 2), ...le(0, 2), ...le(0, 4), ...le(0, 4), ...nameB);
+  const head = new Uint8Array(local);
+  const tail = new Uint8Array([
+    ...central,
+    ...le(0x06054b50, 4), ...le(0, 2), ...le(0, 2), ...le(1, 2), ...le(1, 2), ...le(central.length, 4), ...le(head.length + data.length, 4), ...le(0, 2),
+  ]);
+  const out = new Uint8Array(head.length + data.length + tail.length);
+  out.set(head);
+  out.set(data, head.length);
+  out.set(tail, head.length + data.length);
+  return out;
+};
+
+const deflate = async (bytes: Uint8Array) =>
+  new Uint8Array(await new Response(new Response(bytes as BlobPart).body!.pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+
 describe('musicxml', () => {
   it('reads chords, form and details, never lyrics', () => {
     const chart = parseMusicXml(SCORE, 'test.musicxml');
@@ -110,6 +134,18 @@ describe('musicxml', () => {
     const chart = await readMusicXml(mxl, 'tune.mxl');
     expect(chart.title).toBe('Test Tune');
     expect(chart.file).toBe('tune.mxl');
+  });
+
+  it('refuses an .mxl that expands past the cap before filling the memory', async () => {
+    // Claims 30 MB: refused without inflating.
+    await expect(unzip(zipEntry('score.xml', enc.encode('<x/>'), 0, 30 * 1024 * 1024))).rejects.toThrow('too-large');
+    // Lies about its size (claims 100 bytes) and inflates to 21 MB: stopped while inflating.
+    const bomb = await deflate(new Uint8Array(21 * 1024 * 1024));
+    expect(bomb.length).toBeLessThan(100_000);
+    await expect(unzip(zipEntry('score.xml', bomb, 8, 100))).rejects.toThrow('too-large');
+    // A small deflated score still opens.
+    const small = await deflate(enc.encode('<score-partwise/>'));
+    expect(new TextDecoder().decode((await unzip(zipEntry('score.xml', small, 8, 17))).get('score.xml'))).toBe('<score-partwise/>');
   });
 
   it('reads plain bytes as XML', async () => {

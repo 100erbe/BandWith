@@ -13,7 +13,9 @@ import Capacitor
 /// only thing passed back. Pages outside irealpro.com open in Safari.
 ///
 /// JS (src/lib/irealForum.ts): `IrealForum.open({ url })` resolves
-/// `{ link: string | null }` (null when the user closes the forum).
+/// `{ link: string | null }` (null when the user closes the forum) and
+/// rejects when the forum can't be loaded (offline), so the app shows its own
+/// translated message instead of a blank sheet.
 @objc(IrealForumPlugin)
 public class IrealForumPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "IrealForumPlugin"
@@ -34,8 +36,12 @@ public class IrealForumPlugin: CAPPlugin, CAPBridgedPlugin {
                 call.resolve(["link": NSNull()])
                 return
             }
-            let vc = IrealForumViewController(url: url, title: call.getString("title")) { link in
-                call.resolve(["link": link ?? NSNull()])
+            let vc = IrealForumViewController(url: url, title: call.getString("title")) { link, failed in
+                if failed {
+                    call.reject("The forum could not be loaded")
+                } else {
+                    call.resolve(["link": link ?? NSNull()])
+                }
             }
             let nav = UINavigationController(rootViewController: vc)
             nav.modalPresentationStyle = .pageSheet
@@ -48,7 +54,7 @@ public class IrealForumPlugin: CAPPlugin, CAPBridgedPlugin {
 
 final class IrealForumViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, UIAdaptivePresentationControllerDelegate {
     private let startURL: URL
-    private let onFinish: (String?) -> Void
+    private let onFinish: (String?, Bool) -> Void
     private var finished = false
     private let webView: WKWebView = {
         let config = WKWebViewConfiguration()
@@ -60,7 +66,7 @@ final class IrealForumViewController: UIViewController, WKNavigationDelegate, WK
     private var observation: NSKeyValueObservation?
     private var backItem: UIBarButtonItem?
 
-    init(url: URL, title: String?, onFinish: @escaping (String?) -> Void) {
+    init(url: URL, title: String?, onFinish: @escaping (String?, Bool) -> Void) {
         startURL = url
         self.onFinish = onFinish
         super.init(nibName: nil, bundle: nil)
@@ -114,12 +120,24 @@ final class IrealForumViewController: UIViewController, WKNavigationDelegate, WK
         webView.load(URLRequest(url: startURL))
     }
 
-    private func finish(_ link: String?) {
+    private func finish(_ link: String?, failed: Bool = false) {
         guard !finished else { return }
         finished = true
         webView.stopLoading()
-        onFinish(link)
+        onFinish(link, failed)
         dismiss(animated: true)
+    }
+
+    /// A page that can't load (no internet): close with an error. Cancelled
+    /// loads (a tapped iReal link, a new tap before the page finished) aren't failures.
+    private func failed(_ error: Error) {
+        let ns = error as NSError
+        guard ns.domain == NSURLErrorDomain, ns.code != NSURLErrorCancelled else { return }
+        finish(nil, failed: true)
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        failed(error)
     }
 
     // A tap on an iReal link: hand it to the app, not to iReal Pro.
@@ -152,6 +170,6 @@ final class IrealForumViewController: UIViewController, WKNavigationDelegate, WK
     func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
         guard !finished else { return }
         finished = true
-        onFinish(nil)
+        onFinish(nil, false)
     }
 }

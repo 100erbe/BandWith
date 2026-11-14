@@ -239,11 +239,44 @@ export interface IrealPlaylist {
   songs: SongChart[];
 }
 
+/**
+ * Older irealbook:// links: "Title=Composer=Style=Key=n=Music" per song (six
+ * fields, music not scrambled), songs one after the other.
+ */
+function parseIrealbookBody(body: string): IrealPlaylist {
+  const songs: SongChart[] = [];
+  const parts = body.includes('===') ? body.split('===').filter((p) => p.length > 0) : [body];
+  for (const part of parts) {
+    const f = part.split('=');
+    for (let i = 0; i + 5 < f.length; i += 6) {
+      const title = (f[i] || '').trim();
+      const raw = f[i + 5] || '';
+      if (!title || !raw) continue;
+      const { sections, time } = parseMusic(raw);
+      if (!sections.length) continue;
+      songs.push({
+        v: 1,
+        source: 'ireal',
+        title,
+        composer: f[i + 1]?.trim() || undefined,
+        style: f[i + 2]?.trim() || undefined,
+        key: f[i + 3]?.trim() || undefined,
+        time,
+        sections,
+        link: `irealbook://${encodeURIComponent(f.slice(i, i + 6).join('='))}`,
+      });
+    }
+  }
+  if (!songs.length) throw new Error('empty');
+  return { name: null, songs };
+}
+
 /** irealb:// link (one song or a whole playlist) → charts. Throws on anything else. */
 export function parseIrealLink(input: string): IrealPlaylist {
   const link = findIrealLink(input);
   if (!link) throw new Error('not-ireal');
-  const body = decode(link.replace(/^irealb(?:ook)?:\/\//i, ''));
+  if (/^irealbook:\/\//i.test(link)) return parseIrealbookBody(decode(link.replace(/^irealbook:\/\//i, '')));
+  const body = decode(link.replace(/^irealb:\/\//i, ''));
   const parts = body.split('===').filter((p) => p.length > 0);
   let name: string | null = null;
   if (parts.length > 1 && !parts[parts.length - 1].includes('=')) name = parts.pop()!.trim() || null;

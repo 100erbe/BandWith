@@ -3,7 +3,7 @@ import { Check, FileMusic, Loader2, Search, X } from '@/app/components/icons';
 import { BwSheet, PillButton, PillField } from '@/app/components/bw';
 import { chartSource, chartSummary } from '@/app/components/ui/ChordChart';
 import { chartBarCount, type SongChart } from '@/lib/ireal';
-import { onReceivedChart, peekReceivedChart, takeReceivedChart } from '@/lib/chartInbox';
+import { onReceivedChart, peekReceivedChart, receivedFileProblem, setReceivedFileProblem, takeReceivedChart } from '@/lib/chartInbox';
 import { getSongs, updateSong, type Song } from '@/lib/services/songs';
 import { useBand } from '@/lib/BandContext';
 import { openLyrics } from '@/lib/lyrics';
@@ -34,9 +34,19 @@ export const ReceivedChartSheet: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
   const [done, setDone] = React.useState<{ song: Song; chart: SongChart } | null>(null);
 
-  React.useEffect(() => onReceivedChart(() => setChart(peekReceivedChart())), []);
+  // A file opened with the app that gave no chart: say why instead of nothing.
+  const [problem, setProblem] = React.useState(() => receivedFileProblem());
+  React.useEffect(
+    () =>
+      onReceivedChart(() => {
+        setChart(peekReceivedChart());
+        setProblem(receivedFileProblem());
+      }),
+    [],
+  );
 
   const open = !!selectedBand && (!!chart || !!done);
+
 
   React.useEffect(() => {
     if (!open || !selectedBand || songs) return;
@@ -87,6 +97,26 @@ export const ReceivedChartSheet: React.FC = () => {
     // Typed title found nothing: show the whole list rather than nothing.
     return hits.length || !q ? hits : list;
   }, [songs, search]);
+
+  if (problem && !chart && !done) {
+    const dismiss = () => setReceivedFileProblem(null);
+    return (
+      <BwSheet open onClose={dismiss} overline={t('Received file')} title={t('No chord chart in this file')} zIndex={130} portal>
+        <div className="flex flex-col gap-4 pb-2">
+          <p className="bw-body-md text-sheet-foreground/85">
+            {problem === 'lyrics-only'
+              ? t('This score has lyrics but no chord symbols. To use its lyrics, open a song’s Edit › Paste or import lyrics › From file.')
+              : problem === 'no-chords'
+                ? t('This file has no chords or lyrics.')
+                : t('This file couldn’t be read. Open a MusicXML score (.musicxml, .mxl or .xml).')}
+          </p>
+          <PillButton variant="white" size="md" fullWidth={false} onClick={dismiss}>
+            {t('OK')}
+          </PillButton>
+        </div>
+      </BwSheet>
+    );
+  }
 
   if (!open) return null;
 
