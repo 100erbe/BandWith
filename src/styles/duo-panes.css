@@ -139,6 +139,11 @@
   width: var(--bw-pane-leading-w) !important;
   padding-right: 0 !important;
 }
+/* The leading page starts under the rail when the system column is on the
+   left (Duo open, turned the other way): keep the moved page clear of it. */
+[data-bw-two-pane][data-bw-rail-edge="left"]:not([data-bw-wide]) body:has(.bw-picker[data-state="open"]) .bw-pane-detail {
+  padding-left: var(--bw-rail-w) !important;
+}
 
 /* ── Offline (Figma "Open · Home / Admin | State / Offline + toast") ─────
    Offline is shown once, in the trailing page; cached data stays readable on
