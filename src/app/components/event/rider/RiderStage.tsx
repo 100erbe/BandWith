@@ -9,8 +9,9 @@ import { useT } from '@/lib/i18n';
 import { springs } from '@/styles/motion';
 import { duplicatePlot, newId, stageSize, type StageData, type StagePlot } from '@/lib/stagePlot';
 import { CardHead, InputListTable, PlotTabs, RiderStatusCard, VenueAgreedTag, WhoBringsWhat, shortDate } from './RiderParts';
-import { StagePlotView } from './StagePlotView';
+import { StagePlotView, plotRatio } from './StagePlotView';
 import { InputListEditor } from './InputListEditor';
+import { FoldSplit, useLaptopPose } from '@/app/components/duo/FoldSplit';
 import type { EventStageState } from './useEventStage';
 
 type T = ReturnType<typeof useT>;
@@ -53,7 +54,14 @@ function useWidth<E extends HTMLElement>(): [React.RefObject<E | null>, number] 
  * iPhone Duo) and the iPad "Rider & stage" tab. Wide containers lay the cards
  * out in columns (Figma "iPad · 03 Event detail / Gig – Rider & stage").
  */
-export const RiderStageContent: React.FC<RiderStageProps & { layout: 'stack' | 'board' }> = ({
+/** Laptop pose: the screen's header and its back / share row, placed on the Display and the Deck. */
+interface FoldParts {
+  zIndex: number;
+  head: React.ReactNode;
+  controls: React.ReactNode;
+}
+
+export const RiderStageContent: React.FC<RiderStageProps & { layout: 'stack' | 'board'; fold?: FoldParts }> = ({
   state,
   isAdmin,
   eventTitle,
@@ -61,6 +69,7 @@ export const RiderStageContent: React.FC<RiderStageProps & { layout: 'stack' | '
   canEditPlot,
   layout,
   draft,
+  fold,
 }) => {
   const t = useT();
   const { stage, rider, isSuggestion } = state;
@@ -238,7 +247,14 @@ export const RiderStageContent: React.FC<RiderStageProps & { layout: 'stack' | '
           }
         />
       ) : plot ? (
-        <StagePlotView plot={plot} size={layout === 'board' && cols === 1 ? 'sm' : 'md'} />
+        layout === 'stack' ? (
+          // Short screens (Duo closed in landscape): the whole plot stays in view.
+          <div className="w-full mx-auto" style={{ maxWidth: `max(260px, calc((100dvh - 150px) * ${plotRatio(plot)}))` }}>
+            <StagePlotView plot={plot} size="md" />
+          </div>
+        ) : (
+          <StagePlotView plot={plot} size={cols === 1 ? 'sm' : 'md'} />
+        )
       ) : (
         <p className="bw-body-sm text-muted-foreground py-4">{t('No stage plot yet.')}</p>
       )}
@@ -388,15 +404,14 @@ export const RiderStageContent: React.FC<RiderStageProps & { layout: 'stack' | '
     );
   }
 
-  return (
-    <div ref={ref} className="flex flex-col gap-6">
-      {riderCard}
-      {feedback}
-      {suggestionNote}
-      <section className="flex flex-col gap-4">
-        <h2 className="bw-h1">{t('STAGE PLOT')}</h2>
-        {plotCard}
-      </section>
+  const plotSection = (
+    <section className="flex flex-col gap-4">
+      <h2 className="bw-h1">{t('STAGE PLOT')}</h2>
+      {plotCard}
+    </section>
+  );
+  const rest = (
+    <>
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="bw-h1">{t('INPUT LIST')}</h2>
@@ -433,6 +448,49 @@ export const RiderStageContent: React.FC<RiderStageProps & { layout: 'stack' | '
       </div>
       )}
       {editors}
+    </>
+  );
+
+  // iPhone Duo in Laptop pose: the plot stands on the upright Display, the
+  // rider, lists and every control lie on the Deck (Figma "Duo · 11 Laptop pose").
+  if (fold) {
+    return (
+      <FoldSplit
+        zIndex={fold.zIndex}
+        displayLabel={t('Stage plot')}
+        deckLabel={t('Rider & stage')}
+        display={
+          <div ref={ref} className="bw-fold-pad flex flex-col gap-3 pt-3 pb-4">
+            {fold.head}
+            {/* The whole plot fits the Display's height: the box is as wide as its ratio allows. */}
+            <div
+              className="w-full mx-auto"
+              style={{ maxWidth: `max(280px, calc((var(--bw-display-h, 454px) - 190px) * ${plot ? plotRatio(plot) : 1.6}))` }}
+            >
+              {plotCard}
+            </div>
+          </div>
+        }
+        deck={
+          <div className="flex flex-col gap-6 px-4 pt-3" style={{ paddingBottom: 'var(--content-bottom-clearance, 96px)' }}>
+            {fold.controls}
+            {riderCard}
+            {feedback}
+            {suggestionNote}
+            {rest}
+          </div>
+        }
+      />
+    );
+  }
+
+  return (
+    <div ref={ref} className="flex flex-col gap-6">
+      {riderCard}
+      {feedback}
+      {suggestionNote}
+      {plotSection}
+      {rest}
     </div>
   );
 };
@@ -616,6 +674,7 @@ export const RiderStageScreen: React.FC<RiderStageProps & { onClose: () => void;
   const t = useT();
   const { state, isAdmin, eventTitle } = props;
   const [busy, setBusy] = useState(false);
+  const laptop = useLaptopPose();
   const share = async () => {
     setBusy(true);
     try {
@@ -625,6 +684,30 @@ export const RiderStageScreen: React.FC<RiderStageProps & { onClose: () => void;
       setBusy(false);
     }
   };
+  const controls = (
+    <div className="flex items-center justify-between h-11 -mt-1 empty:hidden">
+      <NavBackButton pane size="sm" onClick={onClose} />
+      <IconButton
+        label={isAdmin && state.rider ? t('Share rider link') : t('Share rider PDF')}
+        icon={<Share2 />}
+        size="sm"
+        variant="outline"
+        className="ml-auto"
+        disabled={busy}
+        onClick={share}
+      />
+    </div>
+  );
+  const head = (
+    <div className="flex flex-col gap-2">
+      <span className="bw-label-sm text-muted-foreground truncate">
+        {[eventTitle.toUpperCase(), dateLabel].filter(Boolean).join(' · ')}
+      </span>
+      {/* The Display is half the height: a smaller title leaves room for the plot. */}
+      <h1 className={laptop ? 'bw-h1' : 'bw-display-lg'}>{t('RIDER & STAGE')}</h1>
+    </div>
+  );
+  if (laptop) return <RiderStageContent {...props} layout="stack" fold={{ zIndex, head, controls }} />;
   return (
     <motion.div
       initial={{ opacity: 0, x: 32 }}
@@ -643,24 +726,8 @@ export const RiderStageScreen: React.FC<RiderStageProps & { onClose: () => void;
           className="max-w-[640px] mx-auto w-full px-4 flex flex-col gap-6"
           style={{ paddingTop: 'calc(max(var(--safe-top), 44px) + 4px)', paddingBottom: 'calc(var(--safe-bottom) + 48px)' }}
         >
-          <div className="flex items-center justify-between h-11 -mt-1 empty:hidden">
-            <NavBackButton pane size="sm" onClick={onClose} />
-            <IconButton
-              label={isAdmin && state.rider ? t('Share rider link') : t('Share rider PDF')}
-              icon={<Share2 />}
-              size="sm"
-              variant="outline"
-              className="ml-auto"
-              disabled={busy}
-              onClick={share}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <span className="bw-label-sm text-muted-foreground truncate">
-              {[eventTitle.toUpperCase(), dateLabel].filter(Boolean).join(' · ')}
-            </span>
-            <h1 className="bw-display-lg">{t('RIDER & STAGE')}</h1>
-          </div>
+          {controls}
+          {head}
           <RiderStageContent {...props} layout="stack" />
         </div>
       </div>

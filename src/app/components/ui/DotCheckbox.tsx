@@ -7,6 +7,8 @@ interface DotCheckboxProps {
   disabled?: boolean;
   activeColor?: string;
   inactiveColor?: string;
+  /** Colour of the tick on a checked box; set it when activeColor is not the wizard accent. */
+  checkColor?: string;
   className?: string;
   onClick?: () => void;
 }
@@ -16,6 +18,7 @@ export const DotCheckbox: React.FC<DotCheckboxProps> = ({
   disabled = false,
   activeColor = 'var(--wizard-accent, var(--fg))',
   inactiveColor,
+  checkColor,
   className,
   onClick,
 }) => {
@@ -26,7 +29,7 @@ export const DotCheckbox: React.FC<DotCheckboxProps> = ({
   const fg = disabled
     ? 'rgba(0,0,0,0.2)'
     : checked
-      ? 'var(--wizard-accent-fg, var(--surface-inverse-fg))'
+      ? checkColor ?? 'var(--wizard-accent-fg, var(--surface-inverse-fg))'
       : 'transparent';
 
   const boxClasses = cn(

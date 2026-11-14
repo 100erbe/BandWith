@@ -5,6 +5,11 @@ import { haptic } from '@/lib/haptics';
 import { useT } from '@/lib/i18n';
 import { moveItem, newId, stageSize, type PlotItem, type PlotItemKind, type StagePlot } from '@/lib/stagePlot';
 
+/** Width / depth of the drawn stage: wider stages draw wider, never too flat or too tall. */
+export function plotRatio(plot: StagePlot): number {
+  return plot.widthM && plot.depthM ? Math.min(2.1, Math.max(1.3, plot.widthM / plot.depthM)) : 1.6;
+}
+
 /**
  * Stage plot (Figma "iPad · 03 Rider & stage", "Phone · Next"): a dashed
  * stage seen from above, players as circles with their code, wedges, side
@@ -26,8 +31,7 @@ export const StagePlotView: React.FC<{
   const drag = useRef<{ id: string; moved: boolean } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const size2 = stageSize(plot);
-  // Wider stages draw wider; the box never gets too flat or too tall.
-  const ratio = plot.widthM && plot.depthM ? Math.min(2.1, Math.max(1.3, plot.widthM / plot.depthM)) : 1.6;
+  const ratio = plotRatio(plot);
 
   const placeFromEvent = (e: React.PointerEvent) => {
     const r = box.current?.getBoundingClientRect();

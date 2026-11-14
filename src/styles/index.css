@@ -175,6 +175,15 @@
 [data-bw-rail-host][data-bw-rail-edge="left"][data-bw-two-pane] .bw-rail-sheet {
   left: var(--bw-pane-trailing-x) !important;
 }
+/* Pushed full-screen pages built as rail sheets (Rider & stage) stop at the
+   rail like bottom sheets, so the page below showed through the rail column
+   (the gig's lime hero on the closed Duo). Paint their own background there. */
+[data-bw-rail-host]:not([data-bw-two-pane]) .bw-rail-sheet.bw-rider-stage {
+  box-shadow: var(--bw-rail-w) 0 0 0 var(--color-background);
+}
+[data-bw-rail-host][data-bw-rail-edge="left"]:not([data-bw-two-pane]) .bw-rail-sheet.bw-rider-stage {
+  box-shadow: calc(var(--bw-rail-w) * -1) 0 0 0 var(--color-background);
+}
 [data-bw-rail-host][data-bw-status-edge="left"] header,
 [data-bw-rail-host][data-bw-status-edge="left"] .bw-status-clear {
   padding-inline-start: 1rem;
