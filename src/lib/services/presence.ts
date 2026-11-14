@@ -41,6 +41,8 @@ function track(channel: RealtimeChannel, userId: string) {
 }
 
 function openChannel(bandId: string, userId: string) {
+  // One channel per band: supabase.channel() would hand back the joined one.
+  if (channels.has(bandId)) return;
   const channel = supabase.channel(`presence:band:${bandId}`, {
     config: { private: true, presence: { key: userId } },
   });
@@ -158,6 +160,20 @@ export function initPresence(userId: string) {
     } catch (err) {
       console.warn('[Presence] Realtime presence unavailable:', err);
     }
+  });
+}
+
+/**
+ * The user joined a band mid-session: open its channel so its members show
+ * online (and see us) without waiting for a resume or a restart.
+ */
+export function refreshPresenceBands() {
+  const userId = activeUserId;
+  if (!userId) return;
+  const gen = generation;
+  void myBandIds(userId).then((bandIds) => {
+    if (gen !== generation || activeUserId !== userId) return;
+    bandIds.forEach((id) => openChannel(id, userId));
   });
 }
 

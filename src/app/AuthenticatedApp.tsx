@@ -63,7 +63,7 @@ import { ChatType, ChatFilterType, ChatItem } from "@/app/data/chats";
 import { NotificationItem } from "@/app/data/notifications";
 import type { Band } from "@/app/data/bands";
 import type { BandWithMembers } from "@/lib/services/bands";
-import { useOnlinePresence } from "@/lib/services/presence";
+import { useOnlinePresence, refreshPresenceBands } from "@/lib/services/presence";
 
 import { TabName, ExpandedCardType, CreateEventType, RehearsalViewMode } from "@/app/types";
 
@@ -567,6 +567,9 @@ export default function AuthenticatedApp() {
     return () => { void sub.then((h) => h.remove()); };
   }, [isNative, refetchChats, refetchNotifications]);
   const onlineUserIds = useOnlinePresence(user?.id);
+  // A band joined mid-session gets its presence channel now.
+  const presenceBandsKey = [...allMyBandIds].sort().join(',');
+  useEffect(() => { refreshPresenceBands(); }, [presenceBandsKey]);
 
   const [eventMembersMap, setEventMembersMap] = useState<Record<string, { name: string; userId: string; fee?: number; status?: string }[]>>({});
   const [membersRefreshKey, setMembersRefreshKey] = useState(0);
