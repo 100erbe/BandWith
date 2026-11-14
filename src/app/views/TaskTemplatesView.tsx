@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus,
@@ -468,6 +469,8 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
       </BwSheet>
 
       {/* Create template — full screen */}
+      {/* On <body>, not inside the list-column hub, which clips fixed layers. */}
+      {createPortal(
       <AnimatePresence>
         {showCreateModal && (
           <motion.div
@@ -581,7 +584,9 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body,
+      )}
 
       <UseTemplateSheet
         open={!!usingTemplate}

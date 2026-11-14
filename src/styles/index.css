@@ -597,3 +597,21 @@
 /* Minimal toasts centre on the content area, whichever side the rail is on. */
 :root { --bw-toast-center: calc((100vw - var(--bw-rail-w, 0px)) / 2); }
 [data-bw-rail-edge="left"] { --bw-toast-center: calc(var(--bw-rail-w, 0px) + (100vw - var(--bw-rail-w, 0px)) / 2); }
+
+/* Keyboard up on a short screen (iPhone Duo closed in landscape: ~236 px
+   left): a full-screen form with a pinned header and footer left only a
+   sliver for its fields, so the focused field could sit out of view. There
+   the whole layer scrolls as one, header and footer included. */
+@media (max-height: 360px) {
+  html[data-keyboard="open"] .bw-pane-detail.flex-col:has(> .flex-1.overflow-y-auto) {
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+  html[data-keyboard="open"] .bw-pane-detail.flex-col:has(> .flex-1.overflow-y-auto) > * {
+    flex-shrink: 0 !important;
+  }
+  html[data-keyboard="open"] .bw-pane-detail.flex-col > .flex-1.overflow-y-auto {
+    flex: none !important;
+    overflow: visible !important;
+  }
+}

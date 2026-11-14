@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus,
@@ -766,6 +767,8 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId, pr
       </div>
 
       {/* Create document — full screen */}
+      {/* On <body>, not inside the list-column hub, which clips fixed layers. */}
+      {createPortal(
       <AnimatePresence>
         {showCreateModal && (
           <motion.div
@@ -898,7 +901,9 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId, pr
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body,
+      )}
 
       {/* View document (Figma Sheet, Style=Dark) */}
       <BwSheet
