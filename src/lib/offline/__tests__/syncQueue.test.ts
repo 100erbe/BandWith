@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   deleteEvent: vi.fn(),
   createPersonalGig: vi.fn(),
   updatePersonalGig: vi.fn(),
+  replayEventExtras: vi.fn(),
   authCallbacks: [] as Array<(event: string, session: any) => void>,
 }));
 
@@ -16,6 +17,11 @@ vi.mock('@/lib/services/events', () => ({
   deleteEvent: mocks.deleteEvent,
   createPersonalGig: mocks.createPersonalGig,
   updatePersonalGig: mocks.updatePersonalGig,
+}));
+
+vi.mock('../eventExtras', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../eventExtras')>()),
+  replayEventExtras: mocks.replayEventExtras,
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -56,6 +62,7 @@ beforeEach(async () => {
   mocks.deleteEvent.mockResolvedValue({ error: null });
   mocks.createPersonalGig.mockImplementation(async (input: any) => ({ data: { id: input.id || 'server-id' }, error: null }));
   mocks.updatePersonalGig.mockResolvedValue({ data: {}, error: null });
+  mocks.replayEventExtras.mockResolvedValue([]);
   q = await import('../syncQueue');
   storage = await import('../storage');
   q.setOfflineQueueUser(USER);
@@ -408,5 +415,52 @@ describe('fix 6: retry backoff', () => {
     await q.processSyncQueue();
     await q.processSyncQueue(undefined, { force: true });
     expect(mocks.updateEvent).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('setlist, to-dos and lineup saved offline (B5)', () => {
+  const extras = {
+    setlist: { bandId: 'b1', name: 'Gig setlist', songs: [{ song_id: 's1', position: 0, set_number: 1 }] },
+    tasks: { drafts: [{ title: 'Print setlists' }], originalIds: [], eventDate: '2026-12-01' },
+  };
+
+  it('replays them on the created event once it is on the server', async () => {
+    await q.enqueueMutation(
+      'create_event',
+      { eventData: { id: 'offline_ev_x', _tempId: 'offline_ev_x', band_id: 'b1', title: 'Gig' }, memberIds: [], extras },
+      'offline_ev_x'
+    );
+    await q.processSyncQueue();
+    const realId = mocks.createEvent.mock.calls[0][0].id;
+    expect(mocks.replayEventExtras).toHaveBeenCalledWith(realId, extras);
+  });
+
+  it('does not replay them when the create fails', async () => {
+    mocks.createEvent.mockResolvedValue({ data: null, error: pgError('23514', 'check violation') });
+    await q.enqueueMutation('create_event', { eventData: { id: 'offline_ev_y', band_id: 'b1' }, extras }, 'offline_ev_y');
+    await q.processSyncQueue();
+    expect(mocks.replayEventExtras).not.toHaveBeenCalled();
+  });
+
+  it('replays an edit: lineup, setlist and to-dos after the event row', async () => {
+    const editExtras = { ...extras, lineup: [{ user_id: 'u2', role: 'Bass', fee: 200, status: 'pending' }] };
+    await q.enqueueMutation('update_event', { eventId: 'ev-1', updates: { title: 'Gig' }, extras: editExtras });
+    await q.processSyncQueue();
+    expect(mocks.updateEvent).toHaveBeenCalledWith('ev-1', { title: 'Gig' });
+    expect(mocks.replayEventExtras).toHaveBeenCalledWith('ev-1', editExtras);
+  });
+
+  it('an edit of a not-yet-synced gig carries its lineup and setlist into the create', async () => {
+    await q.enqueueMutation(
+      'create_event',
+      { eventData: { id: 'offline_ev_z', band_id: 'b1' }, memberIds: [{ id: 'u1', status: 'confirmed' }], extras: { tasks: extras.tasks } },
+      'offline_ev_z'
+    );
+    const lineup = [{ user_id: 'u1', status: 'confirmed' }, { user_id: 'u3', status: 'pending' }];
+    await q.enqueueMutation('update_event', { eventId: 'offline_ev_z', updates: {}, extras: { setlist: extras.setlist, lineup } });
+    await q.processSyncQueue();
+    expect(mocks.createEvent.mock.calls[0][1].map((m: any) => m.user_id)).toEqual(['u1', 'u3']);
+    const [, replayed] = mocks.replayEventExtras.mock.calls[0];
+    expect(replayed).toEqual({ tasks: extras.tasks, setlist: extras.setlist });
   });
 });

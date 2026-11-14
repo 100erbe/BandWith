@@ -86,6 +86,7 @@ import { listMyDeputyGigs } from "@/lib/services/deputies";
 import { OfflineBanner } from "@/app/components/ui/OfflineBanner";
 import { useNetworkStatus, isOfflineError, reportNetworkStatus } from "@/lib/offline/useNetworkStatus";
 import { enqueueMutation, getPendingMutations } from "@/lib/offline/syncQueue";
+import type { QueuedEventExtras } from "@/lib/offline/eventExtras";
 import { getOfflineItem, setOfflineItem, getCacheKey } from "@/lib/offline/storage";
 import { todayLocal } from '../lib/dates';
 import { effectiveStatus, type Contract } from '@/lib/services/contracts';
@@ -2876,10 +2877,10 @@ export default function AuthenticatedApp() {
 
       // Event to-dos (create modal, template or rehearsal wizard). Ids count
       // as saved only when the form loaded them from this event.
-      const persistTasks = async (eventId: string): Promise<boolean> => {
-        const originalTaskIds: string[] = Array.isArray(data._originalTaskIds) ? data._originalTaskIds : [];
+      const originalTaskIds: string[] = Array.isArray(data._originalTaskIds) ? data._originalTaskIds : [];
+      const taskDrafts = (): EventTaskDraft[] => {
         const knownUserIds = new Set((realBand?.members || []).map((m: any) => m.user_id).filter(Boolean));
-        const drafts: EventTaskDraft[] = (Array.isArray(data.tasks) ? data.tasks : []).map((t: any) => {
+        return (Array.isArray(data.tasks) ? data.tasks : []).map((t: any) => {
           const assignees: string[] = Array.isArray(t.assignedTo) ? t.assignedTo : [];
           const single = assignees.length === 1 && knownUserIds.has(assignees[0]) ? assignees[0] : null;
           return {
@@ -2890,6 +2891,9 @@ export default function AuthenticatedApp() {
             notes: typeof t.notes === 'string' ? t.notes : null,
           };
         });
+      };
+      const persistTasks = async (eventId: string): Promise<boolean> => {
+        const drafts = taskDrafts();
         if (drafts.length === 0 && originalTaskIds.length === 0) return true;
         try {
           const { error } = await syncEventTasks(eventId, drafts, date, originalTaskIds);
@@ -2958,7 +2962,7 @@ export default function AuthenticatedApp() {
 
       // Persist setlist: one setlist per event. Editing reuses the event's
       // setlist (no orphan copies, one "setlist updated" notification).
-      const persistSetlist = async (): Promise<string | null> => {
+      const setlistSongs = (): { song_id: string; position: number; set_number: number }[] => {
         let songs: { song_id: string; position: number; set_number: number }[] = [];
         if (isRehearsalWizard) {
           const fromSnapshot = (data.setlistSnapshotFinal?.songs || [])
@@ -2980,13 +2984,21 @@ export default function AuthenticatedApp() {
             }
           });
         }
+        return songs;
+      };
+      const setlistName = title
+        ? t('{title} setlist', { title })
+        : isRehearsalWizard ? t('Rehearsal setlist') : t('Event setlist');
+      // Set once the setlist is saved online: an offline fallback after that
+      // must not queue it again.
+      let setlistSaved = false;
+      const persistSetlist = async (): Promise<string | null> => {
+        const songs = setlistSongs();
         // No songs: leave the setlist as it is, unless the user removed every
         // song of the gig's saved setlist while editing.
         if (songs.length === 0 && !(data._setlistCleared && data._editing)) return null;
 
-        const name = title
-          ? t('{title} setlist', { title })
-          : isRehearsalWizard ? t('Rehearsal setlist') : t('Event setlist');
+        const name = setlistName;
         if (data._editing && data._editingEventId) {
           const { data: ev } = await supabase
             .from('events')
@@ -3036,12 +3048,36 @@ export default function AuthenticatedApp() {
         status: m.id === user?.id ? 'confirmed' : 'pending',
       }));
 
+      // What the online save writes after the event row (setlist, to-dos,
+      // lineup changes, rider & stage): queued with it, replayed on sync.
+      const offlineExtras = (isEdit: boolean): QueuedEventExtras | undefined => {
+        const extras: QueuedEventExtras = {};
+        if (!setlistSaved && !eventData.setlist_id) {
+          const songs = setlistSongs();
+          const cleared = !!(isEdit && data._setlistCleared);
+          if (songs.length > 0 || cleared) extras.setlist = { bandId: realBand.id, name: setlistName, songs, cleared };
+        }
+        const drafts = taskDrafts();
+        if (drafts.length > 0 || originalTaskIds.length > 0) {
+          extras.tasks = { drafts, originalIds: originalTaskIds, eventDate: date || null };
+        }
+        if (isEdit && queuedMembers.length > 0) {
+          extras.lineup = queuedMembers.map((m: any) => ({ user_id: m.id, role: m.role, fee: m.fee, status: m.status }));
+        }
+        const composerStage = isEdit ? null : composerStageOf(data);
+        if (composerStage) {
+          extras.stage = { bandId: realBand.id, payload: composerStage, gig: { title: title || 'Gig', date, venue: location } };
+        }
+        return Object.keys(extras).length > 0 ? extras : undefined;
+      };
+
       saveEventOffline = async (isEdit: boolean, editingId?: string) => {
         reportNetworkStatus(false);
         if (isEdit && editingId) {
           await enqueueMutation('update_event', {
             eventId: editingId,
             updates: { ...eventData, _isPendingSync: true },
+            extras: offlineExtras(true),
           });
           if (optimisticMembers.length > 0) {
             setEventMembersMap(prev => {
@@ -3062,7 +3098,7 @@ export default function AuthenticatedApp() {
             _isPendingSync: true,
             _tempId: tempId,
           };
-          await enqueueMutation('create_event', { eventData: offlineEv, memberIds: queuedMembers, clientId: newEventId }, tempId);
+          await enqueueMutation('create_event', { eventData: offlineEv, memberIds: queuedMembers, clientId: newEventId, extras: offlineExtras(false) }, tempId);
           if (optimisticMembers.length > 0) {
             setEventMembersMap(prev => {
               const next = { ...prev, [tempId]: optimisticMembers };
@@ -3097,6 +3133,7 @@ export default function AuthenticatedApp() {
         setlistFailed = true;
         return null;
       });
+      if (!setlistFailed) setlistSaved = true;
       if (setlistId) {
         eventData.setlist_id = setlistId;
       }
