@@ -46,6 +46,7 @@ import {
   deletePersonalGig,
 } from "@/lib/services/events";
 import type { EventMember, Event } from "@/lib/services/events";
+import { respondToOwnInvite, InviteResponseError } from "@/lib/services/inviteResponse";
 import { createSetlist, deleteSetlist, replaceSetlistSongs, updateSetlist } from "@/lib/services/songs";
 import { receiptFor, deleteChat as deleteChatService, createChat as createChatService } from "@/lib/services/chats";
 import { deleteNotification as deleteNotificationService, createNotification, getUnreadCount } from "@/lib/services/notifications";
@@ -4180,15 +4181,8 @@ export default function AuthenticatedApp() {
                     const status = action === "accept_event" ? "confirmed" : "declined";
                     const memberName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Member");
 
-                    const { data: membership } = await supabase
-                      .from('event_members')
-                      .select('id')
-                      .eq('event_id', eventId)
-                      .eq('user_id', user.id)
-                      .maybeSingle();
-                    if (membership) {
-                      await respondToEventInvite(membership.id, status as 'confirmed' | 'declined');
-                    }
+                    // Nothing saved: say so and stop (no admin notice, inbox stays).
+                    await respondToOwnInvite(eventId, user.id, status);
 
                     if (status === 'declined') {
                       await notifyMemberDroppedOut(
@@ -4210,7 +4204,13 @@ export default function AuthenticatedApp() {
                     refetchEvents();
                   }
                 }
-              } catch (err) { console.error("Action error:", err); }
+              } catch (err) {
+                if (err instanceof InviteResponseError) {
+                  setSaveToast({ message: err.message, type: 'error' });
+                  return;
+                }
+                console.error("Action error:", err);
+              }
               const navId = notif?.data?.event_id as string;
               setSelectedNotification(null);
               setSelectedNotifications([]); setInboxOpen(false);
@@ -4336,7 +4336,10 @@ export default function AuthenticatedApp() {
             onAccept={async () => {
               const eventId = rsvpNotification.data?.event_id as string;
               if (eventId && user?.id) {
-                // Optimistically update eventMembersMap so the event card is immediately confirmed
+                // Saved first: on failure the sheet shows why and stays open,
+                // and the admins are not told about an answer that isn't there.
+                await respondToOwnInvite(eventId, user.id, 'confirmed');
+                // Update eventMembersMap so the event card is immediately confirmed
                 setEventMembersMap(prev => {
                   const list = prev[eventId] || [];
                   return {
@@ -4346,13 +4349,6 @@ export default function AuthenticatedApp() {
                 });
                 setOptimisticallyHiddenEventIds(prev => prev.filter(id => id !== eventId));
 
-                const { data: membership } = await supabase
-                  .from('event_members')
-                  .select('id')
-                  .eq('event_id', eventId)
-                  .eq('user_id', user.id)
-                  .maybeSingle();
-                if (membership) await respondToEventInvite(membership.id, 'confirmed');
                 const creatorId = rsvpNotification.data?.creator_id as string;
                 if (creatorId) {
                   const memberName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Member");
@@ -4371,7 +4367,8 @@ export default function AuthenticatedApp() {
             onDecline={async () => {
               const eventId = rsvpNotification.data?.event_id as string;
               if (eventId && user?.id) {
-                // Optimistically hide declined event
+                // Saved first (see onAccept), then hide the declined event.
+                await respondToOwnInvite(eventId, user.id, 'declined');
                 setOptimisticallyHiddenEventIds(prev => [...prev, eventId]);
                 setEventMembersMap(prev => {
                   const list = prev[eventId] || [];
@@ -4381,13 +4378,6 @@ export default function AuthenticatedApp() {
                   };
                 });
 
-                const { data: membership } = await supabase
-                  .from('event_members')
-                  .select('id')
-                  .eq('event_id', eventId)
-                  .eq('user_id', user.id)
-                  .maybeSingle();
-                if (membership) await respondToEventInvite(membership.id, 'declined');
                 const memberName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Member");
                 const eventTitle = (rsvpNotification.data?.event_title as string) || "Event";
                 const eventDate = (rsvpNotification.data?.event_date as string) || undefined;

@@ -3782,6 +3782,8 @@ const dict: Dictionary = {
   "Message not sent. Check your connection and try again.": "Message non envoyé. Vérifie ta connexion et réessaie.",
   "Message not sent. Try again.": "Message non envoyé. Réessaie.",
   "You no longer have access to this chat.": "Tu n’as plus accès à cette discussion.",
+  // RSVP from a notification: removed from the event
+  "You are no longer on this event, so there is nothing to answer.": "Tu ne fais plus partie de cet événement, il n’y a donc rien à répondre.",
 };
 
 export default dict;

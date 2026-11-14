@@ -148,7 +148,8 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
       .eq('event_id', eventId)
       .eq('user_id', currentUserId)
       .select('id');
-    if (upErr) return upErr.message;
+    // Never the raw server text (offline, permissions): a sentence the user can act on.
+    if (upErr) return t('Check your connection and try again.');
     if (!rows || rows.length === 0) return t('Could not find your invitation for this event.');
     return null;
   };
