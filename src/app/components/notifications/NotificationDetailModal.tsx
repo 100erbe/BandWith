@@ -34,7 +34,12 @@ import { notificationBandId, notificationTarget, notificationTargetLabel } from 
 import { SwipeRow } from '@/app/components/bw/SwipeRow';
 import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
 import { haptic } from '@/lib/haptics';
-import { t, useT, intlLocale } from '@/lib/i18n';
+import { t, useT, intlLocale, getLocale } from '@/lib/i18n';
+import { localizePushLabel, pushLanguage } from '@/lib/pushLabels';
+
+/** The row's subtitle ("Gig Alert · Summer Fest") with its label in the app language. */
+const subtitleOf = (data?: Record<string, unknown> | null): string | null =>
+  data?.subtitle ? localizePushLabel(String(data.subtitle), pushLanguage(getLocale())) ?? null : null;
 import { inviteFeeToShow } from '@/lib/inviteFee';
 import { useAuth } from '@/lib/AuthContext';
 import { useLineupSoFar } from '@/app/hooks/useLineupSoFar';
@@ -139,45 +144,45 @@ interface NotificationMeta {
 function getNotificationMeta(type: string, data?: Record<string, unknown>): NotificationMeta {
   const kind = (type || '').toLowerCase();
   const evType = String(data?.event_type || '').toLowerCase();
-  const tag = data?.tag as string | undefined;
+  // data.tag is an English label ("Gig Alert"): the label comes from the type, translated.
 
   if (kind === 'member_dropped_out' || kind === 'event_declined' || data?.response === 'declined') {
-    return { label: tag || t('Dropout alert'), icon: AlertTriangle, fill: 'bg-destructive-solid text-white', onDark: true };
+    return { label: t('Dropout alert'), icon: AlertTriangle, fill: 'bg-destructive-solid text-white', onDark: true };
   }
   if (kind === 'rehearsal_poll') {
-    return { label: tag || t('Poll'), icon: Poll, fill: 'bg-accent-rehearsal text-accent-rehearsal-foreground', onDark: true };
+    return { label: t('Poll'), icon: Poll, fill: 'bg-accent-rehearsal text-accent-rehearsal-foreground', onDark: true };
   }
   if (kind === 'rehearsal_proposal') {
-    return { label: tag || t('Proposal'), icon: Mic2, fill: 'bg-accent-rehearsal text-accent-rehearsal-foreground', onDark: true };
+    return { label: t('Proposal'), icon: Mic2, fill: 'bg-accent-rehearsal text-accent-rehearsal-foreground', onDark: true };
   }
   if (kind.includes('rehearsal') || evType === 'rehearsal') {
-    return { label: tag || t('Rehearsal'), icon: Music, fill: 'bg-accent-rehearsal text-accent-rehearsal-foreground', onDark: true };
+    return { label: t('Rehearsal'), icon: Music, fill: 'bg-accent-rehearsal text-accent-rehearsal-foreground', onDark: true };
   }
   if (kind.includes('chat')) {
     const isDirect = data?.chatType === 'direct' || data?.tag === 'Direct Message' || !data?.band_id;
     return {
-      label: tag || (isDirect ? t('Private message') : t('Band message')),
+      label: isDirect ? t('Private message') : t('Band message'),
       icon: MessageCircle,
       fill: 'bg-surface-inverse text-surface-inverse-foreground',
       onDark: true,
     };
   }
   if (kind === 'event_invite') {
-    return { label: tag || t('Gig invitation'), icon: Music, fill: 'bg-accent-gig text-accent-gig-foreground', onDark: false };
+    return { label: t('Gig invitation'), icon: Music, fill: 'bg-accent-gig text-accent-gig-foreground', onDark: false };
   }
   if (kind === 'event_confirmed') {
-    return { label: tag || t('Gig confirmed'), icon: CheckCheck, fill: 'bg-accent-gig text-accent-gig-foreground', onDark: false };
+    return { label: t('Gig confirmed'), icon: CheckCheck, fill: 'bg-accent-gig text-accent-gig-foreground', onDark: false };
   }
   if (kind.includes('gig') || kind.includes('event')) {
-    return { label: tag || t('Gig'), icon: Music, fill: 'bg-accent-gig text-accent-gig-foreground', onDark: false };
+    return { label: t('Gig'), icon: Music, fill: 'bg-accent-gig text-accent-gig-foreground', onDark: false };
   }
   if (kind.includes('quote') || kind.includes('payment') || kind.includes('finance')) {
-    return { label: tag || t('Finance'), icon: Euro, fill: 'bg-accent-quote text-accent-quote-foreground', onDark: false };
+    return { label: t('Finance'), icon: Euro, fill: 'bg-accent-quote text-accent-quote-foreground', onDark: false };
   }
   if (kind.includes('invite') || kind.includes('member')) {
-    return { label: tag || t('Invite'), icon: UserPlus, fill: 'bg-accent-personal text-accent-personal-foreground', onDark: false };
+    return { label: t('Invite'), icon: UserPlus, fill: 'bg-accent-personal text-accent-personal-foreground', onDark: false };
   }
-  return { label: tag || t('Alert'), icon: Bell, fill: 'bg-surface-inverse text-surface-inverse-foreground', onDark: true };
+  return { label: t('Alert'), icon: Bell, fill: 'bg-surface-inverse text-surface-inverse-foreground', onDark: true };
 }
 
 /** Key/value line of the Figma "Event specifications" card. */
@@ -447,7 +452,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                         const isRead = notif.read;
                         const meta = getNotificationMeta(notif.type, notif.data);
                         const IconComponent = meta.icon;
-                        const subtitle = notif.data?.subtitle ? String(notif.data.subtitle) : null;
+                        const subtitle = subtitleOf(notif.data);
                         const fromBand = bandOf(notif);
                         const typeLine = [meta.label, fromBand && fromBand !== subtitle ? fromBand : null, subtitle]
                           .filter(Boolean)
@@ -546,7 +551,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                           </Tag>
                           {(() => {
                             const fromBand = bandOf(detailNotif);
-                            return fromBand && fromBand !== String(detailNotif.data?.subtitle ?? '') ? (
+                            return fromBand && fromBand !== String(detailNotif.data?.subtitle ?? '') && fromBand !== subtitleOf(detailNotif.data) ? (
                               <Tag variant="outline" className="border-current text-current">
                                 {fromBand}
                               </Tag>
@@ -554,7 +559,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                           })()}
                           {Boolean(detailNotif.data?.subtitle) && (
                             <Tag variant="outline" className="border-current text-current">
-                              {String(detailNotif.data?.subtitle)}
+                              {subtitleOf(detailNotif.data)}
                             </Tag>
                           )}
                           <span className="flex-1" />

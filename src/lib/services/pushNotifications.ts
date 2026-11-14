@@ -8,6 +8,8 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { getActiveChat } from './activeChatTracker';
+import { getLocale } from '@/lib/i18n';
+import { localizePushLabel, pushLanguage } from '@/lib/pushLabels';
 
 // Cache the token to avoid re-registration issues
 let cachedToken: string | null = null;
@@ -279,7 +281,8 @@ export const setupNativePushListeners = (
       const notificationId = Math.floor(Math.random() * 2147483647);
       
       const channelId = (notification.data?.channel_id as string) || 'bandwith_messages';
-      const summaryText = (notification.data?.subtitle as string) || (notification.data?.tag as string) || undefined;
+      // The payload keeps the English label; the banner shows it in the app language.
+      const summaryText = localizePushLabel((notification.data?.subtitle as string) || undefined, pushLanguage(getLocale())) || undefined;
 
       await LocalNotifications.schedule({
         notifications: [{
