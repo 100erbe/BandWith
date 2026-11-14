@@ -413,6 +413,14 @@ const executeMutation = async (mutation: OfflineMutation): Promise<ExecOutcome> 
   return { ok: false, orphaned: true, error: new Error(`Unknown mutation type ${(mutation as any).type}`) };
 };
 
+/** The mutation with its temp event id replaced by the real one, once known. */
+export const withRealEventId = (m: OfflineMutation, map: Map<string, string> = tempIdMap): OfflineMutation => {
+  const eventId = m.payload?.eventId;
+  if (m.type === 'create_event' || !isTempId(eventId)) return m;
+  const real = map.get(eventId);
+  return real ? { ...m, payload: { ...m.payload, eventId: real } } : m;
+};
+
 /** Merge an update to a not-yet-synced event into its pending create. */
 const foldUpdateIntoCreate = (create: OfflineMutation, update: OfflineMutation): OfflineMutation => {
   const { eventId: _ignored, ...gigFields } = update.payload?.personalGigInput || {};
@@ -558,9 +566,12 @@ export const processSyncQueue = async (
     await withQueueLock(async () => {
       const stored = await readQueue(key);
       if (stored === null) return;
+      // Mutations still queued for an event whose create synced point at its
+      // real id now: the temp -> real map lives in memory only, and after a
+      // restart they would be dropped as orphaned.
       const next = stored
         .filter((m) => !processed.has(m.id))
-        .map((m) => updated.get(m.id) ?? m);
+        .map((m) => withRealEventId(updated.get(m.id) ?? m));
       await setOfflineItem(key, next);
     });
     notifySubscribers();

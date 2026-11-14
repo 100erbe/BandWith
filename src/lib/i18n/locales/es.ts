@@ -3777,6 +3777,18 @@ const dict: Dictionary = {
   "Sending the quote to {email}…": "Enviando el presupuesto a {email}…",
   "Preparing the quote…": "Preparando el presupuesto…",
   "The quote could not be sent automatically. Pick a channel below.": "No se pudo enviar el presupuesto automáticamente. Elige un canal abajo.",
+  // Chat thread: load and send errors, lost access
+  "Could not load the messages": "No se pudieron cargar los mensajes",
+  "Message not sent. Check your connection and try again.": "Mensaje no enviado. Comprueba tu conexión e inténtalo de nuevo.",
+  "Message not sent. Try again.": "Mensaje no enviado. Inténtalo de nuevo.",
+  "You no longer have access to this chat.": "Ya no tienes acceso a este chat.",
+  // RSVP from a notification: removed from the event
+  "You are no longer on this event, so there is nothing to answer.": "Ya no formas parte de este evento, así que no hay nada que responder.",
+  // Chat list: loading, offline and empty states
+  "Loading chats": "Cargando chats",
+  "Could not load your chats": "No se pudieron cargar tus chats",
+  "No chats yet": "Aún no hay chats",
+  "Start a conversation with your band or an admin.": "Empieza una conversación con tu banda o con un admin.",
   "Could not load your answer. Check your connection.": "No se pudo cargar tu respuesta. Revisa la conexión.",
   "Couldn't save your answer. Try again.": "No se pudo guardar tu respuesta. Inténtalo de nuevo.",
   "This band has no other admin to notify.": "Esta banda no tiene otro admin a quien avisar.",

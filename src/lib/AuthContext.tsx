@@ -12,6 +12,7 @@ import { cleanupPresence } from './services/presence';
 import { clearOfflineCache, getOfflineItem, setOfflineItem, getCacheKey } from './offline/storage';
 import { clearStageCache } from './stageBleNative';
 import { unregisterPushToken } from './services/pushNotifications';
+import { syncAppBadge } from './services/appBadge';
 import { realName } from '@/lib/personName';
 
 export type SubTier = 'free_member' | 'single_band' | 'multi_band' | 'unlimited';
@@ -356,6 +357,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const pendingQueue = await takeUnsyncedQueue(user?.id);
     // Before the session ends: this device must stop receiving this account's pushes.
     await unregisterPushToken();
+    // The next person on this device must not see this account's badge or
+    // message previews in Notification Center (0 also clears delivered ones).
+    syncAppBadge(0);
     cleanupPresence();
     // With quick sign-in on for this account, keep its session for Face ID.
     let keepDeviceSession = false;

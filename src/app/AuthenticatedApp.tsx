@@ -46,8 +46,9 @@ import {
   deletePersonalGig,
 } from "@/lib/services/events";
 import type { EventMember, Event } from "@/lib/services/events";
+import { respondToOwnInvite, InviteResponseError } from "@/lib/services/inviteResponse";
 import { createSetlist, deleteSetlist, replaceSetlistSongs, updateSetlist } from "@/lib/services/songs";
-import { receiptFor, deleteChat as deleteChatService, createChat as createChatService } from "@/lib/services/chats";
+import { receiptFor, deleteChat as deleteChatService, createChat as createChatService, chatErrorMessage } from "@/lib/services/chats";
 import { deleteNotification as deleteNotificationService, createNotification, getUnreadCount } from "@/lib/services/notifications";
 import { syncAppBadge } from "@/lib/services/appBadge";
 import { ErrorState } from "@/app/components/ui/ErrorState";
@@ -62,7 +63,7 @@ import { ChatType, ChatFilterType, ChatItem } from "@/app/data/chats";
 import { NotificationItem } from "@/app/data/notifications";
 import type { Band } from "@/app/data/bands";
 import type { BandWithMembers } from "@/lib/services/bands";
-import { useOnlinePresence } from "@/lib/services/presence";
+import { useOnlinePresence, refreshPresenceBands } from "@/lib/services/presence";
 
 import { TabName, ExpandedCardType, CreateEventType, RehearsalViewMode } from "@/app/types";
 
@@ -463,7 +464,10 @@ export default function AuthenticatedApp() {
   const [rsvpNotification, setRsvpNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
   const [pollNotification, setPollNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
   const { notifications: realNotifications, loading: notificationsLoading, refetch: refetchNotifications, setNotifications: setRealNotifications } = useNotifications({
+    // The inbox: chat messages are not in it (the Chat tab has them), so 20
+    // means 20 inbox items however busy the band chat is.
     limit: 20,
+    excludeChat: true,
     onNewEventInvite: (notif) => {
       if (notif.data?.creator_id !== user?.id) {
         setUrgentNotification(notif);
@@ -556,8 +560,21 @@ export default function AuthenticatedApp() {
       setPollNotification(notif);
     }
   }, [realNotifications, refetchNotifications, setRealNotifications]);
-  const { chats: realChats, loading: chatsLoading, refetch: refetchChats } = useChats();
+  const { chats: realChats, loading: chatsLoading, error: chatsError, refetch: refetchChats } = useChats();
+  // Back from the background: realtime missed while suspended is not replayed,
+  // so the chat list, previews, tab badge and inbox are fetched again.
+  useEffect(() => {
+    if (!isNative) return;
+    const sub = App.addListener("resume", () => {
+      refetchChats?.();
+      refetchNotifications?.(true);
+    });
+    return () => { void sub.then((h) => h.remove()); };
+  }, [isNative, refetchChats, refetchNotifications]);
   const onlineUserIds = useOnlinePresence(user?.id);
+  // A band joined mid-session gets its presence channel now.
+  const presenceBandsKey = [...allMyBandIds].sort().join(',');
+  useEffect(() => { refreshPresenceBands(); }, [presenceBandsKey]);
 
   const [eventMembersMap, setEventMembersMap] = useState<Record<string, { name: string; userId: string; fee?: number; status?: string }[]>>({});
   const [membersRefreshKey, setMembersRefreshKey] = useState(0);
@@ -1012,7 +1029,7 @@ export default function AuthenticatedApp() {
     // On the server but not in the list yet (another band, still loading): open it.
     const item = eventToEventItem(row as Event);
     item.band_id = row.band_id || undefined;
-    item.band_name = row.band_id ? bands[row.band_id] : 'Personal';
+    item.band_name = row.band_id ? bands[row.band_id] : t('Personal');
     handleEventCardClickRef.current(item);
   }, []);
   const navigateToEvent = useCallback(async (eventDbId: string) => {
@@ -1107,14 +1124,18 @@ export default function AuthenticatedApp() {
   // Push navigation - deep link to the relevant screen
   const isAdminRef = useRef(isAdmin);
   isAdminRef.current = isAdmin;
+  // Set below, once removeNotifications exists.
+  const removeNotificationsRef = useRef<(ids: string[]) => void>(() => {});
   useEffect(() => {
     const handler = async (ev: globalThis.Event) => {
       const d = (ev as CustomEvent).detail;
+      // An inbox row goes once its screen is open; it stays when the user cancels.
+      const done = () => { if (d.notificationId) removeNotificationsRef.current([d.notificationId]); };
       // Another band's notification: band screens (quotes, finance, members)
       // show the active band, so they need the switch; events and chats can
       // also just be viewed from here.
       if (d.bandId && d.screen !== "invites" && d.screen !== "home") {
-        const viewable = d.screen === "event" || d.screen === "chat";
+        const viewable = d.screen === "event" || d.screen === "chat" || d.screen === "poll";
         const choice = await askBandForRef.current(
           d.bandId,
           viewable ? "act on it" : "open it",
@@ -1129,10 +1150,13 @@ export default function AuthenticatedApp() {
         setTimeout(() => {
           // A chat already in the inbox opens with its real type and name; otherwise the chat screen looks it up.
           const known = convertedChatsRef.current.find((c) => c.uuid === String(d.chatId));
-          setSelectedChat(known ? { ...known, unread: 0 } : { id: Date.now(), uuid: d.chatId, type: "direct", name: "Chat", initials: "CH", lastMessage: "", time: "now", unread: 0, status: "received" });
+          setSelectedChat(known ? { ...known, unread: 0 } : { id: Date.now(), uuid: d.chatId, type: "direct", name: t("Chat"), initials: "CH", lastMessage: "", time: "now", unread: 0, status: "received" });
         }, 100);
       } else if (d.screen === "event" && d.eventId) {
-        navigateToEvent(d.eventId);
+        // After it: a deleted event is named from this notification.
+        await navigateToEvent(d.eventId);
+      } else if (d.screen === "poll" && d.pollId) {
+        setVotePollId(String(d.pollId));
       } else if (d.screen === "event") {
         setActiveTab("Events");
       } else if (d.screen === "quotes") {
@@ -1156,6 +1180,7 @@ export default function AuthenticatedApp() {
         setShowDeputyGigs(true);
         window.dispatchEvent(new CustomEvent("bw:refresh-deputy-gigs"));
       } else if (d.screen === "home") setActiveTab("Home");
+      done();
     };
     window.addEventListener("push-navigate", handler);
     return () => window.removeEventListener("push-navigate", handler);
@@ -1387,6 +1412,7 @@ export default function AuthenticatedApp() {
       refetchNotifications?.();
     });
   }, [refetchNotifications]);
+  removeNotificationsRef.current = removeNotifications;
 
   const handleOpenNotifications = useCallback(() => {
     const seen = new Set<string>();
@@ -1437,7 +1463,7 @@ export default function AuthenticatedApp() {
       if (type === "direct") {
         const otherWithProfile = others.find((p) => (p as any).profile);
         // Always the other person's name, never a generic "Direct Chat".
-        displayName = (otherWithProfile ? personName((otherWithProfile as any).profile, "") : "") || (chat.name && chat.name !== "New Chat" && chat.name !== "Chat" && chat.name !== "Direct Chat" ? chat.name : "Member");
+        displayName = (otherWithProfile ? personName((otherWithProfile as any).profile, "") : "") || (chat.name && chat.name !== "New Chat" && chat.name !== "Chat" && chat.name !== "Direct Chat" ? chat.name : t("Member"));
         const otherWithAvatar = others.find((p) => (p as any).profile?.avatar_url);
         avatarUrl = (otherWithAvatar as any)?.profile?.avatar_url || undefined;
       } else if (type === "band") {
@@ -1851,7 +1877,7 @@ export default function AuthenticatedApp() {
         closeIdentity();
         setTimeout(() => {
           setActiveTab("Chat");
-          const sn = (realNotif?.data as any)?.senderName || realNotif?.title?.replace("💬 ", "") || "Chat";
+          const sn = (realNotif?.data as any)?.senderName || realNotif?.title?.replace("💬 ", "") || t("Chat");
           const known = convertedChatsRef.current.find((c) => c.uuid === String(chatId));
           setSelectedChat(known ? { ...known, unread: 0 } : { id: Date.now(), uuid: String(chatId), type: "direct", name: sn, initials: sn.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(), lastMessage: "", time: "now", unread: 0, status: "received" });
         }, 300);
@@ -2473,7 +2499,7 @@ export default function AuthenticatedApp() {
       participant_ids: lineup,
     });
     if (error || !chat) {
-      setSaveToast({ message: error?.message || t('Could not open the event chat.'), type: 'error' });
+      setSaveToast({ message: chatErrorMessage(error, t('Could not open the event chat.')), type: 'error' });
       return;
     }
     // Open display: the gig stays on the leading page next to its thread.
@@ -3665,7 +3691,7 @@ export default function AuthenticatedApp() {
             />
           )}
           {activeTab === "Chat" && !isSolo && (
-            <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => { c.unread = 0; setSelectedChat(c); }} onStartChat={() => setShowNewChat(true)} selectedChatUuid={wideLayout && twoPane ? selectedChat?.uuid : null} onDeleteChat={async (c) => { if (!c.uuid) return; const { error } = await deleteChatService(c.uuid); if (error) setSaveToast({ message: t('Could not delete the chat. Try again.'), type: 'error' }); else refetchChats?.(); }} />
+            <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => { c.unread = 0; setSelectedChat(c); }} onStartChat={() => setShowNewChat(true)} selectedChatUuid={wideLayout && twoPane ? selectedChat?.uuid : null} loading={chatsLoading && !realChats?.length} loadFailed={!!chatsError && !realChats?.length} onDeleteChat={async (c) => { if (!c.uuid) return; const { error } = await deleteChatService(c.uuid); if (error) setSaveToast({ message: t('Could not delete the chat. Try again.'), type: 'error' }); else refetchChats?.(); }} />
           )}
           {(activeTab === "Events" || duoHomeCalendar) && (
             <EventsView key="events" loading={eventsLoading} eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={calendarEvents} rawEvents={events} onEventClick={handleEventCardClick} selectedEventId={wideLayout && twoPane ? selectedEvent?.eventId ?? null : null} onCreateEvent={(type: 'gig' | 'rehearsal' | 'quote' = 'gig', date?: string) => {
@@ -4285,8 +4311,8 @@ export default function AuthenticatedApp() {
             onNavigate={(notif) => {
               setSelectedNotification(null);
               setSelectedNotifications([]); setInboxOpen(false);
-              removeNotifications([notif.id]);
-              navigateToNotificationTarget(notificationTarget(notif.type, notif.data), notificationBandId(notif));
+              // Removed once its screen is open (not if the band switch is cancelled).
+              navigateToNotificationTarget(notificationTarget(notif.type, notif.data), notificationBandId(notif), notif.id);
             }}
             onClearAll={() => {
               const ids = [selectedNotification?.id, ...selectedNotifications.map((n) => n.id)].filter(Boolean) as string[];
@@ -4316,15 +4342,8 @@ export default function AuthenticatedApp() {
                     const status = action === "accept_event" ? "confirmed" : "declined";
                     const memberName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Member");
 
-                    const { data: membership } = await supabase
-                      .from('event_members')
-                      .select('id')
-                      .eq('event_id', eventId)
-                      .eq('user_id', user.id)
-                      .maybeSingle();
-                    if (membership) {
-                      await respondToEventInvite(membership.id, status as 'confirmed' | 'declined');
-                    }
+                    // Nothing saved: say so and stop (no admin notice, inbox stays).
+                    await respondToOwnInvite(eventId, user.id, status);
 
                     if (status === 'declined') {
                       await notifyMemberDroppedOut(
@@ -4346,7 +4365,13 @@ export default function AuthenticatedApp() {
                     refetchEvents();
                   }
                 }
-              } catch (err) { console.error("Action error:", err); }
+              } catch (err) {
+                if (err instanceof InviteResponseError) {
+                  setSaveToast({ message: err.message, type: 'error' });
+                  return;
+                }
+                console.error("Action error:", err);
+              }
               const navId = notif?.data?.event_id as string;
               setSelectedNotification(null);
               setSelectedNotifications([]); setInboxOpen(false);
@@ -4472,7 +4497,10 @@ export default function AuthenticatedApp() {
             onAccept={async () => {
               const eventId = rsvpNotification.data?.event_id as string;
               if (eventId && user?.id) {
-                // Optimistically update eventMembersMap so the event card is immediately confirmed
+                // Saved first: on failure the sheet shows why and stays open,
+                // and the admins are not told about an answer that isn't there.
+                await respondToOwnInvite(eventId, user.id, 'confirmed');
+                // Update eventMembersMap so the event card is immediately confirmed
                 setEventMembersMap(prev => {
                   const list = prev[eventId] || [];
                   return {
@@ -4482,13 +4510,6 @@ export default function AuthenticatedApp() {
                 });
                 setOptimisticallyHiddenEventIds(prev => prev.filter(id => id !== eventId));
 
-                const { data: membership } = await supabase
-                  .from('event_members')
-                  .select('id')
-                  .eq('event_id', eventId)
-                  .eq('user_id', user.id)
-                  .maybeSingle();
-                if (membership) await respondToEventInvite(membership.id, 'confirmed');
                 const creatorId = rsvpNotification.data?.creator_id as string;
                 if (creatorId) {
                   const memberName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Member");
@@ -4507,7 +4528,8 @@ export default function AuthenticatedApp() {
             onDecline={async () => {
               const eventId = rsvpNotification.data?.event_id as string;
               if (eventId && user?.id) {
-                // Optimistically hide declined event
+                // Saved first (see onAccept), then hide the declined event.
+                await respondToOwnInvite(eventId, user.id, 'declined');
                 setOptimisticallyHiddenEventIds(prev => [...prev, eventId]);
                 setEventMembersMap(prev => {
                   const list = prev[eventId] || [];
@@ -4517,13 +4539,6 @@ export default function AuthenticatedApp() {
                   };
                 });
 
-                const { data: membership } = await supabase
-                  .from('event_members')
-                  .select('id')
-                  .eq('event_id', eventId)
-                  .eq('user_id', user.id)
-                  .maybeSingle();
-                if (membership) await respondToEventInvite(membership.id, 'declined');
                 const memberName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Member");
                 const eventTitle = (rsvpNotification.data?.event_title as string) || "Event";
                 const eventDate = (rsvpNotification.data?.event_date as string) || undefined;

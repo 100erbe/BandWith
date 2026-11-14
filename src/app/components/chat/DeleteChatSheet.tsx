@@ -20,7 +20,9 @@ export const DeleteChatSheet: React.FC<{
   title?: string;
   body?: string;
   confirmLabel?: string;
-}> = ({ open, chatName, deleting, onCancel, onConfirm, title, body, confirmLabel }) => {
+  /** The last attempt failed (offline): said in the sheet, which stays open. */
+  error?: string;
+}> = ({ open, chatName, deleting, onCancel, onConfirm, title, body, confirmLabel, error }) => {
   const t = useT();
   const drag = useSheetDrag(onCancel);
   useEffect(() => {
@@ -70,6 +72,11 @@ export const DeleteChatSheet: React.FC<{
                     : t('Your messages are deleted for good and the chat leaves your list. It can\'t be undone.'))}
               </span>
             </div>
+            {error && (
+              <p role="alert" className="bw-label-sm text-sheet-foreground">
+                {error}
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"

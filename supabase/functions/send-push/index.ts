@@ -1,5 +1,6 @@
 // Supabase Edge Function: Send Push Notification (Zero External Dependencies)
 import { adminClient, chatRecipients, HttpError, requireCaller } from '../_shared/auth.ts';
+import { localizePushLabel, pushCollapseId, pushLanguage, pushThreadId } from '../_shared/push-labels.ts';
 
 const APNS_KEY_ID = Deno.env.get('APNS_KEY_ID');
 const APNS_TEAM_ID = Deno.env.get('APNS_TEAM_ID');
@@ -108,7 +109,8 @@ async function sendToAPNs(
   body: string,
   data?: Record<string, any>,
   badge?: number,
-  sound?: string
+  sound?: string,
+  collapseId?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const jwt = await generateAPNsJWT();
@@ -116,14 +118,18 @@ async function sendToAPNs(
     if (subtitle) {
       alert.subtitle = subtitle;
     }
+    const threadId = pushThreadId(data);
 
     const apnsPayload = {
       aps: {
         alert,
-        badge: badge ?? 1,
+        // No count known: leave the icon as it is rather than forcing 1.
+        ...(badge !== undefined ? { badge } : {}),
         sound: sound ?? 'default',
         'mutable-content': 1,
         'content-available': 1,
+        // Notification Center stacks a chat's (or an event's) notifications.
+        ...(threadId ? { 'thread-id': threadId } : {}),
       },
       ...data,
     };
@@ -139,7 +145,8 @@ async function sendToAPNs(
           'apns-push-type': 'alert',
           'apns-priority': '10',
           'apns-expiration': '0',
-          ...(data?.tag ? { 'apns-collapse-id': String(data.tag).slice(0, 64) } : {}),
+          // Was data.tag ("Direct Message", "Gig Alert"): every DM replaced the last one.
+          ...(collapseId ? { 'apns-collapse-id': collapseId } : {}),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(apnsPayload),
@@ -230,7 +237,8 @@ async function sendToFCM(
   body: string,
   data?: Record<string, any>,
   channelId?: string,
-  tag?: string
+  tag?: string,
+  collapseId?: string
 ): Promise<{ success: boolean; error?: string }> {
   if (!FCM_PROJECT_ID) return { success: false, error: 'FCM not configured' };
   const accessToken = await getFCMAccessToken();
@@ -244,7 +252,9 @@ async function sendToFCM(
       icon: 'ic_stat_notification',
       color: '#050505',
     };
-    if (tag) androidNotification.tag = tag;
+    // The notification tag replaces the shown notification with the same tag:
+    // only duplicates collapse (the label stays in data.tag).
+    if (collapseId) androidNotification.tag = collapseId;
 
     const response = await fetch(
       `https://fcm.googleapis.com/v1/projects/${FCM_PROJECT_ID}/messages:send`,
@@ -389,17 +399,6 @@ Deno.serve(async (req: Request) => {
       await supabase.from('notifications').insert(notifications);
     }
 
-    // Badge = real unread count when the push goes to one person.
-    let effectiveBadge = badge;
-    if (effectiveBadge === undefined && targetUserIds.length === 1) {
-      const { count } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', targetUserIds[0])
-        .eq('read', false);
-      effectiveBadge = Math.max(1, count ?? 1);
-    }
-
     const { data: tokens, error: tokenError } = await supabase
       .from('push_tokens')
       .select('*')
@@ -415,19 +414,46 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Per recipient: the icon badge is their own unread count (a band message
+    // used to set everyone's to 1), and the subtitle label is in their language.
+    const tokenUserIds: string[] = [...new Set(tokens.map((tk: any) => String(tk.user_id)))];
+    const badgeByUser = new Map<string, number>();
+    if (badge === undefined) {
+      await Promise.all(tokenUserIds.map(async (uid) => {
+        const { count, error } = await supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', uid)
+          .eq('read', false);
+        if (!error) badgeByUser.set(uid, Math.max(1, count ?? 1));
+      }));
+    }
+    const langByUser = new Map<string, ReturnType<typeof pushLanguage>>();
+    if (effectiveSubtitle) {
+      const { data: prefs } = await supabase
+        .from('profiles')
+        .select('id, preferred_language')
+        .in('id', tokenUserIds);
+      (prefs || []).forEach((p: any) => langByUser.set(String(p.id), pushLanguage(p.preferred_language)));
+    }
+    const collapseId = pushCollapseId(notificationType, data);
+
     const results = await Promise.allSettled(
       tokens.map(async (tokenRecord: any) => {
         const platform = tokenRecord.platform;
         const deviceToken = tokenRecord.token;
+        const uid = String(tokenRecord.user_id);
+        const userBadge = badge ?? badgeByUser.get(uid);
+        const userSubtitle = localizePushLabel(effectiveSubtitle, langByUser.get(uid) ?? null);
 
         if (platform === 'ios') {
-          const result = await sendToAPNs(deviceToken, title, effectiveSubtitle, notificationBody, data, effectiveBadge, sound);
+          const result = await sendToAPNs(deviceToken, title, userSubtitle, notificationBody, data, userBadge, sound, collapseId);
           if (!result.success && result.error === 'invalid_token') {
             await supabase.from('push_tokens').update({ is_active: false }).eq('id', tokenRecord.id);
           }
           return { token_id: tokenRecord.id, platform, ...result };
         } else if (platform === 'android') {
-          const result = await sendToFCM(deviceToken, title, effectiveSubtitle, notificationBody, data, effectiveChannel, effectiveTag);
+          const result = await sendToFCM(deviceToken, title, userSubtitle, notificationBody, data, effectiveChannel, effectiveTag, collapseId);
           if (!result.success && result.error === 'invalid_token') {
             await supabase.from('push_tokens').update({ is_active: false }).eq('id', tokenRecord.id);
           }

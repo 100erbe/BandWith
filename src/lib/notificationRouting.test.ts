@@ -8,6 +8,13 @@ describe('notificationTarget', () => {
     expect(notificationTargetLabel(t!)).toBe('Open event');
   });
 
+  it('opens the vote sheet of a rehearsal poll', () => {
+    const t = notificationTarget('rehearsal_poll', { poll_id: 'p-1' });
+    expect(t).toEqual({ screen: 'poll', pollId: 'p-1' });
+    expect(notificationTargetLabel(t!)).toBe('Vote now');
+    expect(notificationTarget('rehearsal_proposal', {})).toEqual({ screen: 'event' });
+  });
+
   it('opens chats only when the chat id is known', () => {
     expect(notificationTarget('chat_message', { chat_id: 'c-1' })).toEqual({ screen: 'chat', chatId: 'c-1' });
     expect(notificationTarget('chat_message', {})).toBeNull();

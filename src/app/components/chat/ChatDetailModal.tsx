@@ -19,7 +19,7 @@ import {
 import { cn } from '@/app/components/ui/utils';
 import { eventKindOf, type EventKind, HeaderAction, IconButton, NavBackButton, Tag, PillButton } from '@/app/components/bw';
 import { supabase } from '@/lib/supabase';
-import { getMessages, sendMessage, markChatAsRead, subscribeToChat, subscribeToReceipts, getChatParticipants, deleteChat, getChat, receiptFor } from '@/lib/services/chats';
+import { getMessages, sendMessage, markChatAsRead, subscribeToChat, subscribeToReceipts, getChatParticipants, deleteChat, getChat, receiptFor, chatErrorMessage } from '@/lib/services/chats';
 import type { Message, ChatParticipant, ReceiptStatus } from '@/lib/services/chats';
 import { ReceiptTicks } from '@/app/components/chat/ReceiptTicks';
 import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
@@ -35,7 +35,8 @@ import { createPortal } from 'react-dom';
 import { useRailLayout } from '@/lib/deviceRegions';
 import { useLineupSoFar } from '@/app/hooks/useLineupSoFar';
 import { ChatEventContextPane } from '@/app/components/chat/ChatEventContextPane';
-import { CHAT_PAGE_SIZE, mergeLatestPage, prependOlder, normalizeChatType, type ChatKind } from '@/lib/chatMessages';
+import { CHAT_PAGE_SIZE, mergeLatestPage, prependOlder, appendIncoming, normalizeChatType, type ChatKind } from '@/lib/chatMessages';
+import { isOfflineError } from '@/lib/offline/networkErrors';
 
 /**
  * Chat keyboard: it stays up while you read and tap around the chat. It
@@ -137,6 +138,14 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
   const [restrictionReason, setRestrictionReason] = useState<string>('');
   // Band admins (user ids) for the chat's band: drives the " · Admin" sender label.
   const [bandAdminIds, setBandAdminIds] = useState<Set<string>>(() => new Set());
+  // The thread could not be loaded (offline): not the same as an empty chat.
+  const [loadError, setLoadError] = useState(false);
+  // Shown above the composer when a message was not sent (the text stays).
+  const [sendError, setSendError] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  // The chat on screen. The same screen shows another chat when one is picked
+  // beside it (two panes) or a push opens one: answers for the old chat are dropped.
+  const chatIdRef = useRef(chat.id);
   const onlineUserIds = useOnlinePresence(user?.id);
 
   // Event chats on the open Duo and on a landscape tablet: the event's times,
@@ -188,6 +197,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
     const value = e.target.value;
     const cursorPos = e.target.selectionStart || 0;
     setNewMessage(value);
+    if (sendError) setSendError('');
     
     const textBeforeCursor = value.substring(0, cursorPos);
     const lastAtIndex = textBeforeCursor.lastIndexOf('@');
@@ -222,10 +232,13 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
   
   const handleDeleteChat = async () => {
     setDeleting(true);
+    setDeleteError('');
     const { error } = await deleteChat(chat.id);
     setDeleting(false);
     if (!error) {
       onClose();
+    } else {
+      setDeleteError(t('Could not delete the chat. Try again.'));
     }
   };
 
@@ -233,7 +246,9 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
     message.id.startsWith('temp-') ? 'sending' : receiptFor(message.created_at, otherParticipants);
 
   const loadParticipants = async () => {
-    const { data: participants } = await getChatParticipants(chat.id);
+    const id = chat.id;
+    const { data: participants } = await getChatParticipants(id);
+    if (chatIdRef.current !== id) return;
     if (participants && user) {
       const otherParticipants = participants.filter(p => p.user_id !== user.id);
       setChatParticipants(
@@ -263,6 +278,34 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
   };
 
   useEffect(() => {
+    const id = chat.id;
+    chatIdRef.current = id;
+    const live = () => chatIdRef.current === id;
+    // Nothing from the previous chat stays: draft, reply, event, permissions.
+    const propName = chat.name && chat.name !== 'New Chat' ? chat.name : '';
+    setChatName(propName);
+    setChatInitials(
+      (propName ? propName.split(' ').filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() : '') ||
+        (chat.initials && chat.initials !== 'NC' ? chat.initials : '')
+    );
+    setChatAvatarUrl(chat.avatarUrl);
+    setMessages([]);
+    setHasOlder(false);
+    setLoadingOlder(false);
+    setLoadError(false);
+    setNewMessage('');
+    setReplyingTo(null);
+    setShowMentionSuggestions(false);
+    setMentionQuery('');
+    setSendError('');
+    setDeleteError('');
+    setShowDeleteConfirm(false);
+    setEventContext(null);
+    setCanText(true);
+    setRestrictionReason('');
+    setBandAdminIds(new Set());
+    setOtherParticipants([]);
+    setChatParticipants([]);
     setChatType(chat.type);
     chatTypeRef.current = chat.type;
     typeResolvedRef.current = false;
@@ -276,7 +319,15 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
 
     // Fetch full chat record to ensure real title and avatar
     (async () => {
-      const { data: fullChat } = await getChat(chat.id);
+      const { data: fullChat, error: chatError } = await getChat(chat.id);
+      if (!live()) return;
+      // Not found for this user (left the band, dropped from the gig, another
+      // account's push): say so instead of a composer that can't send.
+      if (!fullChat && (chatError as { code?: string } | null)?.code === 'PGRST116') {
+        setCanText(false);
+        setRestrictionReason(t('You no longer have access to this chat.'));
+        return;
+      }
       if (fullChat) {
         const kind = normalizeChatType(fullChat.type);
         if (kind) {
@@ -302,6 +353,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
               .select('name, logo_url')
               .eq('id', fullChat.band_id)
               .maybeSingle();
+            if (!live()) return;
             const bName = bData?.name || fullChat.name;
             if (bName && bName !== 'New Chat') {
               setChatName(bName);
@@ -323,6 +375,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
 
         if (fullChat.type === 'event' && fullChat.event_id) {
           const { data: ev } = await supabase.from('events').select(CHAT_EVENT_COLUMNS).eq('id', fullChat.event_id).maybeSingle();
+          if (!live()) return;
           if (ev) setEventContext(chatEventContext(ev as Parameters<typeof chatEventContext>[0]));
         }
 
@@ -334,6 +387,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
             .eq('band_id', fullChat.band_id)
             .eq('role', 'admin')
             .eq('is_active', true);
+          if (!live()) return;
           setBandAdminIds(new Set((admins || []).map((a: { user_id: string }) => a.user_id)));
         }
 
@@ -412,19 +466,29 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
             }
           }
 
+          if (!live()) return;
           setCanText(permitted);
           setRestrictionReason(reason);
         }
       }
     })();
     
+    // Read only while it is on screen: with the app in the background
+    // (Android keeps running) the sender must not see read ticks.
+    const markRead = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      markChatNotificationsAsRead(id);
+      markChatAsRead(id);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') markRead();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
     const unsubscribe = subscribeToChat(chat.id, (message) => {
-      setMessages(prev => {
-        if (prev.some(m => m.id === message.id)) return prev;
-        return [...prev.filter(m => !m.id.startsWith('temp-')), message];
-      });
-      markChatNotificationsAsRead(chat.id);
-      markChatAsRead(chat.id);
+      if (!live()) return;
+      setMessages(prev => appendIncoming(prev, message));
+      markRead();
     });
 
     const unsubscribeReceipts = subscribeToReceipts((changedChatId) => {
@@ -433,11 +497,16 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
 
     const pollInterval = setInterval(async () => {
       const { data } = await getMessages(chat.id, { limit: CHAT_PAGE_SIZE });
-      if (data) setMessages(prev => mergeLatestPage(prev, data));
+      if (!live()) return;
+      if (data) {
+        setLoadError(false);
+        setMessages(prev => mergeLatestPage(prev, data));
+      }
       loadParticipants();
     }, 3000);
 
     return () => {
+      document.removeEventListener('visibilitychange', onVisible);
       unsubscribe();
       unsubscribeReceipts();
       clearInterval(pollInterval);
@@ -470,9 +539,12 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
   }, [messages]);
 
   const loadMessages = async () => {
+    const id = chat.id;
     setLoading(true);
-    const { data } = await getMessages(chat.id, { limit: CHAT_PAGE_SIZE });
+    const { data } = await getMessages(id, { limit: CHAT_PAGE_SIZE });
+    if (chatIdRef.current !== id) return;
     if (data) setMessages(data);
+    setLoadError(!data);
     setHasOlder((data?.length ?? 0) >= CHAT_PAGE_SIZE);
     setLoading(false);
   };
@@ -480,8 +552,10 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
   const loadOlder = async () => {
     const oldest = messages.find(m => !m.id.startsWith('temp-'));
     if (!oldest || loadingOlder) return;
+    const id = chat.id;
     setLoadingOlder(true);
-    const { data } = await getMessages(chat.id, { limit: CHAT_PAGE_SIZE, before: oldest.created_at });
+    const { data } = await getMessages(id, { limit: CHAT_PAGE_SIZE, before: oldest.created_at });
+    if (chatIdRef.current !== id) return;
     setLoadingOlder(false);
     if (!data) return;
     setHasOlder(data.length >= CHAT_PAGE_SIZE);
@@ -496,6 +570,8 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
     if (!chat.id || chat.id === 'undefined' || chat.id === 'null') return;
     
     setSending(true);
+    setSendError('');
+    const sentFrom = chat.id;
     const messageText = newMessage.trim();
     const replyToMessage = replyingTo;
     setNewMessage('');
@@ -517,11 +593,18 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
     setMessages(prev => [...prev, optimisticMessage]);
     
     const { data, error } = await sendMessage(chat.id, messageText, 'text', replyToMessage?.id);
+    // Another chat is on screen now: its composer is not this one.
+    if (chatIdRef.current !== sentFrom) {
+      setSending(false);
+      return;
+    }
     
     if (error) {
       setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
       setNewMessage(messageText);
       setReplyingTo(replyToMessage);
+      const offline = (typeof navigator !== 'undefined' && !navigator.onLine) || isOfflineError(error);
+      setSendError(offline ? t('Message not sent. Check your connection and try again.') : chatErrorMessage(error, t('Message not sent. Try again.')));
     } else if (data) {
       setMessages(prev => prev.map(m => m.id === optimisticMessage.id ? data : m));
     }
@@ -694,7 +777,8 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
         open={showDeleteConfirm}
         chatName={chatType === 'direct' ? displayTitle : undefined}
         deleting={deleting}
-        onCancel={() => setShowDeleteConfirm(false)}
+        error={deleteError || undefined}
+        onCancel={() => { setShowDeleteConfirm(false); setDeleteError(''); }}
         onConfirm={handleDeleteChat}
       />
 
@@ -724,6 +808,18 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : messages.length === 0 && loadError ? (
+          <div className="flex flex-col items-center justify-center h-full text-center gap-4" role="alert">
+            <div className="flex flex-col gap-1.5">
+              <h4 className="bw-h3 text-foreground">{t('Could not load the messages')}</h4>
+              <p className="bw-label-sm text-muted-foreground">
+                {t('Check your connection and try again.')}
+              </p>
+            </div>
+            <PillButton variant="outline" size="sm" fullWidth={false} onClick={() => void loadMessages()}>
+              {t('Try again')}
+            </PillButton>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center gap-4">
@@ -890,6 +986,10 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
               )}
             </AnimatePresence>
             
+            {sendError && (
+              <p role="alert" className="px-5 pt-2 bw-label-xs text-destructive">{sendError}</p>
+            )}
+
             {/* Touches here keep the keyboard up (see AuthenticatedApp's
                 touchstart handler): sending a message doesn't close it. */}
             <div className="px-4 pt-3 flex items-center gap-3" data-keep-keyboard="">

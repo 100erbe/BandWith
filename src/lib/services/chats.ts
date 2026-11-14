@@ -1,6 +1,15 @@
 import { supabase, getSafeUser } from '../supabase';
 import { sendPushToUsers } from './notifications';
 import { personName } from '@/lib/personName';
+import { isDirectChatBetween, type DirectChatFacts } from '@/lib/directChat';
+import { t } from '@/lib/i18n';
+
+/** A chat rule said no (who may write to whom). The message is translated and safe to show. */
+export class ChatRuleError extends Error {}
+
+/** What to show for a chat error: the rule when one said no, never raw server text. */
+export const chatErrorMessage = (error: unknown, fallback: string): string =>
+  error instanceof ChatRuleError ? error.message : fallback;
 
 // ============================================
 // TYPES
@@ -407,7 +416,36 @@ export const getChat = async (
   }
 };
 
-// Find existing direct chat between two users (handles case where one user cleared/left)
+// Find existing direct chat between two users (handles case where one user cleared/left).
+// Only a chat that was only ever between these two is reused (see directChat.ts):
+// reusing another one would add the new person to someone else's history.
+const directChatFacts = async (chat: Chat, participantIds: string[], userId1: string, userId2: string): Promise<DirectChatFacts | null> => {
+  const pair = [userId1, userId2];
+  // Cheap checks first: someone else in it or who created it.
+  if (participantIds.some((id) => !pair.includes(id))) return null;
+  if (chat.created_by && !pair.includes(chat.created_by)) return null;
+  const { data: foreign, error: foreignErr } = await supabase
+    .from('messages')
+    .select('id')
+    .eq('chat_id', chat.id)
+    .not('sender_id', 'in', `(${userId1},${userId2})`)
+    .limit(1);
+  if (foreignErr) return null;
+  const writers: string[] = [];
+  for (const id of pair) {
+    if (participantIds.includes(id) || chat.created_by === id) continue;
+    const { data: wrote, error } = await supabase
+      .from('messages')
+      .select('id')
+      .eq('chat_id', chat.id)
+      .eq('sender_id', id)
+      .limit(1);
+    if (error) return null;
+    if (wrote && wrote.length > 0) writers.push(id);
+  }
+  return { participantIds, createdBy: chat.created_by, writers, foreignWriter: (foreign || []).length > 0 };
+};
+
 const findExistingDirectChat = async (userId1: string, userId2: string): Promise<Chat | null> => {
   try {
     // Find all direct chats where either user is currently a participant
@@ -417,27 +455,7 @@ const findExistingDirectChat = async (userId1: string, userId2: string): Promise
       .in('user_id', [userId1, userId2]);
 
     const chatIds = Array.from(new Set((participations || []).map(p => p.chat_id)));
-    if (chatIds.length === 0) {
-      // Fallback: check if there is an existing direct chat created by either
-      const { data: createdChats } = await supabase
-        .from('chats')
-        .select('*')
-        .in('created_by', [userId1, userId2])
-        .eq('type', 'direct')
-        .limit(10);
-      
-      for (const c of (createdChats || [])) {
-        const { data: parts } = await supabase
-          .from('chat_participants')
-          .select('user_id')
-          .eq('chat_id', c.id);
-        const pIds = (parts || []).map(p => p.user_id);
-        if (pIds.includes(userId1) || pIds.includes(userId2)) {
-          return c;
-        }
-      }
-      return null;
-    }
+    if (chatIds.length === 0) return null;
 
     // Get direct chats from this list
     const { data: directChats } = await supabase
@@ -450,10 +468,11 @@ const findExistingDirectChat = async (userId1: string, userId2: string): Promise
 
     // Fetch all participants for these candidate direct chats
     const candidateIds = directChats.map(c => c.id);
-    const { data: allParts } = await supabase
+    const { data: allParts, error: partsErr } = await supabase
       .from('chat_participants')
       .select('chat_id, user_id')
       .in('chat_id', candidateIds);
+    if (partsErr) return null;
 
     const partsByChat = new Map<string, string[]>();
     (allParts || []).forEach(p => {
@@ -462,25 +481,11 @@ const findExistingDirectChat = async (userId1: string, userId2: string): Promise
       partsByChat.set(p.chat_id, list);
     });
 
-    for (const chat of directChats) {
-      const pIds = partsByChat.get(chat.id) || [];
-      // 1. Both are already participants
-      if (pIds.includes(userId1) && pIds.includes(userId2)) {
-        return chat;
-      }
-      // 2. Only one is recorded as participant (other user had deleted their participation)
-      if (pIds.length === 1 && (pIds[0] === userId1 || pIds[0] === userId2)) {
-        // Check message senders or creator to confirm it was between these two users
-        const { data: msgSenders } = await supabase
-          .from('messages')
-          .select('sender_id')
-          .eq('chat_id', chat.id)
-          .limit(10);
-        const senders = new Set((msgSenders || []).map(m => m.sender_id));
-        if (senders.has(userId1) || senders.has(userId2) || chat.created_by === userId1 || chat.created_by === userId2) {
-          return chat;
-        }
-      }
+    // Chats where both are still in first, then the ones missing a row.
+    const ordered = [...directChats].sort((x, y) => (partsByChat.get(y.id)?.length || 0) - (partsByChat.get(x.id)?.length || 0));
+    for (const chat of ordered) {
+      const facts = await directChatFacts(chat, partsByChat.get(chat.id) || [], userId1, userId2);
+      if (facts && isDirectChatBetween(facts, userId1, userId2)) return chat;
     }
 
     return null;
@@ -536,7 +541,7 @@ export const createChat = async (
       }
 
       if (!allowed) {
-        return { data: null, error: new Error('Members are only allowed to direct message band admins.') };
+        return { data: null, error: new ChatRuleError(t('Direct messaging is only available with band admins.')) };
       }
     } else if (data.type === 'band' && data.band_id) {
       const { data: bm } = await supabase
@@ -548,7 +553,7 @@ export const createChat = async (
         .maybeSingle();
 
       if (!bm) {
-        return { data: null, error: new Error('You can only message bands you are a member of.') };
+        return { data: null, error: new ChatRuleError(t('You can only message in bands you are an active member of.')) };
       }
     } else if (data.type === 'event' && data.event_id) {
       let allowed = false;
@@ -572,7 +577,7 @@ export const createChat = async (
         if (em && em.status !== 'declined') allowed = true;
       }
       if (!allowed) {
-        return { data: null, error: new Error('You can only message in events you are participating in.') };
+        return { data: null, error: new ChatRuleError(t('You can only message in events you are participating in.')) };
       }
     }
 
@@ -867,7 +872,7 @@ export const sendMessage = async (
         }
 
         if (!allowed) {
-          return { data: null, error: new Error('Direct messaging is only permitted with band admins.') };
+          return { data: null, error: new ChatRuleError(t('Direct messaging is only available with band admins.')) };
         }
       }
     } else if (chat.type === 'band' && chat.band_id) {
@@ -880,7 +885,7 @@ export const sendMessage = async (
         .maybeSingle();
 
       if (!bm) {
-        return { data: null, error: new Error('You can only message in bands you are a member of.') };
+        return { data: null, error: new ChatRuleError(t('You can only message in bands you are an active member of.')) };
       }
     } else if (chat.type === 'event' && chat.event_id) {
       let allowed = false;
@@ -904,7 +909,7 @@ export const sendMessage = async (
         if (em && em.status !== 'declined') allowed = true;
       }
       if (!allowed) {
-        return { data: null, error: new Error('You can only message in events you are participating in.') };
+        return { data: null, error: new ChatRuleError(t('You can only message in events you are participating in.')) };
       }
     }
 

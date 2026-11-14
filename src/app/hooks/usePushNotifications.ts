@@ -11,6 +11,7 @@ import {
   type PushNotificationData,
 } from '@/lib/services/pushNotifications';
 import { Capacitor } from '@capacitor/core';
+import { markAsRead } from '@/lib/services/notifications';
 import { t } from '@/lib/i18n';
 
 interface UsePushNotificationsReturn {
@@ -151,6 +152,9 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
       }));
       return;
     }
+
+    // Opened from the banner: it is read (bell and icon badge follow).
+    if (data.notification_id) void markAsRead(String(data.notification_id));
 
     // Same routing as tapping the notification in the in-app inbox.
     navigateToNotificationTarget(notificationTarget(String(data.type || ''), data), notificationBandId({ data }));

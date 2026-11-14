@@ -187,10 +187,18 @@ export const getNotificationColor = (type: NotificationType): string => {
 // NOTIFICATIONS CRUD
 // ============================================
 
+/** Chat rows: one per message per recipient, read when the chat is opened. */
+export const CHAT_NOTIFICATION_TYPES = ['chat_message', 'chat_mention'] as const;
+const CHAT_TYPES_FILTER = `(${CHAT_NOTIFICATION_TYPES.join(',')})`;
+export const isChatNotificationType = (type: string | null | undefined): boolean =>
+  (CHAT_NOTIFICATION_TYPES as readonly string[]).includes(String(type || ''));
+
 export const getNotifications = async (options?: {
   unreadOnly?: boolean;
   limit?: number;
   offset?: number;
+  /** The inbox: leave chat rows out, so `limit` counts inbox items only. */
+  excludeChat?: boolean;
 }): Promise<{ data: Notification[] | null; error: Error | null }> => {
   try {
     const { data: { user } } = await getSafeUser();
@@ -204,6 +212,10 @@ export const getNotifications = async (options?: {
 
     if (options?.unreadOnly) {
       query = query.eq('read', false);
+    }
+
+    if (options?.excludeChat) {
+      query = query.not('type', 'in', CHAT_TYPES_FILTER);
     }
 
     if (options?.limit) {
@@ -282,6 +294,10 @@ export const markAsRead = async (notificationId: string): Promise<{ error: Error
   }
 };
 
+/**
+ * The bell's "mark all as read". Chat rows are not in the bell: they stay
+ * unread until their chat is opened, so the icon badge keeps counting them.
+ */
 export const markAllAsRead = async (): Promise<{ error: Error | null }> => {
   try {
     const { data: { user } } = await getSafeUser();
@@ -294,7 +310,8 @@ export const markAllAsRead = async (): Promise<{ error: Error | null }> => {
         read_at: new Date().toISOString(),
       })
       .eq('user_id', user.id)
-      .eq('read', false);
+      .eq('read', false)
+      .not('type', 'in', CHAT_TYPES_FILTER);
 
     if (error) throw error;
 

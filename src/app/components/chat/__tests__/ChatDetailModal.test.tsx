@@ -6,18 +6,20 @@ const svc = vi.hoisted(() => ({
   getMessages: vi.fn(),
   getChat: vi.fn(),
   getChatParticipants: vi.fn(),
+  sendMessage: vi.fn(),
 }));
 
 vi.mock('@/lib/services/chats', () => ({
   getMessages: svc.getMessages,
   getChat: svc.getChat,
   getChatParticipants: svc.getChatParticipants,
-  sendMessage: vi.fn(async () => ({ data: null, error: null })),
+  sendMessage: svc.sendMessage,
   markChatAsRead: vi.fn(async () => ({})),
   subscribeToChat: () => () => {},
   subscribeToReceipts: () => () => {},
   deleteChat: vi.fn(async () => ({ error: null })),
   receiptFor: () => 'sent',
+  chatErrorMessage: (_e: unknown, fallback: string) => fallback,
 }));
 vi.mock('@/lib/supabase', () => {
   const b: any = new Proxy(function () {}, {
@@ -79,6 +81,7 @@ beforeEach(() => {
     error: null,
   });
   svc.getChatParticipants.mockReset().mockResolvedValue({ data: [participant('me', 'Me'), participant('u1', 'Leo M.')] });
+  svc.sendMessage.mockReset().mockResolvedValue({ data: null, error: null });
   scrollSpy.mockReset();
   Element.prototype.scrollIntoView = scrollSpy;
 });
@@ -147,5 +150,51 @@ describe('ChatDetailModal', () => {
     expect(screen.getByText(/BAND ·/)).toBeTruthy();
     expect(screen.queryByText(/DM ·/)).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Leo M.' })).toBeNull();
+  });
+
+  // No band check to pass in these: the composer stays open.
+  const openComposer = () =>
+    svc.getChat.mockResolvedValue({ data: { id: 'c1', type: 'direct', participants: [participant('me', 'Me')] }, error: null });
+
+  it('another chat in the same screen starts with an empty composer', async () => {
+    openComposer();
+    const { rerender } = render(<ChatDetailModal chat={directProp} onClose={() => {}} />);
+    await settle();
+    const input = screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'draft for Leo' } });
+    expect(input.value).toBe('draft for Leo');
+    rerender(<ChatDetailModal chat={{ ...directProp, id: 'c2' }} onClose={() => {}} />);
+    await settle();
+    expect((screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement).value).toBe('');
+  });
+
+  it('says the messages could not be loaded instead of "No messages yet"', async () => {
+    svc.getMessages.mockResolvedValue({ data: null, error: new Error('Failed to fetch') });
+    render(<ChatDetailModal chat={directProp} onClose={() => {}} />);
+    await settle();
+    expect(screen.getByText('Could not load the messages')).toBeTruthy();
+    expect(screen.queryByText('No messages yet')).toBeNull();
+  });
+
+  it('a chat the user can no longer open locks the composer', async () => {
+    svc.getChat.mockResolvedValue({ data: null, error: { code: 'PGRST116', message: 'no rows' } });
+    render(<ChatDetailModal chat={directProp} onClose={() => {}} />);
+    await settle();
+    expect(screen.getByText('You no longer have access to this chat.')).toBeTruthy();
+    expect(screen.queryByRole('textbox', { name: 'Message' })).toBeNull();
+  });
+
+  it('a message that was not sent says so and keeps the text', async () => {
+    openComposer();
+    svc.sendMessage.mockResolvedValue({ data: null, error: new Error('permission denied for table messages') });
+    render(<ChatDetailModal chat={directProp} onClose={() => {}} />);
+    await settle();
+    const input = screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'hello' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await settle();
+    expect(screen.getByRole('alert').textContent).toBe('Message not sent. Try again.');
+    expect((screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement).value).toBe('hello');
+    expect(screen.queryByText(/permission denied/)).toBeNull();
   });
 });
