@@ -66,7 +66,7 @@ serve(async (req) => {
     .map((g) =>
       gigEvent(
         {
-          title: g.event_title || "Gig",
+          title: g.event_title || labels.gig || "Gig",
           bandName: band,
           date: g.event_date as string,
           loadIn: g.load_in_time,

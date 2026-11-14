@@ -30,16 +30,18 @@ export interface GigLabels {
   soundcheck: string;
   show: string;
   role: string;
+  /** Title of a gig without a name (the feed). */
+  gig?: string;
 }
 
 /** For the feed, which has no app translations at hand. */
 export const GIG_LABELS: Record<string, GigLabels> = {
-  en: { loadIn: 'Load-in', soundcheck: 'Soundcheck', show: 'Show', role: 'Role' },
-  it: { loadIn: 'Carico', soundcheck: 'Soundcheck', show: 'Show', role: 'Ruolo' },
-  es: { loadIn: 'Montaje', soundcheck: 'Prueba de sonido', show: 'Show', role: 'Rol' },
-  fr: { loadIn: 'Installation', soundcheck: 'Balances', show: 'Concert', role: 'Rôle' },
-  de: { loadIn: 'Aufbau', soundcheck: 'Soundcheck', show: 'Show', role: 'Rolle' },
-  pt: { loadIn: 'Montagem', soundcheck: 'Passagem de som', show: 'Show', role: 'Função' },
+  en: { loadIn: 'Load-in', soundcheck: 'Soundcheck', show: 'Show', role: 'Role', gig: 'Gig' },
+  it: { loadIn: 'Carico', soundcheck: 'Soundcheck', show: 'Show', role: 'Ruolo', gig: 'Gig' },
+  es: { loadIn: 'Montaje', soundcheck: 'Prueba de sonido', show: 'Show', role: 'Rol', gig: 'Concierto' },
+  fr: { loadIn: 'Installation', soundcheck: 'Balances', show: 'Concert', role: 'Rôle', gig: 'Concert' },
+  de: { loadIn: 'Aufbau', soundcheck: 'Soundcheck', show: 'Show', role: 'Rolle', gig: 'Gig' },
+  pt: { loadIn: 'Montagem', soundcheck: 'Passagem de som', show: 'Show', role: 'Função', gig: 'Show' },
 };
 
 const hm = (v?: string | null): [number, number] | null => {

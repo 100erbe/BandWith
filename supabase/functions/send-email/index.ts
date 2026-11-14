@@ -473,20 +473,24 @@ async function sendQuoteClientEmail(
   const snap = link.snapshot ?? {};
   const ref = clean(snap.ref ?? quote.quote_number, "");
   const pdf = kind === "reply" || link.pdf_version !== link.version ? null : quotePdfUrl(link.pdf_url, link.band_id);
-  const vars = quoteEmailVars({
-    kind,
-    lang,
-    band: clean(band?.name, "BandWith"),
-    ref,
-    event: clean(snap.title ?? quote.event_name, ref),
-    date: quoteEmailDate(snap.date, lang),
-    total: clean(snap.totalLabel, ""),
-    clientName: clean(quote.client_name, ""),
-    to,
-    url: `${appUrl()}/quote.html?t=${encodeURIComponent(link.token)}`,
-    pdfAttached: !!pdf,
-    reply,
-  });
+  const vars = {
+    ...quoteEmailVars({
+      kind,
+      lang,
+      band: clean(band?.name, "BandWith"),
+      ref,
+      event: clean(snap.title ?? quote.event_name, ref),
+      date: quoteEmailDate(snap.date, lang),
+      total: clean(snap.totalLabel, ""),
+      clientName: clean(quote.client_name, ""),
+      to,
+      url: `${appUrl()}/quote.html?t=${encodeURIComponent(link.token)}`,
+      pdfAttached: !!pdf,
+      reply,
+    }),
+    // The footer's Privacy and Terms links are absolute: relative ones break in mail clients.
+    AppURL: appUrl(),
+  };
   const { subject, html } = renderEmail(type === "quote_reply" ? "quote-reply" : "quote-link", vars);
   const filename = `${(ref || "quote").replace(/[^A-Za-z0-9._-]+/g, "-")}.pdf`;
 
