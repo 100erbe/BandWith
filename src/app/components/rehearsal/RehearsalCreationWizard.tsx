@@ -416,7 +416,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     fetchSongData();
   }, [selectedBand?.id]);
 
-  const [endTime, setEndTime] = useState<string>((typeof ds?.endTime === 'string' && ds.endTime) || editingEvent?.endTime || '22:00');
+  // Saved times come back as 22:00:00; the wizard works in HH:MM.
+  const [endTime, setEndTime] = useState<string>((typeof ds?.endTime === 'string' && ds.endTime) || editingEvent?.endTime?.slice(0, 5) || '22:00');
   const [checklistChecked, setChecklistChecked] = useState<Set<number>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRosterExpanded, setIsRosterExpanded] = useState(false);
@@ -459,7 +460,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     location: editingEvent?.location || '',
     address: editingEvent?.venueAddress || '',
     date: editingEvent?.date || toLocalDateString(new Date(Date.now() + 86400000)),
-    time: editingEvent?.time || '20:00',
+    time: editingEvent?.time?.slice(0, 5) || '20:00',
     duration: '2h',
     recurrence: initialRecurrence,
     venueType: editingEvent?.price && parseFloat(editingEvent.price) > 0 ? 'paid' : 'free',
