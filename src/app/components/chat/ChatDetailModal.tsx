@@ -35,8 +35,9 @@ import { createPortal } from 'react-dom';
 import { useRailLayout } from '@/lib/deviceRegions';
 import { useLineupSoFar } from '@/app/hooks/useLineupSoFar';
 import { ChatEventContextPane } from '@/app/components/chat/ChatEventContextPane';
-import { CHAT_PAGE_SIZE, mergeLatestPage, prependOlder, appendIncoming, normalizeChatType, type ChatKind } from '@/lib/chatMessages';
+import { CHAT_PAGE_SIZE, mergeLatestPage, prependOlder, appendIncoming, normalizeChatType, isReplySwipe, type ChatKind } from '@/lib/chatMessages';
 import { isOfflineError } from '@/lib/offline/networkErrors';
+import { haptic } from '@/lib/haptics';
 
 /**
  * Chat keyboard: it stays up while you read and tap around the chat. It
@@ -229,6 +230,9 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
     setReplyingTo(message);
     inputRef.current?.focus();
   };
+  // Touch screens have no hover to reveal Reply: swipe a message to the right
+  // instead (the button stays for the mouse, the keyboard and VoiceOver).
+  const [touchReply] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.('(hover: none)').matches);
   
   const handleDeleteChat = async () => {
     setDeleting(true);
@@ -877,7 +881,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
                       type="button"
                       onClick={() => handleReply(message)}
                       aria-label={t('Reply to message')}
-                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 w-8 h-8 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground flex items-center justify-center transition-opacity active:scale-90 self-center shrink-0 cursor-pointer"
+                      className="relative after:absolute after:-inset-1.5 after:content-[''] opacity-0 group-hover:opacity-100 focus:opacity-100 w-8 h-8 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground flex items-center justify-center transition-opacity active:scale-90 self-center shrink-0 cursor-pointer"
                     >
                       <Reply className="w-3.5 h-3.5" />
                     </button>
@@ -889,6 +893,16 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.15 }}
+                      drag={touchReply ? 'x' : false}
+                      dragDirectionLock
+                      dragConstraints={{ left: 0, right: 0 }}
+                      dragElastic={{ left: 0, right: 0.5 }}
+                      dragSnapToOrigin
+                      onDragEnd={(_, info) => {
+                        if (!isReplySwipe(info.offset.x, info.offset.y)) return;
+                        haptic.tap();
+                        handleReply(message);
+                      }}
                       className={cn("flex group gap-1.5", isMe ? "justify-end" : "justify-start")}
                     >
                       {/* Reply button for sent messages */}
@@ -1025,7 +1039,11 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
                   value={newMessage}
                   onChange={handleInputChange}
                   onKeyDown={(e) => {
-                    if (e.key === 'Escape') setShowMentionSuggestions(false);
+                    if (e.key === 'Escape') {
+                      // Escape closes the suggestions first, then the chat.
+                      if (showMentionSuggestions) e.preventDefault();
+                      setShowMentionSuggestions(false);
+                    }
                     else if (e.key === 'Enter' && !showMentionSuggestions) handleSend();
                     else if (e.key === 'Enter' && showMentionSuggestions && filteredParticipants.length > 0) {
                       e.preventDefault();

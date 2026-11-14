@@ -103,7 +103,7 @@ export const FeePayoutsContent: React.FC<{
                         onSetPaid!(m.userId!, !paid);
                       }}
                       className={cn(
-                        'w-8 h-8 rounded-full flex items-center justify-center shrink-0 cursor-pointer disabled:opacity-60 active:scale-[var(--press-scale)]',
+                        "relative after:absolute after:-inset-1.5 after:content-[''] w-8 h-8 rounded-full flex items-center justify-center shrink-0 cursor-pointer disabled:opacity-60 active:scale-[var(--press-scale)]",
                         paid ? 'bg-accent text-accent-foreground' : 'border-[1.5px] border-foreground/40',
                       )}
                     >

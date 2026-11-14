@@ -90,6 +90,7 @@ const NavTab: React.FC<{
   badgeCount?: number;
   labelled?: boolean;
 }> = ({ tabKey, label, icon: Icon, isActive, onClick, isScrollingDown, badgeCount, labelled = false }) => {
+  const t = useT();
   // Figma "Bottom Nav": icon-only tabs (24px in a 44px hit area); the active
   // tab is full opacity with a lime dot beneath it.
   void isScrollingDown;
@@ -106,8 +107,9 @@ const NavTab: React.FC<{
         data-tab-key={tabKey}
         onClick={onClick}
         aria-current={isActive ? 'page' : undefined}
+        aria-label={badgeCount ? t('{name}, {count} unread', { name: label, count: badgeCount }) : undefined}
         className={cn(
-          'relative z-10 outline-none shrink-0 h-12 px-[18px] rounded-full flex items-center gap-2 cursor-pointer transition-colors duration-150',
+          'relative z-10 outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0 h-12 px-[18px] rounded-full flex items-center gap-2 cursor-pointer transition-colors duration-150',
           'bw-label-sm tracking-[0.06em] whitespace-nowrap',
           isActive ? 'bg-foreground text-background' : 'text-foreground hover:bg-foreground/[0.06]',
         )}
@@ -124,10 +126,11 @@ const NavTab: React.FC<{
     <button
       data-tab-key={tabKey}
       onClick={onClick}
-      aria-label={label}
+      // The unread count is in the name: the badge alone isn't read out.
+      aria-label={badgeCount ? t('{name}, {count} unread', { name: label, count: badgeCount }) : label}
       aria-current={isActive ? 'page' : undefined}
       className={cn(
-        'relative z-10 outline-none shrink-0 w-11 h-11 flex flex-col items-center justify-center transition-colors duration-150 cursor-pointer',
+        'relative z-10 outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full shrink-0 w-11 h-11 flex flex-col items-center justify-center transition-colors duration-150 cursor-pointer',
         isActive ? 'text-foreground' : 'text-foreground/55 hover:text-foreground/80'
       )}
     >

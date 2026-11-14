@@ -84,3 +84,9 @@ export const appendIncoming = (prev: Message[], message: Message): Message[] => 
   const settled = rest.filter((m) => !isTemp(m));
   return [...settled, message, ...rest.filter(isTemp)];
 };
+
+/** How far a message is dragged sideways (px) before it is answered (swipe to reply on touch). */
+export const SWIPE_REPLY_PX = 56;
+
+/** A mostly horizontal drag to the right, far enough: reply to that message. */
+export const isReplySwipe = (dx: number, dy: number) => dx >= SWIPE_REPLY_PX && Math.abs(dy) < dx;
