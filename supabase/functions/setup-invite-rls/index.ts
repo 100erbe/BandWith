@@ -2,7 +2,8 @@
 //
 // SECURITY: this function runs with the secret key and is public (deployed with
 // verify_jwt = false; the user is not signed in yet). It therefore exposes a
-// single, read-only, minimal action. All former debug/admin actions
+// single, read-only, minimal action, and answers only with a count (no band
+// names, member or gig counts, inviter: anyone can type someone else's email). All former debug/admin actions
 // (accept_invite_for_user, list_invites, list_all_notifications,
 // delete_notification, update_notification_data, cancel_invite, create_invite,
 // resend_invite, list_bands, list_pending_invites, get_invite_details) were
@@ -68,53 +69,21 @@ serve(async (req) => {
 
     const supabaseAdmin = adminClient();
 
-    // Only the fields the joiner UI needs. Never return the invite token.
-    const { data: invites, error } = await supabaseAdmin
+    // Anyone can type any address here (no sign-in, no proof of the email),
+    // so the answer is only how many invites are waiting: never the band,
+    // its members, its gigs or who sent it. The invitee sees those once
+    // signed in with that address (bw_my_pending_invitations), or from the
+    // link in the invite email (bw_preview_invitation, token).
+    const { count, error } = await supabaseAdmin
       .from("band_invitations")
-      .select("id, band_id, role, created_at, expires_at, invited_by, bands:band_id(id, name, logo_url, description)")
+      .select("id", { count: "exact", head: true })
       .eq("email", normalizedEmail)
       .eq("status", "pending")
       .gt("expires_at", new Date().toISOString());
 
     if (error) throw error;
 
-    const result = await Promise.all(
-      (invites || []).map(async (invite: any) => {
-        const yearStart = `${new Date().getFullYear()}-01-01`;
-        const [{ count }, { count: gigs }, inviter] = await Promise.all([
-          supabaseAdmin
-            .from("band_members")
-            .select("id", { count: "exact", head: true })
-            .eq("band_id", invite.band_id)
-            .eq("is_active", true),
-          supabaseAdmin
-            .from("events")
-            .select("id", { count: "exact", head: true })
-            .eq("band_id", invite.band_id)
-            .neq("event_type", "rehearsal")
-            .in("status", ["confirmed", "completed"])
-            .gte("event_date", yearStart),
-          invite.invited_by
-            ? supabaseAdmin.from("profiles").select("full_name").eq("id", invite.invited_by).maybeSingle()
-            : Promise.resolve({ data: null }),
-        ]);
-        // First name only: this endpoint answers anyone who knows the email.
-        const inviterFirst = (inviter?.data?.full_name || "").trim().split(/\s+/)[0] || null;
-        return {
-          id: invite.id,
-          band_id: invite.band_id,
-          role: invite.role,
-          created_at: invite.created_at,
-          expires_at: invite.expires_at,
-          band: invite.bands,
-          member_count: count || 0,
-          gigs_this_year: gigs || 0,
-          inviter: inviterFirst ? { full_name: inviterFirst } : null,
-        };
-      }),
-    );
-
-    return json({ success: true, invites: result });
+    return json({ success: true, count: count || 0 });
   } catch (error) {
     console.error("lookup_invites error:", error);
     return json({ success: false, error: "Could not check invitations" }, 500);

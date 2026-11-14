@@ -3,8 +3,9 @@ import { createPortal } from 'react-dom';
 import { X } from '@/app/components/icons';
 import { IconButton } from '@/app/components/bw/Screen';
 import { useT } from '@/lib/i18n';
+import { useCloseOnBack } from '@/lib/overlayBack';
 
-export type LegalDoc = 'terms' | 'privacy';
+export type LegalDoc = 'terms' | 'privacy' | 'help';
 
 
 /** Bundled with the app (public/legal) and served on the web domains too. */
@@ -17,9 +18,10 @@ export const legalUrl = (doc: LegalDoc) => `/legal/${doc}.html`;
  */
 export const LegalSheet: React.FC<{ doc: LegalDoc | null; onClose: () => void }> = ({ doc, onClose }) => {
   const tr = useT();
+  useCloseOnBack(!!doc, onClose);
   if (!doc || typeof document === 'undefined') return null;
   // The documents themselves are English-only pages (public/legal).
-  const title = doc === 'terms' ? tr('Terms of Service') : tr('Privacy Policy');
+  const title = doc === 'terms' ? tr('Terms of Service') : doc === 'help' ? tr('Help & support') : tr('Privacy Policy');
   return createPortal(
     <div
       role="dialog"

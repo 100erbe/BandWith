@@ -9,6 +9,7 @@ import { cn } from '@/app/components/ui/utils';
 import { PeekingScrollContainer } from '@/app/components/ui/PeekingScrollContainer';
 import { createBand, type Band as BandRecord } from '@/lib/services/bands';
 import { useBand } from '@/lib/BandContext';
+import { useAuth } from '@/lib/AuthContext';
 import { t, useT } from '@/lib/i18n';
 
 interface CreateBandModalProps {
@@ -44,6 +45,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
   onBandCreated
 }) => {
   const { refreshBands } = useBand();
+  const { refreshProfile } = useAuth();
   const tr = useT();
   
   const [name, setName] = useState('');
@@ -76,8 +78,9 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
 
       setSuccess(true);
       
-      // Refresh bands list
-      await refreshBands();
+      // Refresh bands list, and the profile: a solo account is now a band
+      // member (trigger 034), so the app must leave solo mode.
+      await Promise.all([refreshBands(), refreshProfile()]);
 
       setTimeout(() => {
         if (data) {
@@ -86,8 +89,8 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
         onClose();
         resetForm();
       }, 1000);
-    } catch (err: any) {
-      setError(err.message || t('Failed to create band'));
+    } catch {
+      setError(t('Failed to create band'));
     } finally {
       setSaving(false);
     }

@@ -6,7 +6,8 @@ import React, {
   ReactNode,
 } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase, getSafeUser, signIn, signUp, signOut, resetPassword, signInWithOAuth, updatePassword, RECOVERY_FLAG } from './supabase';
+import { supabase, getSafeUser, getSessionOfflineSafe, signIn, signUp, signOut, resetPassword, signInWithOAuth, updatePassword, RECOVERY_FLAG } from './supabase';
+import { authErrorMessage } from './authErrors';
 import { Capacitor } from '@capacitor/core';
 import { cleanupPresence } from './services/presence';
 import { clearOfflineCache, getOfflineItem, setOfflineItem, getCacheKey } from './offline/storage';
@@ -47,11 +48,16 @@ interface AuthContextType {
   userMode: UserMode | null;         // PLG: current user mode
   setUserMode: (mode: UserMode) => Promise<void>;  // PLG: switch mode
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  /**
+   * `session` is null when the account still has to confirm its email.
+   * `existing`: with email confirmation on, signing up an address that is
+   * already registered returns no error, only a user without identities.
+   */
   signUp: (
     email: string,
     password: string,
     metadata?: { full_name?: string }
-  ) => Promise<{ error: AuthError | null }>;
+  ) => Promise<{ error: AuthError | null; session: Session | null; existing: boolean }>;
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signInWithApple: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<{ error: AuthError | null }>;
@@ -62,6 +68,9 @@ interface AuthContextType {
   dismissPasswordRecovery: () => void;
   refreshProfile: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
+  /** A sign-in that came back to the app (deep link) and failed, in the app's language. */
+  authError: string | null;
+  clearAuthError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -103,6 +112,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState<boolean>(() => {
     try {
       return new URLSearchParams(window.location.search).get(RECOVERY_FLAG) === '1';
@@ -207,9 +217,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        // Offline with an expired access token this is the stored session:
+        // the person stays signed in on the cached data (and the app lock
+        // still applies), instead of landing on the welcome screen.
+        const { session } = await getSessionOfflineSafe();
 
         if (session) {
           setSession(session);
@@ -239,6 +250,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (event === 'PASSWORD_RECOVERY') {
         setIsPasswordRecovery(true);
       }
+      // The initial state is initializeAuth's: offline, the library reports no
+      // session here although the stored one is still valid.
+      if (event === 'INITIAL_SESSION' && !session) return;
+      if (event === 'SIGNED_IN') setAuthError(null);
 
       setSession(session);
       setUser(session?.user ?? null);
@@ -278,22 +293,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } catch {
           return;
         }
+        const closeBrowser = async () => {
+          try {
+            const { Browser } = await import('@capacitor/browser');
+            await Browser.close();
+          } catch {
+            // In-app browser may already be closed
+          }
+        };
         const code = parsed.searchParams.get('code');
-        if (!code) return;
+        if (!code) {
+          // Expired reset / confirmation link, or a cancelled sign-in.
+          const errorCode = parsed.searchParams.get('error_code') || parsed.searchParams.get('error');
+          if (errorCode) {
+            setAuthError(authErrorMessage({ code: errorCode, message: parsed.searchParams.get('error_description') ?? '' }));
+            await closeBrowser();
+          }
+          return;
+        }
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
           console.error('[DeepLink] Could not complete sign-in:', error.message);
+          setAuthError(authErrorMessage(error));
+          await closeBrowser();
           return;
         }
+        setAuthError(null);
         if (parsed.searchParams.get(RECOVERY_FLAG) === '1') {
           setIsPasswordRecovery(true);
         }
-        try {
-          const { Browser } = await import('@capacitor/browser');
-          await Browser.close();
-        } catch {
-          // In-app browser may already be closed
-        }
+        await closeBrowser();
       };
 
       const setupDeepLinkListener = async () => {
@@ -335,8 +364,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     password: string,
     metadata?: { full_name?: string }
   ) => {
-    const { error } = await signUp(email, password, metadata);
-    return { error };
+    const { data, error } = await signUp(email, password, metadata);
+    const identities = data?.user?.identities;
+    return {
+      error,
+      session: data?.session ?? null,
+      existing: !error && !data?.session && Array.isArray(identities) && identities.length === 0,
+    };
   };
 
   const handleSignInWithGoogle = async () => {
@@ -389,22 +423,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return { error };
   };
 
+  const stripRecoveryFlag = () => {
+    try {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has(RECOVERY_FLAG)) return;
+      url.searchParams.delete(RECOVERY_FLAG);
+      window.history.replaceState({}, '', url.toString());
+    } catch {
+      // ignore
+    }
+  };
+
+  // The flag stays on until "Continue", so the "Password updated" screen shows.
   const completePasswordRecovery = async (newPassword: string) => {
     const { error } = await updatePassword(newPassword);
-    if (!error) {
-      setIsPasswordRecovery(false);
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.delete(RECOVERY_FLAG);
-        window.history.replaceState({}, '', url.toString());
-      } catch {
-        // ignore
-      }
-    }
+    if (!error) stripRecoveryFlag();
     return { error };
   };
 
-  const dismissPasswordRecovery = () => setIsPasswordRecovery(false);
+  const dismissPasswordRecovery = () => {
+    stripRecoveryFlag();
+    setIsPasswordRecovery(false);
+  };
 
   // PLG: Derived user mode from profile
   const userMode: UserMode | null = profile?.user_mode || null;
@@ -442,6 +482,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dismissPasswordRecovery,
     refreshProfile,
     updateProfile,
+    authError,
+    clearAuthError: () => setAuthError(null),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

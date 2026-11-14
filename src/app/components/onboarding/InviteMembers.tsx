@@ -6,6 +6,7 @@ import { AuthScreen, Kicker, PillButton, PillField } from '@/app/components/bw/F
 import { ChoicePill, DotMatrixRadio, OnboardingSheet, WizardTop, wizardStep } from './OnboardingChrome';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 import { useT } from '@/lib/i18n';
+import { useCloseOnBack } from '@/lib/overlayBack';
 
 interface InviteMembersProps {
   onBack: () => void;
@@ -24,6 +25,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
   const [showModal, setShowModal] = useState(false);
   const [currentInvite, setCurrentInvite] = useState<Partial<MemberInvite>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  useCloseOnBack(showModal, () => setShowModal(false));
 
   const isValidEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);

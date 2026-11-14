@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase, RECOVERY_FLAG } from '@/lib/supabase';
 import { Loader2 } from '@/app/components/icons';
 import { t, useT } from '@/lib/i18n';
+import { authErrorMessage } from '@/lib/authErrors';
 
 /**
  * Auth callback page — handles OAuth redirects from Google/Apple.
@@ -37,11 +38,13 @@ export default function AuthCallback() {
 
         if (errorDesc) {
           console.error('[AuthCallback] OAuth error:', errorDesc);
-          setError(decodeURIComponent(errorDesc));
+          // Expired reset / confirmation link, cancelled sign-in…: in the
+          // app's language, never the server's text.
+          setError(authErrorMessage({ code: queryParams.get('error_code') ?? queryParams.get('error') ?? undefined, message: errorDesc }));
           // Wait a moment then redirect back
           setTimeout(() => {
             if (!cancelled) {
-              cleanupAndRedirect();
+              cleanupAndRedirect(false);
             }
           }, 3000);
           return;
@@ -56,9 +59,9 @@ export default function AuthCallback() {
             : await supabase.auth.exchangeCodeForSession(code);
           if (exchangeError) {
             console.error('[AuthCallback] PKCE exchange error:', exchangeError);
-            setError(exchangeError.message);
+            setError(authErrorMessage(exchangeError));
             setTimeout(() => {
-              if (!cancelled) cleanupAndRedirect();
+              if (!cancelled) cleanupAndRedirect(false);
             }, 3000);
             return;
           }
@@ -68,7 +71,7 @@ export default function AuthCallback() {
           // they cannot be tied to a sign-in this app started (login CSRF).
           setError(t('This sign-in link is no longer valid. Please sign in again.'));
           setTimeout(() => {
-            if (!cancelled) cleanupAndRedirect();
+            if (!cancelled) cleanupAndRedirect(false);
           }, 3000);
           return;
         } else {
@@ -80,7 +83,7 @@ export default function AuthCallback() {
             console.warn('[AuthCallback] No session found');
             setError(t('Sign in did not complete. Please try again.'));
             setTimeout(() => {
-              if (!cancelled) cleanupAndRedirect();
+              if (!cancelled) cleanupAndRedirect(false);
             }, 3000);
             return;
           }
@@ -90,19 +93,22 @@ export default function AuthCallback() {
         setStatus('redirecting');
 
         // Clean the URL — remove hash and query params
-        cleanupAndRedirect();
+        cleanupAndRedirect(true);
       } catch (err) {
         console.error('[AuthCallback] Unexpected error:', err);
         setError(t('An unexpected error occurred'));
         setTimeout(() => {
-          if (!cancelled) cleanupAndRedirect();
+          if (!cancelled) cleanupAndRedirect(false);
         }, 3000);
       }
     };
 
-    const cleanupAndRedirect = () => {
+    // `signedIn`: only a reset link that really signed in asks for a new
+    // password; after an error the flag would force that screen on the next
+    // normal sign-in.
+    const cleanupAndRedirect = (signedIn: boolean) => {
       if (cancelled) return;
-      const isRecovery = new URLSearchParams(window.location.search).get(RECOVERY_FLAG) === '1';
+      const isRecovery = signedIn && new URLSearchParams(window.location.search).get(RECOVERY_FLAG) === '1';
       // Replace the URL to remove all OAuth params, preventing
       // isAuthCallback() from triggering again after redirect
       window.history.replaceState(

@@ -1286,7 +1286,8 @@ export default function AuthenticatedApp() {
   }, [realBand, isSolo, user]);
 
   const setSelectedBand = (band: Band) => {
-    const match = realBands.find((rb) => rb.name === band.name);
+    // By id: two bands can have the same name.
+    const match = realBands.find((rb) => uuidToNumericId(rb.id) === band.id);
     if (match) selectBand(match.id);
   };
 

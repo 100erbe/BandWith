@@ -61,6 +61,21 @@ describe('deputy link → app', () => {
     expect(rpc).toHaveBeenCalledTimes(2);
   });
 
+  it('tries again when the connection comes back after a failed claim', async () => {
+    savePendingDeputyToken(TOKEN);
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'Failed to fetch' } });
+    expect(await claimPendingDeputyToken()).toBeNull();
+    expect(rpc).toHaveBeenCalledTimes(1);
+
+    rpc.mockResolvedValueOnce({ data: { status: 'linked', band_name: 'Gli Sprucidi', deputy_name: 'Leo M.' }, error: null });
+    window.dispatchEvent(new Event('online'));
+    await vi.waitFor(() => expect(pendingDeputyToken()).toBeNull());
+    expect(rpc).toHaveBeenCalledTimes(2);
+    // Answered: no more retries.
+    window.dispatchEvent(new Event('online'));
+    expect(rpc).toHaveBeenCalledTimes(2);
+  });
+
   it('says what the claim did', () => {
     const t = (s: string, v?: Record<string, string>) => s.replace(/\{(\w+)\}/g, (_, k) => v?.[k] ?? '');
     expect(deputyClaimMessage({ status: 'linked', band_name: 'Gli Sprucidi' }, t)).toMatchObject({ tone: 'ok', title: "You're on Gli Sprucidi's deputy list" });

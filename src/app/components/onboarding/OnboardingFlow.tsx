@@ -15,13 +15,13 @@ import ProfileSetup from './ProfileSetup';
 import InviteMembers from './InviteMembers';
 import AddSongs from './AddSongs';
 import CompletionScreen from './CompletionScreen';
-import JoinerInviteLanding, { InviteData } from './JoinerInviteLanding';
+import JoinerInviteLanding from './JoinerInviteLanding';
 import JoinerWelcomeBand from './JoinerWelcomeBand';
 import JoinerEmailLookup from './JoinerEmailLookup';
 import JoinerNoInvites from './JoinerNoInvites';
-import JoinerInviteSelect from './JoinerInviteSelect';
 import { PendingInvitesPrompt } from '@/app/components/notifications/PendingInvitesPrompt';
-import { declineInvitation, inviteErrorMessage, InviteError } from '@/lib/services/invitations';
+import { declineInvitation, declineInvitationByToken, inviteErrorMessage, InviteError } from '@/lib/services/invitations';
+import { closeTopOverlay, isEditableTarget } from '@/lib/overlayBack';
 import { DuoAuthLayout, CREATOR_BRAND_STEPS, SOLO_BRAND_STEPS } from './DuoAuthLayout';
 import { t } from '@/lib/i18n';
 
@@ -32,7 +32,9 @@ interface OnboardingFlowProps {
   deputyBand?: string | null;
 }
 
-type JoinerSubStep = 'email-lookup' | 'no-invites' | 'invite-found' | 'select-invite';
+// The email lookup only says whether an invite is waiting (never which band):
+// the invite itself is shown once signed in with that address.
+type JoinerSubStep = 'email-lookup' | 'no-invites' | 'invite-waiting';
 type ScreenMode = 'welcome' | 'sign-in' | 'forgot-password' | 'flow';
 
 export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
@@ -49,11 +51,11 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     acceptInviteCode,
     loadInviteData,
     inviteData,
+    inviteToken: linkToken,
     resetOnboarding,
-    setPendingInvitationId,
   } = useOnboarding();
 
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, authError } = useAuth();
 
   // Screen mode state
   const [screenMode, setScreenMode] = useState<ScreenMode>(
@@ -62,9 +64,15 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
   // Joiner flow state
   const [joinerSubStep, setJoinerSubStep] = useState<JoinerSubStep>('email-lookup');
-  const [foundInvites, setFoundInvites] = useState<InviteData[]>([]);
-  const [selectedInvite, setSelectedInvite] = useState<InviteData | null>(null);
   const [lookupEmail, setLookupEmail] = useState('');
+  // Where "Forgot password?" goes back to.
+  const [forgotFrom, setForgotFrom] = useState<'sign-in' | 'flow'>('sign-in');
+  // "Go to dashboard" (creator / solo): one run at a time, and say if it failed.
+  const [completing, setCompleting] = useState(false);
+  const [completeError, setCompleteError] = useState<string | null>(null);
+  const completingRef = useRef(false);
+  const [declining, setDeclining] = useState(false);
+  const [declineError, setDeclineError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(!!inviteToken);
   const [inviteCodeLoading, setInviteCodeLoading] = useState(false);
   const [inviteCodeError, setInviteCodeError] = useState<string | null>(null);
@@ -83,10 +91,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     path,
     currentStep,
     joinerSubStep,
-    foundInvites,
-    selectedInvite,
     inviteData,
     isAuthenticated,
+    forgotFrom,
   });
 
   useEffect(() => {
@@ -95,12 +102,29 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       path,
       currentStep,
       joinerSubStep,
-      foundInvites,
-      selectedInvite,
       inviteData,
       isAuthenticated,
+      forgotFrom,
     };
   });
+
+  // Opened signed in with nothing started (web: back from Google / Apple or
+  // an email link, which reload the page): continue at "What brings you
+  // here?", not on the welcome screen that offers to sign in.
+  useEffect(() => {
+    if (isAuthenticated && !path && !inviteToken) {
+      startOnboarding('creator');
+      goToStep(1);
+      setScreenMode('flow');
+    }
+    // Only when the flow opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A sign-in that came back to the app and failed: show it on the sign-in screen.
+  useEffect(() => {
+    if (authError && !isAuthenticated && screenMode === 'welcome') setScreenMode('sign-in');
+  }, [authError, isAuthenticated, screenMode]);
 
   // When user authenticates while on sign-in screen, go back to flow
   useEffect(() => {
@@ -134,20 +158,41 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   const handleBackToWelcome = useCallback(() => {
     resetOnboarding();
     setJoinError(null);
+    setDeclineError(null);
     setJoinerSubStep('email-lookup');
-    setFoundInvites([]);
-    setSelectedInvite(null);
     setLookupEmail('');
     setScreenMode('welcome');
   }, [resetOnboarding]);
 
-  // "Decline invitation": tell the server when we can (signed in), then leave.
-  const handleDeclineInvite = useCallback((invitationId?: string) => {
-    if (invitationId) declineInvitation(invitationId).catch(() => {});
+  // "Decline invitation": signed in by id, signed out with the link's token
+  // (holding it is the proof). Leave only once the server has it.
+  const handleDeclineInvite = useCallback(async (invitationId?: string) => {
+    if (declining) return;
+    setDeclineError(null);
+    setDeclining(true);
+    try {
+      if (isAuthenticated && invitationId) await declineInvitation(invitationId);
+      else if (linkToken) await declineInvitationByToken(linkToken);
+    } catch (e) {
+      // Already declined, accepted or expired: nothing left to decline.
+      if (!(e instanceof InviteError && (e.code === 'invite_not_found' || e.code === 'invite_expired'))) {
+        setDeclining(false);
+        setDeclineError(
+          e instanceof InviteError && e.code === 'network'
+            ? e.message
+            : t('We couldn’t decline the invite. Try again.')
+        );
+        return;
+      }
+    }
+    setDeclining(false);
     handleBackToWelcome();
-  }, [handleBackToWelcome]);
+  }, [declining, isAuthenticated, linkToken, handleBackToWelcome]);
 
   const handleComplete = useCallback(async () => {
+    // A second tap while the first is still saving would create the band twice.
+    if (completingRef.current) return;
+    completingRef.current = true;
     if (path === 'joiner') {
       // Joining can fail (expired invite, different email): stay here and say why.
       setJoining(true);
@@ -155,8 +200,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       try {
         await completeOnboarding();
       } catch (e) {
+        completingRef.current = false;
         setJoining(false);
-        const invitedEmail = (inviteData || selectedInvite)?.email || lookupEmail;
+        const invitedEmail = inviteData?.email || lookupEmail;
         setJoinError(
           e instanceof InviteError && e.code === 'invite_email_mismatch'
             ? inviteErrorMessage(e.code, invitedEmail || undefined)
@@ -170,13 +216,20 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       onComplete();
       return;
     }
+    setCompleting(true);
+    setCompleteError(null);
     try {
       await completeOnboarding();
     } catch (e) {
+      // Nothing usable was saved: stay here, say so, and let them try again.
       console.error('Onboarding complete error:', e);
+      completingRef.current = false;
+      setCompleting(false);
+      setCompleteError(t('We couldn’t finish setting up your account. Check your connection and try again.'));
+      return;
     }
     onComplete();
-  }, [completeOnboarding, onComplete, path]);
+  }, [completeOnboarding, onComplete, path, inviteData, lookupEmail]);
 
   // Welcome screen: validate a pasted invite code or link, then show the invite.
   const handleInviteCodeSubmit = useCallback(
@@ -205,16 +258,18 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
   // Unified Back Navigation Handler (used by Android soft key, Escape key, and back buttons)
   const handleBack = useCallback(() => {
-    // 1. If child modal is open (e.g., custom song or import modal in AddSongs)
+    // 1. A sheet open on top (Terms, invite a member, "Enable Face ID?")
+    if (closeTopOverlay()) return;
+    // …or a modal in AddSongs (custom song, import)
     if (closeAddSongsModalRef.current && closeAddSongsModalRef.current()) {
       return;
     }
 
     const s = backNavStateRef.current;
 
-    // 2. Screen modes: forgot-password -> sign-in
+    // 2. Screen modes: forgot-password -> where it was opened from
     if (s.screenMode === 'forgot-password') {
-      setScreenMode('sign-in');
+      setScreenMode(s.forgotFrom);
       return;
     }
 
@@ -230,7 +285,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       if (closeInviteInputRef.current && closeInviteInputRef.current()) {
         return;
       }
-      // Double tap to exit on Android
+      // Double tap to exit on Android (iOS apps don't quit themselves; on the
+      // web Escape has nothing to leave).
+      if (Capacitor.getPlatform() !== 'android') return;
       const now = Date.now();
       if (now - lastBackPressRef.current < 2000) {
         App.exitApp();
@@ -299,15 +356,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           handleBackToWelcome();
           return;
         }
-        if (s.joinerSubStep === 'invite-found') {
-          if (s.foundInvites.length > 1) {
-            setJoinerSubStep('select-invite');
-          } else {
-            setJoinerSubStep('email-lookup');
-          }
-          return;
-        }
-        if (s.joinerSubStep === 'select-invite' || s.joinerSubStep === 'no-invites') {
+        if (s.joinerSubStep === 'invite-waiting' || s.joinerSubStep === 'no-invites') {
           setJoinerSubStep('email-lookup');
           return;
         }
@@ -343,7 +392,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      // Escape typed in a field is the field's (keyboard on web / iPad).
+      if (e.key === 'Escape' && !isEditableTarget(e.target)) {
         handleBack();
       }
     };
@@ -401,7 +451,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   if (screenMode === 'forgot-password') {
     return duo(
       <ForgotPasswordScreen
-        onBack={() => setScreenMode('sign-in')}
+        onBack={() => setScreenMode(forgotFrom)}
       />
     );
   }
@@ -413,7 +463,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         onSuccess={() => {
           // Auth state change will be handled by the useEffect above
         }}
-        onForgotPassword={() => setScreenMode('forgot-password')}
+        onForgotPassword={() => {
+          setForgotFrom('sign-in');
+          setScreenMode('forgot-password');
+        }}
         onCreateAccount={() => {
           startOnboarding('creator');
           setScreenMode('flow');
@@ -467,6 +520,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             key="account"
             onBack={handleBackToWelcome}
             onComplete={() => goToStep(1)}
+            prefilledEmail={lookupEmail || undefined}
+            onSignIn={() => setScreenMode('sign-in')}
           />
         );
       }
@@ -507,7 +562,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             />
           );
         case 6:
-          return <CompletionScreen key="complete" onComplete={handleComplete} />;
+          return <CompletionScreen key="complete" onComplete={handleComplete} loading={completing} error={completeError} />;
         default:
           return null;
       }
@@ -539,6 +594,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             key="solo-account"
             onBack={handleBackToWelcome}
             onComplete={() => goToStep(1)}
+            onSignIn={() => setScreenMode('sign-in')}
           />
         );
       }
@@ -558,7 +614,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       }
 
       // Step 2: Completion
-      return <CompletionScreen key="solo-complete" onComplete={handleComplete} />;
+      return <CompletionScreen key="solo-complete" onComplete={handleComplete} loading={completing} error={completeError} />;
     };
 
     return duo(
@@ -580,15 +636,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   // ─── JOINER FLOW ───
 
   if (path === 'joiner') {
-    const handleInvitesFound = (invites: InviteData[], email: string) => {
-      setFoundInvites(invites);
+    const handleInvitesFound = (email: string) => {
       setLookupEmail(email);
-      if (invites.length === 1) {
-        setSelectedInvite(invites[0]);
-        setJoinerSubStep('invite-found');
-      } else {
-        setJoinerSubStep('select-invite');
-      }
+      setJoinerSubStep('invite-waiting');
     };
 
     const handleNoInvites = (email: string) => {
@@ -596,21 +646,16 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       setJoinerSubStep('no-invites');
     };
 
-    const handleSelectInvite = (invite: InviteData) => {
-      setSelectedInvite(invite);
-      setJoinerSubStep('invite-found');
-    };
+    // From the invite link (token): accepted at the end of the joiner flow.
+    const handleAcceptInvite = () => goToStep(1);
 
-    const handleAcceptInvite = () => {
-      // Invite picked from the email lookup has no token: accept it by id
-      // (the server checks it matches the account email).
-      if (!inviteData && selectedInvite) {
-        setPendingInvitationId(selectedInvite.id);
-      }
-      goToStep(1);
+    // Signed in with the invited address, the pending invite shows on
+    // "What brings you here?" (PendingInvitesPrompt).
+    const openAsCreator = () => {
+      resetOnboarding();
+      startOnboarding('creator');
+      setScreenMode('flow');
     };
-
-    const activeInvite = inviteData || selectedInvite;
 
     const renderJoinerStep = () => {
       if (currentStep === 0) {
@@ -620,8 +665,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
               key="invite-landing-token"
               inviteData={inviteData}
               onAccept={handleAcceptInvite}
-              onDecline={() => handleDeclineInvite(inviteData.id)}
+              onDecline={() => void handleDeclineInvite(inviteData.id)}
               onBack={handleBackToWelcome}
+              declining={declining}
+              declineError={declineError}
             />
           );
         }
@@ -641,35 +688,20 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                 key="no-invites"
                 email={lookupEmail}
                 onBack={() => setJoinerSubStep('email-lookup')}
-                onCreateBand={() => {
-                  resetOnboarding();
-                  startOnboarding('creator');
-                  setScreenMode('flow');
-                }}
+                onCreateBand={openAsCreator}
               />
             );
-          case 'select-invite':
+          case 'invite-waiting':
             return (
-              <JoinerInviteSelect
-                key="invite-select"
-                invites={foundInvites}
+              <JoinerNoInvites
+                key="invite-waiting"
+                found
+                email={lookupEmail}
                 onBack={() => setJoinerSubStep('email-lookup')}
-                onSelect={handleSelectInvite}
-              />
-            );
-          case 'invite-found':
-            return (
-              <JoinerInviteLanding
-                key="invite-landing-found"
-                inviteData={selectedInvite}
-                onAccept={handleAcceptInvite}
-                onDecline={() => handleDeclineInvite(selectedInvite?.id)}
-                onBack={() => {
-                  if (foundInvites.length > 1) {
-                    setJoinerSubStep('select-invite');
-                  } else {
-                    setJoinerSubStep('email-lookup');
-                  }
+                onCreateBand={openAsCreator}
+                onSignIn={() => {
+                  resetOnboarding();
+                  setScreenMode('sign-in');
                 }}
               />
             );
@@ -685,7 +717,12 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             key="joiner-account"
             onBack={() => goToStep(0)}
             onComplete={() => goToStep(2)}
-            prefilledEmail={activeInvite?.email || lookupEmail}
+            prefilledEmail={inviteData?.email || lookupEmail}
+            onForgotPassword={() => {
+              setForgotFrom('flow');
+              setScreenMode('forgot-password');
+            }}
+            onSignIn={() => setScreenMode('sign-in')}
           />
         );
       }
@@ -705,7 +742,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       return (
         <JoinerWelcomeBand
           key="welcome-band"
-          inviteData={activeInvite}
+          inviteData={inviteData}
           onComplete={handleComplete}
           joining={joining}
           error={joinError}

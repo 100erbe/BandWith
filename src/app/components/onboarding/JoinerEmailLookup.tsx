@@ -4,27 +4,22 @@ import { Mail, Search } from '@/app/components/icons';
 import { AuthScreen, BackButton, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
 import { useT } from '@/lib/i18n';
 
-interface PendingInvite {
-  id: string;
-  band_id: string;
-  email: string;
-  role: 'admin' | 'member';
-  status: string;
-  created_at: string;
-  expires_at: string;
-  band: {
-    id: string;
-    name: string;
-    logo_url?: string;
-    description?: string;
-  };
-  member_count?: number;
-}
-
 interface JoinerEmailLookupProps {
   onBack: () => void;
-  onInvitesFound: (invites: PendingInvite[], email: string) => void;
+  /** Invites are waiting for this address (which band is shown only once signed in with it). */
+  onInvitesFound: (email: string) => void;
   onNoInvites: (email: string) => void;
+}
+
+/**
+ * How many invites the lookup found. The function answers anyone who types
+ * an address, so it only says how many (setup-invite-rls); an older
+ * deployment still sends the list, of which only the length is used.
+ */
+export function lookupInviteCount(result: unknown): number {
+  const r = result as { count?: unknown; invites?: unknown } | null;
+  if (typeof r?.count === 'number' && r.count > 0) return r.count;
+  return Array.isArray(r?.invites) ? r.invites.length : 0;
 }
 
 export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
@@ -69,26 +64,27 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(t('Failed to check invitations'));
+      if (response.status === 429) {
+        setError(t('Too many attempts. Wait a minute and try again.'));
+        return;
       }
 
-      const result = await response.json();
+      const result = response.ok ? await response.json().catch(() => null) : null;
 
       if (!result?.success) {
-        throw new Error(result?.error || t('Failed to check invitations'));
+        setError(t('Failed to check invitations'));
+        return;
       }
 
-      const invitations = result.invites || [];
-
-      if (invitations.length === 0) {
+      if (lookupInviteCount(result) === 0) {
         onNoInvites(email);
         return;
       }
 
-      onInvitesFound(invitations, email);
-    } catch (err: any) {
-      setError(err.message || t('Something went wrong'));
+      onInvitesFound(email);
+    } catch {
+      // fetch() itself failed: no connection.
+      setError(t('Check your connection and try again.'));
     } finally {
       setIsLoading(false);
     }

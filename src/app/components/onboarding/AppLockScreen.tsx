@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { authenticateDevice, getDeviceAuthInfo, type DeviceAuthInfo } from '@/lib/appLock';
 import { useT } from '@/lib/i18n';
+import { authErrorKind, authErrorMessage } from '@/lib/authErrors';
 
 interface AppLockScreenProps {
   /** Called once the owner proved it's them. */
@@ -116,7 +117,7 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({ onUnlock }) => {
     if (!mounted.current) return;
     setCheckingPassword(false);
     if (signInError) {
-      setError(/invalid/i.test(signInError.message) ? t('Wrong password.') : t('Couldn’t check your password: {error}', { error: signInError.message }));
+      setError(authErrorKind(signInError) === 'invalid_credentials' ? t('Wrong password.') : authErrorMessage(signInError));
       return;
     }
     setPassword('');

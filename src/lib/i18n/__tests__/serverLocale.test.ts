@@ -34,6 +34,19 @@ describe('server language for pushes', () => {
     expect(update).toHaveBeenLastCalledWith({ preferred_language: 'de' });
   });
 
+  it('writes the old language again when switching back to it', async () => {
+    const { rerender } = renderHook(({ lang }) => useServerLocaleSync('u1', lang), { initialProps: { lang: 'en' as string | null } });
+    expect(update).toHaveBeenLastCalledWith({ preferred_language: 'it' });
+    // The profile in memory still says 'en' (not read again after the write).
+    await act(async () => setLocalePref('en'));
+    rerender({ lang: 'en' });
+    expect(update).toHaveBeenLastCalledWith({ preferred_language: 'en' });
+    expect(update).toHaveBeenCalledTimes(2);
+    // Profile read again with the value we wrote: nothing more to send.
+    rerender({ lang: 'en' });
+    expect(update).toHaveBeenCalledTimes(2);
+  });
+
   it('does nothing signed out or when it already matches', () => {
     renderHook(() => useServerLocaleSync(null, 'en'));
     renderHook(() => useServerLocaleSync('u1', 'it'));

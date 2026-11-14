@@ -12,7 +12,6 @@ import {
   Sparkles,
   Play,
   ArrowLeft,
-  ArrowUpRight,
   Eye,
   Lock,
   Sun,
@@ -29,6 +28,7 @@ import {
   Check,
 } from '@/app/components/icons';
 import { LegalSheet, type LegalDoc } from '@/app/components/legal/LegalSheet';
+import { useAppVersion } from '@/lib/appVersion';
 import { deleteMyAccount } from '@/lib/services/account';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
@@ -84,7 +84,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onClose,
   initialSection = 'notifications',
 }) => {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+  const appVersion = useAppVersion();
   const { mode, setMode, resolvedTheme } = useTheme();
   const t = useT();
   const localePref = useLocalePref();
@@ -127,8 +128,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       ? [{ id: 'duo' as const, label: 'iPhone Duo', hint: t('Laptop pose'), value: laptopPoseEnabled ? t('On') : t('Off'), icon: Smartphone }]
       : []),
     { id: 'language', label: t('Language'), value: languageName(getLocale()), icon: MessageSquare },
-    { id: 'help', label: t('Help & support'), hint: 'support@bandwith.app', icon: Mail },
-    { id: 'about', label: t('About'), hint: t('Version {version}', { version: '1.0.0' }), icon: Star },
+    { id: 'help', label: t('Help & support'), hint: t('Answers and what you can do in the app'), icon: Mail },
+    { id: 'about', label: t('About'), hint: appVersion ? t('Version {version}', { version: appVersion }) : undefined, icon: Star },
   ];
   const isKnownSection = (v?: string): v is SettingsSection =>
     !!v && SECTIONS.some((sec) => sec.id === v);
@@ -289,6 +290,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setDeleteError(null);
     const result = await deleteMyAccount();
     if (result.ok) {
+      // Quick sign-in (Face ID) must not keep the deleted account's session.
+      await import('@/lib/services/biometric')
+        .then((m) => m.forgetQuickSignInFor(user?.id, user?.email))
+        .catch(() => {});
       // The account no longer exists: clear the local session.
       await signOut().catch(() => {});
       onClose();
@@ -563,24 +568,29 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     </div>
   );
 
+  // The help page ships with the app (public/legal/help.html): it opens
+  // offline, and is the same page on the web.
   const renderHelpSection = () => (
-    <button
-      type="button"
-      onClick={() => window.open('mailto:support@bandwith.app?subject=Help%20Request', '_blank')}
-      className={cn(CARD, ROW, PRESSABLE)}
-    >
-      <IconTile>
-        <Mail />
-      </IconTile>
-      <RowText title={t('Contact support')} hint="support@bandwith.app" />
-      <ArrowUpRight aria-hidden className="w-[18px] h-[18px] text-foreground shrink-0" />
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => setLegalDoc('help')}
+        className={cn(CARD, ROW, PRESSABLE)}
+      >
+        <IconTile>
+          <Mail />
+        </IconTile>
+        <RowText title={t('Help & support')} hint={t('Answers and what you can do in the app')} />
+        <ChevronRight aria-hidden className="w-[18px] h-[18px] text-foreground shrink-0" />
+      </button>
+      <LegalSheet doc={legalDoc} onClose={() => setLegalDoc(null)} />
+    </>
   );
 
   const renderAboutSection = () => (
     <div className={cn(CARD, 'p-5 flex flex-col gap-4')}>
       <BrandLogo variant="waveform" lockup="horizontal" className="h-8" textClassName="text-2xl" />
-      <span className="bw-label-sm text-muted-foreground">{t('Version {version}', { version: '1.0.0' })}</span>
+      {appVersion && <span className="bw-label-sm text-muted-foreground">{t('Version {version}', { version: appVersion })}</span>}
       <p className="bw-body-sm text-muted-foreground">
         {t('All workspace data encrypted end-to-end. Built for musicians, managers, and touring crews.')}
       </p>

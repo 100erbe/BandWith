@@ -3,17 +3,23 @@ import { motion } from 'motion/react';
 import { ArrowUpRight, Check } from '@/app/components/icons';
 import { useOnboarding } from '@/lib/OnboardingContext';
 import { useAuth } from '@/lib/AuthContext';
-import { AuthScreen, Kicker, PillButton } from '@/app/components/bw/Form';
+import { AuthScreen, FormError, Kicker, PillButton } from '@/app/components/bw/Form';
 import { Metric } from '@/app/components/bw/Metric';
 import { setStatusBarTone } from '@/lib/systemBars';
 import { useT } from '@/lib/i18n';
 
 interface CompletionScreenProps {
   onComplete: () => void;
+  /** Saving the band / profile: the button waits (one run only). */
+  loading?: boolean;
+  /** Saving failed: shown above the button, which then tries again. */
+  error?: string | null;
 }
 
 export const CompletionScreen: React.FC<CompletionScreenProps> = ({
   onComplete,
+  loading = false,
+  error = null,
 }) => {
   const t = useT();
   const { bandData, invites, songs, profileData } = useOnboarding();
@@ -48,8 +54,9 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1 }}
         >
-          <PillButton onClick={onComplete} trailingIcon={<ArrowUpRight className="w-5 h-5" />}>
-            {t('Go to dashboard')}
+          {error && <FormError className="mb-3">{error}</FormError>}
+          <PillButton onClick={onComplete} loading={loading} aria-busy={loading} trailingIcon={<ArrowUpRight className="w-5 h-5" />}>
+            {error ? t('Try again') : t('Go to dashboard')}
           </PillButton>
         </motion.div>
       }
