@@ -106,6 +106,8 @@ async function rpc<T>(fn: string, body: Record<string, unknown>): Promise<T> {
 let view: View | null = null;
 let busy = false;
 let failed = false;
+// The page could not be loaded (no signal, server down): not a bad link.
+let offline = false;
 
 async function answer(a: Answer) {
   if (busy || !view) return;
@@ -116,7 +118,9 @@ async function answer(a: Answer) {
   render();
   try {
     const next = await rpc<View | null>('bw_deputy_request_reply', { p_token: token, p_answer: a, p_note: note || null });
-    view = next ?? view;
+    // NULL: the link was replaced meanwhile (unlink, new invite), so the
+    // answer was not recorded: say the link no longer works.
+    view = next;
   } catch {
     failed = true;
   }
@@ -288,6 +292,12 @@ function appCard(v: View) {
 
 function render() {
   app.replaceChildren();
+  if (offline) {
+    const card = simpleCard('BandWith', S.offlineTitle, S.offlineBody);
+    card.append(h('div', { class: 'stack' }, h('button', { class: 'btn light', type: 'button', onclick: () => void load() }, S.retry, arrow())));
+    app.append(card);
+    return;
+  }
   if (!view) {
     app.append(simpleCard('BandWith', S.invalidTitle, S.invalidBody));
     return;
@@ -313,10 +323,12 @@ async function load() {
     return;
   }
   app.replaceChildren(simpleCard('BandWith', S.loading, '', false));
+  offline = false;
   try {
     view = await rpc<View | null>('bw_deputy_request_view', { p_token: token });
   } catch {
     view = null;
+    offline = true;
   }
   document.title = view ? `${view.event_title || S.kicker} · ${view.band_name}` : `${S.kicker} · BandWith`;
   render();
