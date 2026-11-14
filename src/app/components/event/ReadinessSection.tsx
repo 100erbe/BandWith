@@ -60,7 +60,7 @@ export const ReadinessSection: React.FC<{
           const open = onOpen?.[item.key];
           const content = (
             <>
-              <DotCheckbox checked={item.done} activeColor="var(--fg)" inactiveColor="var(--border)" />
+              <DotCheckbox checked={item.done} activeColor="var(--fg)" checkColor="var(--bg)" inactiveColor="var(--border)" />
               <span className={cn('flex-1 min-w-0 bw-body-md [overflow-wrap:anywhere]', item.done && 'text-muted-foreground')}>
                 {readinessItemLabel(item, t)}
               </span>
