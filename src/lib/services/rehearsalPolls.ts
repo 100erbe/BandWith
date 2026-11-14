@@ -1,7 +1,7 @@
 import { supabase } from '../supabase';
 import { attachMemberFees } from './bandMemberFees';
 import { createEvent } from './events';
-import { createSetlist } from './songs';
+import { createSetlist, deleteSetlist } from './songs';
 import { createBulkNotifications } from './notifications';
 import { personName } from '@/lib/personName';
 import { t } from '@/lib/i18n';
@@ -61,11 +61,44 @@ export interface RehearsalPoll {
   /** 098: members asked to vote (empty = everyone) and the vote-by time. */
   invited_user_ids?: string[] | null;
   vote_by_time?: string | null;
+  /** 102: members who answered "None of these work", with their profile. */
+  unavailable?: { user_id: string; profile?: RehearsalPollVote['profile'] }[];
+  /** The viewer answered "None of these work" (102). */
+  declined_all?: boolean;
 }
+
+/** Members who answered the poll: a vote for a date, or "None of these work" (102). */
+export const pollAnsweredCount = (poll: Pick<RehearsalPoll, 'options' | 'unavailable'>): number => {
+  const answered = new Set<string>();
+  (poll.options || []).forEach((o) => o.votes?.forEach((v) => answered.add(v.user_id)));
+  (poll.unavailable || []).forEach((u) => answered.add(u.user_id));
+  return answered.size;
+};
+
+/** Table for "None of these work" answers (migration 102). */
+const UNAVAILABLE_TABLE = 'rehearsal_poll_unavailable';
+
+/** The database is before 102: the table is not there yet. */
+const isMissingTable = (err: { code?: string; message?: string } | null | undefined): boolean =>
+  !!err && (err.code === '42P01' || err.code === 'PGRST205' || /could not find the table|does not exist/i.test(err.message || ''));
 
 /** The poll's invited members, or null when every member is asked (098). */
 export const pollInvitees = (poll: { invited_user_ids?: string[] | null }): string[] | null =>
   Array.isArray(poll.invited_user_ids) && poll.invited_user_ids.length > 0 ? poll.invited_user_ids : null;
+
+/**
+ * Whether the viewer sees a poll: a poll with an invite list (098) is for
+ * those members, its creator and the band's admins (any admin may lock it in
+ * or delete it).
+ */
+export const canSeePoll = (
+  poll: { invited_user_ids?: string[] | null; created_by?: string | null },
+  userId: string | null | undefined,
+  viewerIsAdmin = false,
+): boolean => {
+  const invited = pollInvitees(poll);
+  return !invited || !userId || viewerIsAdmin || poll.created_by === userId || invited.includes(userId);
+};
 
 export interface ProposalEligibility {
   canPropose: boolean;
@@ -429,6 +462,15 @@ export const togglePollVote = async (
         });
 
       if (insertError) throw insertError;
+      // A date works after all: drop a "None of these work" answer (102).
+      const { error: unavailableError } = await supabase
+        .from(UNAVAILABLE_TABLE)
+        .delete()
+        .eq('poll_id', pollId)
+        .eq('user_id', userId);
+      if (unavailableError && !isMissingTable(unavailableError)) {
+        console.warn('Failed to clear the "none work" answer:', unavailableError);
+      }
       return { voted: true, error: null };
     }
   } catch (error: any) {
@@ -458,6 +500,33 @@ export const clearUserVotesForPoll = async (
     return { error };
   }
 };
+
+/**
+ * "None of these work": clears the member's votes and stores the answer, so
+ * the admin sees it and it is still there next time (102). `stored` is false
+ * on a database before 102, where only the votes are cleared.
+ */
+export const markPollUnavailable = async (
+  pollId: string,
+  userId: string
+): Promise<{ stored: boolean; error: Error | null }> => {
+  const { error: clearError } = await clearUserVotesForPoll(pollId, userId);
+  if (clearError) return { stored: false, error: clearError };
+  const { error } = await supabase
+    .from(UNAVAILABLE_TABLE)
+    .upsert({ poll_id: pollId, user_id: userId }, { onConflict: 'poll_id,user_id', ignoreDuplicates: true });
+  if (error && isMissingTable(error)) return { stored: false, error: null };
+  if (error) {
+    console.error('Failed to store "none work":', error);
+    return { stored: false, error };
+  }
+  return { stored: true, error: null };
+};
+
+/** The poll was locked in (or cancelled) meanwhile, e.g. by another admin. */
+export const POLL_CLOSED = 'poll_closed';
+const pollClosedError = () =>
+  Object.assign(new Error(t('This poll was already locked in or closed.')), { code: POLL_CLOSED });
 
 /**
  * 5. Admin finalizes poll into official rehearsal event.
@@ -497,6 +566,7 @@ export const finalizePollIntoRehearsal = async ({
       .single();
 
     if (pollError || !poll) throw pollError || new Error('Poll not found');
+    if (poll.status === 'confirmed' || poll.status === 'cancelled') throw pollClosedError();
 
     // 3. Fetch active band members to create rosters
     const { data: bandMembers, error: membersError } = await supabase
@@ -527,7 +597,28 @@ export const finalizePollIntoRehearsal = async ({
       status: bm.user_id === adminId ? 'confirmed' : 'pending',
     }));
 
-    // 4. Create confirmed rehearsal event, with the place, room cost and
+    // 4. Claim the poll before creating anything: two admins (or two devices)
+    // locking it in at once must not create two rehearsals. Only one update
+    // finds it still open.
+    const { data: claimed, error: claimError } = await supabase
+      .from('rehearsal_polls')
+      .update({ status: 'confirmed', updated_at: new Date().toISOString() })
+      .eq('id', pollId)
+      .not('status', 'in', '(confirmed,cancelled)')
+      .select('id');
+    if (claimError) throw claimError;
+    if (!claimed || claimed.length === 0) throw pollClosedError();
+    // Something below failed: open the poll again so it can be locked in.
+    const releaseClaim = async () => {
+      const { error } = await supabase
+        .from('rehearsal_polls')
+        .update({ status: poll.status || 'polling', updated_at: new Date().toISOString() })
+        .eq('id', pollId)
+        .is('confirmed_event_id', null);
+      if (error) console.warn('Failed to reopen the poll:', error);
+    };
+
+    // 5. Create confirmed rehearsal event, with the place, room cost and
     // focus songs set in the poll (097).
     const venueName = location?.trim() || poll.location?.trim() || t('Band Practice Space');
     const roomCost = poll.room_cost != null ? Number(poll.room_cost) : 0;
@@ -535,7 +626,7 @@ export const finalizePollIntoRehearsal = async ({
     let setlistId: string | null = null;
     if (focusIds.length > 0) {
       const { data: sl, error: slErr } = await createSetlist(
-        { band_id: bandId, name: `${poll.title?.trim() || t('Rehearsal')} setlist` },
+        { band_id: bandId, name: poll.title?.trim() ? t('{title} setlist', { title: poll.title.trim() }) : t('Rehearsal setlist') },
         focusIds.map((song_id, position) => ({ song_id, position, set_number: 1 }))
       );
       if (slErr) console.warn('Failed to create the poll setlist:', slErr);
@@ -561,23 +652,26 @@ export const finalizePollIntoRehearsal = async ({
       roster
     );
 
-    if (eventError || !newEvent) throw eventError || new Error('Failed to create rehearsal event');
+    if (eventError || !newEvent) {
+      if (setlistId) await deleteSetlist(setlistId).catch(() => {});
+      await releaseClaim();
+      throw eventError || new Error('Failed to create rehearsal event');
+    }
 
-    // 5. Update poll status to 'confirmed'
+    // 6. Link the rehearsal to the (already confirmed) poll
     const { error: updatePollError } = await supabase
       .from('rehearsal_polls')
       .update({
-        status: 'confirmed',
         confirmed_event_id: newEvent.id,
         updated_at: new Date().toISOString(),
       })
       .eq('id', pollId);
 
     if (updatePollError) {
-      console.warn('Failed to update poll confirmed status:', updatePollError);
+      console.warn('Failed to link the poll to its rehearsal:', updatePollError);
     }
 
-    // 6. Notify band members
+    // 7. Notify band members
     try {
       if (uniqueBandMembers && uniqueBandMembers.length > 0) {
         const notifPayload = uniqueBandMembers.map((m: any) => ({
@@ -678,7 +772,9 @@ export const cleanNotesWithoutDays = (notes?: string | null): string => {
  */
 export const getRehearsalPolls = async (
   bandId: string,
-  userId?: string | null
+  userId?: string | null,
+  /** The viewer is an admin of `bandId`. */
+  viewerIsAdmin = false
 ): Promise<{ data: RehearsalPoll[] | null; error: Error | null }> => {
   try {
     // 1. Fetch polls
@@ -690,11 +786,7 @@ export const getRehearsalPolls = async (
       .order('created_at', { ascending: false });
 
     if (pollsError) throw pollsError;
-    // A poll with an invite list (098) is for those members and its creator.
-    const polls = (allPolls || []).filter((p) => {
-      const invited = pollInvitees(p);
-      return !invited || !userId || p.created_by === userId || invited.includes(userId);
-    });
+    const polls = (allPolls || []).filter((p) => canSeePoll(p, userId, viewerIsAdmin));
     if (polls.length === 0) return { data: [], error: null };
 
     const pollIds = polls.map((p) => p.id);
@@ -717,10 +809,21 @@ export const getRehearsalPolls = async (
 
     if (votesError) throw votesError;
 
-    // 4. Fetch profiles for creators and voters
+    // 3b. "None of these work" answers (102); none before the migration.
+    const { data: unavailableRows, error: unavailableError } = await supabase
+      .from(UNAVAILABLE_TABLE)
+      .select('poll_id, user_id')
+      .in('poll_id', pollIds);
+    if (unavailableError && !isMissingTable(unavailableError)) {
+      console.warn('Failed to load "none work" answers:', unavailableError);
+    }
+    const unavailable: { poll_id: string; user_id: string }[] = unavailableError ? [] : unavailableRows || [];
+
+    // 4. Fetch profiles for creators, voters and "none work" answers
     const creatorUserIds = polls.map((p) => p.created_by).filter(Boolean);
     const voterUserIds = (votes || []).map((v) => v.user_id).filter(Boolean);
-    const allUserIds = Array.from(new Set([...creatorUserIds, ...voterUserIds]));
+    const unavailableUserIds = unavailable.map((u) => u.user_id).filter(Boolean);
+    const allUserIds = Array.from(new Set([...creatorUserIds, ...voterUserIds, ...unavailableUserIds]));
 
     let profilesMap: Record<string, any> = {};
     if (allUserIds.length > 0) {
@@ -766,9 +869,15 @@ export const getRehearsalPolls = async (
         };
       });
 
+      const pollUnavailable = unavailable
+        .filter((u) => u.poll_id === poll.id)
+        .map((u) => ({ user_id: u.user_id, profile: profilesMap[u.user_id] || null }));
+
       return {
         ...poll,
         options: enrichedOptions,
+        unavailable: pollUnavailable,
+        declined_all: !!userId && pollUnavailable.some((u) => u.user_id === userId),
         creator_profile: profilesMap[poll.created_by] || null,
         preferred_days: extractPreferredDays(poll.notes),
         total_members_count: pollInvitees(poll)?.length || totalMembers,
@@ -798,7 +907,18 @@ export const getRehearsalPoll = async (
 
     if (pollError || !poll) throw pollError || new Error('Poll not found');
 
-    const { data: polls } = await getRehearsalPolls(poll.band_id, userId);
+    // Admins of the band see every poll (see canSeePoll).
+    let viewerIsAdmin = false;
+    if (userId) {
+      const { data: me } = await supabase
+        .from('band_members')
+        .select('role')
+        .eq('band_id', poll.band_id)
+        .eq('user_id', userId)
+        .maybeSingle();
+      viewerIsAdmin = (me as { role?: string } | null)?.role === 'admin';
+    }
+    const { data: polls } = await getRehearsalPolls(poll.band_id, userId, viewerIsAdmin);
     const found = (polls || []).find((p) => p.id === pollId) || null;
     return { data: found, error: null };
   } catch (error: any) {
@@ -845,8 +965,15 @@ export const subscribeToRehearsalPolls = (
       () => onUpdate()
     )
     .subscribe();
+  // Own channel: before migration 102 the table is missing, and that must not
+  // stop the poll and vote updates above.
+  const unavailableChannel = supabase
+    .channel(`rehearsal_poll_unavailable_${bandId}_${Date.now()}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: UNAVAILABLE_TABLE }, () => onUpdate())
+    .subscribe();
 
   return () => {
     supabase.removeChannel(channel);
+    supabase.removeChannel(unavailableChannel);
   };
 };

@@ -3784,6 +3784,10 @@ const dict: Dictionary = {
   "No connection. Try again when you are online.": "Keine Verbindung. Versuch es noch mal, wenn du online bist.",
   "{title} setlist": "Setlist {title}",
   "Event setlist": "Setlist des Events",
+  "This poll was already locked in or closed.": "Diese Umfrage wurde schon festgelegt oder geschlossen.",
+  "{answered} of {total} answered": "{answered} von {total} haben geantwortet",
+  "Your votes were cleared.": "Deine Stimmen wurden gelöscht.",
+  "No date works for {names}": "Kein Termin passt für {names}",
 };
 
 export default dict;

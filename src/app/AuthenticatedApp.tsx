@@ -384,7 +384,7 @@ export default function AuthenticatedApp() {
   } | null>(null);
 
   // Rehearsal Polls & Proposals
-  const { polls: rehearsalPolls, refetch: refetchRehearsalPolls } = useRehearsalPolls(realBand?.id || null, user?.id || null);
+  const { polls: rehearsalPolls, refetch: refetchRehearsalPolls } = useRehearsalPolls(realBand?.id || null, user?.id || null, isAdminOfBand(realBand?.id));
   const [showProposeRehearsalModal, setShowProposeRehearsalModal] = useState(false);
   const [showNoBandRehearsalModal, setShowNoBandRehearsalModal] = useState(false);
   const [showChooseBandProposalModal, setShowChooseBandProposalModal] = useState(false);
