@@ -645,9 +645,11 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     }
   };
 
+  // Back to a quote: band gigs only (a rehearsal or a personal gig never was one).
+  const canRevertToQuote = !!onRevertQuote && !isRehearsal && !isPersonalGig;
   // Reverting takes the gig off the lineup's calendars: it asks first.
   const handleRevertQuote = async () => {
-    if (isReverting || !onRevertQuote) return;
+    if (isReverting || !onRevertQuote || !canRevertToQuote) return;
     haptic.tap();
     setShowRevertConfirm(false);
     setIsReverting(true);
@@ -1914,7 +1916,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                         renderDeleteConfirm(() => setShowDeleteConfirm(false))
                       ) : (
                         <div className="flex items-center gap-5">
-                          {onRevertQuote && (
+                          {canRevertToQuote && (
                             <button onClick={() => setShowRevertConfirm(true)} disabled={isReverting} className={LINK_CLASS}>
                               <RotateCcw className="w-3.5 h-3.5" />
                               {isReverting ? t('REVERTING...') : t('REVERT TO QUOTE')}
