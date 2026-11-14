@@ -28,14 +28,34 @@ const sameMessage = (a: Message, b: Message) =>
 const sameList = (a: Message[], b: Message[]) => a.length === b.length && a.every((m, i) => sameMessage(m, b[i]));
 
 /**
+ * The server copy of a message still being sent: new to the list, from the
+ * same sender, same text. Each pending message hides at most one copy, so an
+ * older "ok" already on screen stays while a new "ok" is on its way.
+ */
+const pendingCopies = (prev: Message[], incoming: Message[]): Set<string> => {
+  const have = new Set(prev.map((m) => m.id));
+  const pending = prev.filter(isTemp);
+  const copies = new Set<string>();
+  for (const d of incoming) {
+    if (have.has(d.id)) continue;
+    const i = pending.findIndex((o) => o.content === d.content && o.sender_id === d.sender_id);
+    if (i === -1) continue;
+    pending.splice(i, 1);
+    copies.add(d.id);
+  }
+  return copies;
+};
+
+/**
  * Applies the latest page from the poll. Older messages the user loaded stay,
- * optimistic ones stay at the end (dropping a server copy with the same text,
- * as before), and an unchanged result returns `prev` itself so nothing
- * re-renders or scrolls.
+ * optimistic ones stay at the end (hiding only their own server copy until
+ * the send completes), and an unchanged result returns `prev` itself so
+ * nothing re-renders or scrolls.
  */
 export const mergeLatestPage = (prev: Message[], page: Message[]): Message[] => {
   const optimistic = prev.filter(isTemp);
-  const fromServer = page.filter((d) => !optimistic.some((o) => o.content === d.content));
+  const copies = pendingCopies(prev, page);
+  const fromServer = page.filter((d) => !copies.has(d.id));
   const pageIds = new Set(page.map((m) => m.id));
   const oldest = page[0]?.created_at;
   const older = oldest
@@ -50,4 +70,17 @@ export const prependOlder = (prev: Message[], olderPage: Message[]): Message[] =
   const have = new Set(prev.map((m) => m.id));
   const fresh = olderPage.filter((m) => !have.has(m.id));
   return fresh.length ? [...fresh, ...prev] : prev;
+};
+
+/**
+ * A message from realtime. It replaces the pending bubble it is the copy of
+ * (same sender and text); other pending bubbles stay at the end, so someone
+ * else's message never makes yours vanish while it is being sent.
+ */
+export const appendIncoming = (prev: Message[], message: Message): Message[] => {
+  if (prev.some((m) => m.id === message.id)) return prev;
+  const i = prev.findIndex((m) => isTemp(m) && m.sender_id === message.sender_id && m.content === message.content);
+  const rest = i === -1 ? prev : [...prev.slice(0, i), ...prev.slice(i + 1)];
+  const settled = rest.filter((m) => !isTemp(m));
+  return [...settled, message, ...rest.filter(isTemp)];
 };

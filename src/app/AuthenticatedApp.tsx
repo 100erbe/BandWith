@@ -1121,7 +1121,7 @@ export default function AuthenticatedApp() {
         setTimeout(() => {
           // A chat already in the inbox opens with its real type and name; otherwise the chat screen looks it up.
           const known = convertedChatsRef.current.find((c) => c.uuid === String(d.chatId));
-          setSelectedChat(known ? { ...known, unread: 0 } : { id: Date.now(), uuid: d.chatId, type: "direct", name: "Chat", initials: "CH", lastMessage: "", time: "now", unread: 0, status: "received" });
+          setSelectedChat(known ? { ...known, unread: 0 } : { id: Date.now(), uuid: d.chatId, type: "direct", name: t("Chat"), initials: "CH", lastMessage: "", time: "now", unread: 0, status: "received" });
         }, 100);
       } else if (d.screen === "event" && d.eventId) {
         navigateToEvent(d.eventId);
@@ -1843,7 +1843,7 @@ export default function AuthenticatedApp() {
         closeIdentity();
         setTimeout(() => {
           setActiveTab("Chat");
-          const sn = (realNotif?.data as any)?.senderName || realNotif?.title?.replace("💬 ", "") || "Chat";
+          const sn = (realNotif?.data as any)?.senderName || realNotif?.title?.replace("💬 ", "") || t("Chat");
           const known = convertedChatsRef.current.find((c) => c.uuid === String(chatId));
           setSelectedChat(known ? { ...known, unread: 0 } : { id: Date.now(), uuid: String(chatId), type: "direct", name: sn, initials: sn.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(), lastMessage: "", time: "now", unread: 0, status: "received" });
         }, 300);

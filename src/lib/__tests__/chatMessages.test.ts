@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mergeLatestPage, prependOlder, normalizeChatType } from '../chatMessages';
+import { mergeLatestPage, prependOlder, normalizeChatType, appendIncoming } from '../chatMessages';
 import type { Message } from '@/lib/services/chats';
 
 const msg = (i: number, over: Partial<Message> = {}): Message => ({
@@ -46,6 +46,40 @@ describe('mergeLatestPage (3 s poll)', () => {
 
   it('an empty page (chat cleared) empties the list as before', () => {
     expect(mergeLatestPage(range(0, 3), [])).toEqual([]);
+  });
+
+  it('hides only the server copy of a pending message, not older messages with the same text', () => {
+    const old = msg(0, { content: 'ok', sender_id: 'me' });
+    const temp = msg(99, { id: 'temp-1', content: 'ok', sender_id: 'me' });
+    const copy = msg(2, { content: 'ok', sender_id: 'me' });
+    const next = mergeLatestPage([old, msg(1), temp], [old, msg(1), copy]);
+    expect(ids(next)).toEqual(['m0', 'm1', 'temp-1']);
+  });
+
+  it("does not hide someone else's message with the same text", () => {
+    const temp = msg(99, { id: 'temp-1', content: 'ok', sender_id: 'me' });
+    const theirs = msg(2, { content: 'ok', sender_id: 'u1' });
+    const next = mergeLatestPage([msg(1), temp], [msg(1), theirs]);
+    expect(ids(next)).toEqual(['m1', 'm2', 'temp-1']);
+  });
+});
+
+describe('appendIncoming (realtime)', () => {
+  it("keeps my pending bubble when someone else's message arrives", () => {
+    const temp = msg(99, { id: 'temp-1', content: 'hi', sender_id: 'me' });
+    const next = appendIncoming([msg(0), temp], msg(1, { content: 'hey', sender_id: 'u1' }));
+    expect(ids(next)).toEqual(['m0', 'm1', 'temp-1']);
+  });
+
+  it('replaces the pending bubble with its server copy', () => {
+    const temp = msg(99, { id: 'temp-1', content: 'hi', sender_id: 'me' });
+    const next = appendIncoming([msg(0), temp], msg(1, { content: 'hi', sender_id: 'me' }));
+    expect(ids(next)).toEqual(['m0', 'm1']);
+  });
+
+  it('ignores a message already in the list', () => {
+    const prev = range(0, 3);
+    expect(appendIncoming(prev, msg(1))).toBe(prev);
   });
 });
 

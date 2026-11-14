@@ -3777,6 +3777,11 @@ const dict: Dictionary = {
   "Sending the quote to {email}…": "Enviando el presupuesto a {email}…",
   "Preparing the quote…": "Preparando el presupuesto…",
   "The quote could not be sent automatically. Pick a channel below.": "No se pudo enviar el presupuesto automáticamente. Elige un canal abajo.",
+  // Chat thread: load and send errors, lost access
+  "Could not load the messages": "No se pudieron cargar los mensajes",
+  "Message not sent. Check your connection and try again.": "Mensaje no enviado. Comprueba tu conexión e inténtalo de nuevo.",
+  "Message not sent. Try again.": "Mensaje no enviado. Inténtalo de nuevo.",
+  "You no longer have access to this chat.": "Ya no tienes acceso a este chat.",
 };
 
 export default dict;
