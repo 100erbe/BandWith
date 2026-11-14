@@ -10,8 +10,9 @@
   left: 0 !important;
   right: 0 !important;
   width: auto !important;
-  padding-left: var(--bw-status-clear-left, 0px) !important;
-  padding-right: var(--bw-status-clear-x, 0px) !important;
+  /* The status column (iPhone Duo) or a landscape notch / cutout. */
+  padding-left: max(var(--safe-left, 0px), var(--bw-status-clear-left, 0px)) !important;
+  padding-right: max(var(--safe-right, 0px), var(--bw-status-clear-x, 0px)) !important;
   padding-bottom: calc(var(--safe-bottom, 0px) + 16px) !important;
 }
 :root[data-bw-stage-full][data-bw-rail][data-bw-rail-edge="right"] .bw-stage.bw-stage-full.bw-pane-detail {

@@ -12,6 +12,11 @@
 [data-bw-wide][data-bw-two-pane] body:has(:is(.bw-sheet[role="dialog"], .bw-sheet-card):not(.bw-nav-popover)) .bw-nav-bar {
   z-index: 80 !important;
 }
+/* A centred confirmation (Settings → Delete account?) is modal too. It sits
+   inside its z-70 screen, so the nav steps below that screen while it shows. */
+[data-bw-wide][data-bw-two-pane] body:has(.bw-pane-dialog) .bw-nav-bar {
+  z-index: 60 !important;
+}
 /* Detail content ends above the nav (bar 64 px + 24 px from the bottom). */
 [data-bw-wide][data-bw-two-pane][data-bw-tab-nav] .bw-pane-detail {
   padding-bottom: calc(var(--safe-bottom, 0px) + 104px) !important;
