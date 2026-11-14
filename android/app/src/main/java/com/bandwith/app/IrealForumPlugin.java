@@ -12,6 +12,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.webkit.CookieManager;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -39,7 +40,9 @@ import com.getcapacitor.annotation.CapacitorPlugin;
  * the app instead of the iReal Pro app. Nothing is read from the forum's
  * pages; pages outside irealpro.com open in the browser.
  *
- * JS: IrealForum.open({ url, title }) resolves { link } (null when closed).
+ * JS: IrealForum.open({ url, title, closeLabel, backLabel }) resolves { link }
+ * (null when closed) and rejects when the page can't load (offline), so the
+ * app shows its own translated message instead of the WebView's error page.
  */
 @CapacitorPlugin(name = "IrealForum")
 public class IrealForumPlugin extends Plugin {
@@ -65,7 +68,9 @@ public class IrealForumPlugin extends Plugin {
             return;
         }
         String title = call.getString("title", "iReal Pro");
-        getActivity().runOnUiThread(() -> show(call, start, title));
+        String closeLabel = call.getString("closeLabel", "Close");
+        String backLabel = call.getString("backLabel", "Back");
+        getActivity().runOnUiThread(() -> show(call, start, title, closeLabel, backLabel));
     }
 
     private int dp(int v) {
@@ -73,7 +78,7 @@ public class IrealForumPlugin extends Plugin {
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private void show(PluginCall call, Uri start, String title) {
+    private void show(PluginCall call, Uri start, String title, String closeLabel, String backLabel) {
         if (dialog != null && dialog.isShowing()) {
             JSObject none = new JSObject();
             none.put("link", JSObject.NULL);
@@ -93,12 +98,17 @@ public class IrealForumPlugin extends Plugin {
 
         final Runnable[] finish = new Runnable[1];
         final String[] result = { null };
+        final boolean[] failed = { false };
         finish[0] = () -> {
             if (finished[0]) return;
             finished[0] = true;
-            JSObject ret = new JSObject();
-            ret.put("link", result[0] == null ? JSObject.NULL : result[0]);
-            call.resolve(ret);
+            if (failed[0]) {
+                call.reject("The forum could not be loaded");
+            } else {
+                JSObject ret = new JSObject();
+                ret.put("link", result[0] == null ? JSObject.NULL : result[0]);
+                call.resolve(ret);
+            }
             web.stopLoading();
             if (d.isShowing()) d.dismiss();
             web.destroy();
@@ -127,6 +137,16 @@ public class IrealForumPlugin extends Plugin {
                 }
                 return false;
             }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                // No internet (or the forum is down): close with an error instead of
+                // showing the WebView's own (English) error page.
+                if (request.isForMainFrame()) {
+                    failed[0] = true;
+                    finish[0].run();
+                }
+            }
         });
 
         LinearLayout root = new LinearLayout(getContext());
@@ -140,11 +160,11 @@ public class IrealForumPlugin extends Plugin {
 
         Button close = new Button(getContext(), null, android.R.attr.borderlessButtonStyle);
         close.setText("✕");
-        close.setContentDescription("Close");
+        close.setContentDescription(closeLabel);
         close.setOnClickListener(v -> finish[0].run());
         Button back = new Button(getContext(), null, android.R.attr.borderlessButtonStyle);
         back.setText("‹");
-        back.setContentDescription("Back");
+        back.setContentDescription(backLabel);
         back.setOnClickListener(v -> {
             if (web.canGoBack()) web.goBack();
         });

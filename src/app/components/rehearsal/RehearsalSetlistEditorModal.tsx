@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { ListMusic, Search, Plus, Trash2, Save, Copy, Clock, Check, Link, GripVertical } from '@/app/components/icons';
 import { RehearsalSong, SetlistTemplate } from './types';
 import { cn } from '@/app/components/ui/utils';
-import { BwSheet, IconButton, PillButton, PillField, SearchField, Selector } from '@/app/components/bw';
+import { BwSheet, FormError, IconButton, PillButton, PillField, SearchField, Selector } from '@/app/components/bw';
+import { userMessage } from '@/lib/userError';
 import { createSong } from '@/lib/services/songs';
 import { safeHttpsUrl } from '@/lib/services/songFiles';
 import { useT, intlLocale } from '@/lib/i18n';
@@ -47,6 +48,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
   const [newArtist, setNewArtist] = useState('');
   const [newUrl, setNewUrl] = useState('');
   const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
@@ -159,6 +161,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
   const handleAddNewSong = useCallback(async () => {
     if (!newTitle.trim() || !bandId) return;
     setSaving(true);
+    setAddError(null);
 
     const urlFields = newUrl.trim() ? detectUrlType(newUrl.trim()) : {};
     const songData = {
@@ -170,8 +173,10 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
       ...urlFields,
     };
 
-    const { data: created } = await createSong(songData);
+    const { data: created, error: createError } = await createSong(songData);
     setSaving(false);
+    // Offline or not allowed: say so instead of doing nothing.
+    if (!created) setAddError(userMessage(createError, t('Could not add the song.')));
 
     if (created) {
       const rehearsalSong: RehearsalSong = {
@@ -192,7 +197,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
       setNewUrl('');
       setOverlayTab('library');
     }
-  }, [newTitle, newArtist, newUrl, bandId, onSongCreated]);
+  }, [newTitle, newArtist, newUrl, bandId, onSongCreated, t]);
 
   const handleSaveAction = (asNew: boolean) => {
       if (!name) return;
@@ -460,6 +465,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                   placeholder={t('Paste URL…')}
                   hint={t('Spotify, YouTube, Google Drive, or any audio link')}
                 />
+                {addError && <FormError>{addError}</FormError>}
               </>
             )}
           </>

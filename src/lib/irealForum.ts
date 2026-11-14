@@ -17,7 +17,8 @@ import { openExternal } from './nativeFiles';
 export const IREAL_FORUM_URL = 'https://forums.irealpro.com/';
 
 interface IrealForumPlugin {
-  open(opts: { url: string; title?: string }): Promise<{ link: string | null }>;
+  /** Rejects when the forum can't be loaded (offline). */
+  open(opts: { url: string; title?: string; closeLabel?: string; backLabel?: string }): Promise<{ link: string | null }>;
 }
 
 const IrealForum = registerPlugin<IrealForumPlugin>('IrealForum');
@@ -28,12 +29,14 @@ export const canBrowseForumInApp = () => Capacitor.isNativePlatform();
 /**
  * Opens the forum. In the app: resolves the irealb:// link the user tapped,
  * or null when they closed it. On the web: opens a new tab and resolves null.
+ * Rejects when the forum can't be loaded. `labels`: the browser's buttons, for
+ * screen readers in the app's language.
  */
-export async function browseIrealForum(title?: string): Promise<string | null> {
+export async function browseIrealForum(title?: string, labels?: { close: string; back: string }): Promise<string | null> {
   if (!canBrowseForumInApp()) {
     void openExternal(IREAL_FORUM_URL);
     return null;
   }
-  const { link } = await IrealForum.open({ url: IREAL_FORUM_URL, title });
+  const { link } = await IrealForum.open({ url: IREAL_FORUM_URL, title, closeLabel: labels?.close, backLabel: labels?.back });
   return link || null;
 }

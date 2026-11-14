@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -19,6 +19,8 @@ import { IconButton, NavBackButton, PillButton, PillField, Selector, FormError }
 import { useRailAction } from '@/lib/railActions';
 import { cn } from '@/app/components/ui/utils';
 import { createSong, updateSong, type Song } from '@/lib/services/songs';
+import { replacedFiles, songCreatePayload, songIdentity, songUpdatePayload, type SongFormValues } from '@/lib/songPayload';
+import { UserError, userMessage } from '@/lib/userError';
 import {
   SONG_FILE_ACCEPT,
   classifySongFile,
@@ -112,6 +114,13 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Save in progress (a ref too: closing is refused while it runs). */
+  const savingRef = useRef(false);
+  const successTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** The song as the form was filled from it (edit): only changes are saved. */
+  const openedRef = useRef<SongFormValues | null>(null);
+  /** Title of the same song already in the library (asked once before adding a copy). */
+  const [duplicateOf, setDuplicateOf] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -138,7 +147,23 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     setExistingAudio(song.audio_url || undefined);
     setExistingChart(song.chart_url || undefined);
     setChartUrl(song.chart_url && !isStoredSongFile(song.chart_url) ? song.chart_url : '');
+    openedRef.current = {
+      title: song.title || '',
+      artist: song.artist || '',
+      genres: parseGenres(song.genre),
+      audioUrl: song.audio_url || null,
+      chartUrl: song.chart_url || null,
+      youtubeUrl: song.youtube_url || null,
+      notes: song.notes || '',
+      lyrics: song.lyrics || '',
+      bpm: song.bpm ? String(song.bpm) : '',
+      key: song.key || '',
+      durationSeconds: song.duration_seconds && song.duration_seconds > 0 ? song.duration_seconds : 0,
+    };
   }, [isOpen, song?.id]);
+
+  // Another title or artist: check for a duplicate again.
+  useEffect(() => setDuplicateOf(null), [title, artist]);
 
   const loadGenres = async () => {
     try {
@@ -180,12 +205,30 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     }
   };
 
+  /** A song with the same title and artist already in the band's library, if any. */
+  const findDuplicate = async (): Promise<string | null> => {
+    try {
+      const wanted = songIdentity(title, artist);
+      const { data } = await supabase
+        .from('songs')
+        .select('title, artist')
+        .eq('band_id', bandId)
+        .ilike('title', title.trim().replace(/[\\%_]/g, (c) => `\\${c}`));
+      const hit = (data || []).find((s: { title: string; artist?: string | null }) => songIdentity(s.title, s.artist) === wanted);
+      return hit ? hit.title : null;
+    } catch {
+      return null; // offline: the save says so
+    }
+  };
+
   const handleSubmit = async () => {
+    if (savingRef.current) return;
     if (!title.trim()) {
       setError(t('Song title is required'));
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
     setError(null);
 
@@ -197,63 +240,73 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
       const chartLink = chartUrl.trim() ? safeHttpsUrl(chartUrl) : undefined;
       const chords = chordsUrl.trim() ? safeHttpsUrl(chordsUrl) : undefined;
       if ((youtubeUrl.trim() && !youtube) || (chartUrl.trim() && !chartLink) || (chordsUrl.trim() && !chords)) {
-        throw new Error(t('Links must start with https://'));
+        throw new UserError(t('Links must start with https://'));
       }
 
-      // Upload new files to the band's private storage.
-      let audioRef = existingAudio;
-      let chartRef = chartLink ?? existingChart;
-      const replaced: Array<string | undefined> = [];
+      // Same title and artist already in the library: say so once; saving again adds a second copy.
+      if (!isEdit && duplicateOf === null) {
+        const dup = await findDuplicate();
+        if (dup) {
+          setDuplicateOf(dup);
+          return;
+        }
+      }
+
+      // Recording / chart as saved: a new upload, the stored one, or none
+      // (removed with X). A chart link lives in the Sheet music field.
+      let audioRef: string | null = existingAudio ?? null;
+      let chartRef: string | null = chartLink ?? (isStoredSongFile(existingChart) ? existingChart : null);
       if (audioFile) {
         const up = await uploadSongFile(bandId, audioFile);
         if (up.error) throw up.error;
         uploaded.push(up.ref);
-        if (existingAudio) replaced.push(existingAudio);
         audioRef = up.ref;
       }
       if (chartFile) {
         const up = await uploadSongFile(bandId, chartFile);
         if (up.error) throw up.error;
         uploaded.push(up.ref);
-        if (existingChart) replaced.push(existingChart);
         chartRef = up.ref;
-      } else if (chartLink && existingChart && existingChart !== chartLink) {
-        replaced.push(existingChart);
       }
 
-      const noteText = [notes.trim(), chords && !notes.includes(chords) ? `Chords: ${chords}` : '']
+      const noteText = [notes.trim(), chords && !notes.includes(chords) ? `${t('Chords')}: ${chords}` : '']
         .filter(Boolean)
         .join('\n');
 
       const mins = parseInt(durMin || '0', 10) || 0;
       const secs = Math.min(59, parseInt(durSec || '0', 10) || 0);
-      const durationSeconds = mins * 60 + secs;
 
-      const payload: Partial<Song> = {
-        title: title.trim(),
-        artist: artist.trim() || undefined,
-        // Editing to no genre clears it.
-        genre: joinGenres(genres) ?? (isEdit ? '' : undefined),
-        audio_url: audioRef,
-        chart_url: chartRef,
-        youtube_url: youtube,
-        notes: noteText || undefined,
-        // Editing to empty clears them.
-        lyrics: lyrics.trim() ? lyrics.replace(/\s+$/, '').slice(0, 20000) : isEdit ? '' : undefined,
-        ...(chordChartTouched ? { chord_chart: chordChart } : {}),
-        bpm: bpm ? parseInt(bpm) : undefined,
-        key: key || undefined,
-        duration_seconds: durationSeconds || undefined,
+      const values: SongFormValues = {
+        title,
+        artist,
+        genres,
+        audioUrl: audioRef,
+        chartUrl: chartRef,
+        youtubeUrl: youtube ?? null,
+        notes: noteText,
+        lyrics,
+        bpm,
+        key,
+        durationSeconds: mins * 60 + secs,
+        ...(chordChartTouched ? { chordChart: { value: chordChart } } : {}),
       };
 
       // Members suggest songs; an admin moves them to Learning / Ready.
       const suggested = !isEdit && !isAdmin;
-      const { data: savedSong, error: songError } = isEdit && song
-        ? await updateSong(song.id, payload)
-        : await createSong({ ...payload, band_id: bandId, status: suggested ? 'suggested' : 'ready', priority: 'medium' });
-
-      if (songError) throw songError;
-      if (!isEdit) {
+      let replaced: string[] = [];
+      if (isEdit && song) {
+        // Only what changed (emptied fields cleared), so a bandmate's edit to another field stays.
+        const opened = openedRef.current ?? values;
+        const changes = songUpdatePayload(opened, values);
+        if (Object.keys(changes).length > 0) {
+          const { error: songError } = await updateSong(song.id, changes);
+          if (songError) throw songError;
+          replaced = replacedFiles(opened, changes);
+        }
+      } else {
+        const payload = songCreatePayload(values) as Partial<Song>;
+        const { data: savedSong, error: songError } = await createSong({ ...payload, band_id: bandId, status: suggested ? 'suggested' : 'ready', priority: 'medium' });
+        if (songError) throw songError;
         // Inbox note to the rest of the band (no push).
         void notifySongAdded(
           bandId,
@@ -262,31 +315,36 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
         );
       }
       uploaded.length = 0; // saved: the new files now belong to the song
+      // Files the song no longer uses (replaced or removed with X).
       await removeSongFiles(replaced);
 
       setSuccess(true);
-      setTimeout(() => {
+      successTimer.current = setTimeout(() => {
+        successTimer.current = undefined;
         onSongAdded?.();
         handleClose();
       }, 1000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Don't leave orphaned uploads in storage when the song wasn't saved.
       if (uploaded.length > 0) await removeSongFiles(uploaded);
-      setError(
-        err?.message
-          ? isEdit
-            ? t('Could not save the song: {error}', { error: err.message })
-            : t('Could not add the song: {error}', { error: err.message })
-          : isEdit
-            ? t('Could not save the song. Try again.')
-            : t('Could not add the song. Try again.'),
-      );
+      setError(userMessage(err, isEdit ? t('Could not save the song.') : t('Could not add the song.')));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
 
   const handleClose = () => {
+    // An upload or save is running: it can't be cancelled halfway.
+    if (savingRef.current) return;
+    // Closed during "Saved!": the list still refreshes.
+    if (successTimer.current) {
+      clearTimeout(successTimer.current);
+      successTimer.current = undefined;
+      onSongAdded?.();
+    }
+    openedRef.current = null;
+    setDuplicateOf(null);
     setStep('details');
     setTitle('');
     setArtist('');
@@ -356,6 +414,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
   };
 
   const prevStep = () => {
+    if (savingRef.current) return;
     if (step === 'extras') setStep('more');
     else if (step === 'more') setStep('details');
     else handleClose();
@@ -394,11 +453,11 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
       {/* Header: Top Bar + wizard steps */}
       <header className="shrink-0 px-4 pb-3 flex flex-col gap-3" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
         <div className="flex items-center gap-3 min-h-11">
-          <NavBackButton pane label={step === 'details' ? t('Cancel') : t('Back')} onClick={prevStep} />
+          <NavBackButton pane label={step === 'details' ? t('Cancel') : t('Back')} onClick={prevStep} disabled={saving} />
           <h2 id="add-song-title" className="flex-1 min-w-0 bw-h1 truncate">
             {isEdit ? t('Edit song') : t('Add song', { context: 'title' })}
           </h2>
-          {!closeInRail && <IconButton label={t('Close')} icon={<X />} variant="ghost" onClick={handleClose} />}
+          {!closeInRail && <IconButton label={t('Close')} icon={<X />} variant="ghost" onClick={handleClose} disabled={saving} />}
         </div>
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
@@ -669,6 +728,11 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
 
       {/* CTA bar */}
       <div className="shrink-0 px-4 pt-3 bg-background flex flex-col gap-2" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
+        {duplicateOf && !success && (
+          <p className="max-w-2xl mx-auto w-full bw-body-sm text-muted-foreground" role="status">
+            {t('“{title}” is already in your library. Save again to add a second copy.', { title: duplicateOf })}
+          </p>
+        )}
         {/* The optional steps can be skipped: save with what's there. */}
         {step !== 'extras' && !success && (
           <div className="max-w-2xl mx-auto w-full flex justify-center">
@@ -678,7 +742,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
           </div>
         )}
         <div className="max-w-2xl mx-auto w-full grid grid-cols-[2fr_3fr] gap-3">
-          <PillButton variant="outline" onClick={prevStep}>
+          <PillButton variant="outline" onClick={prevStep} disabled={saving}>
             {step === 'details' ? t('Cancel') : t('Back')}
           </PillButton>
           <PillButton

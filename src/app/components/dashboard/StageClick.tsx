@@ -1,6 +1,7 @@
 import React from 'react';
 import { Capacitor } from '@capacitor/core';
-import { beatAt, type ClickState } from '@/lib/stageClick';
+import { beatAt, beatsInBar, type ClickState } from '@/lib/stageClick';
+import { haptic } from '@/lib/haptics';
 import { cn } from '@/app/components/ui/utils';
 import { useT } from '@/lib/i18n';
 
@@ -21,7 +22,13 @@ const prefersReducedMotion = () => typeof window !== 'undefined' && !!window.mat
  * usable underneath. Drawn with requestAnimationFrame straight on the
  * element, so React doesn't re-render 60 times a second.
  */
-export const StageClickFrame: React.FC<{ state: ClickState; offset: number; accent: string; onDone?: () => void }> = ({ state, offset, accent, onDone }) => {
+export const StageClickFrame: React.FC<{ state: ClickState; offset: number; accent: string; onDone?: () => void; zIndex?: number }> = ({
+  state,
+  offset,
+  accent,
+  onDone,
+  zIndex = 60,
+}) => {
   const ring = React.useRef<HTMLDivElement>(null);
   const doneRef = React.useRef(onDone);
   doneRef.current = onDone;
@@ -56,7 +63,7 @@ export const StageClickFrame: React.FC<{ state: ClickState; offset: number; acce
 
   const radius = React.useMemo(screenRadius, []);
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-[60]">
+    <div aria-hidden className="pointer-events-none fixed inset-0" style={{ zIndex }}>
       <div
         ref={ring}
         className="absolute inset-0 transition-none"
@@ -77,6 +84,43 @@ export const StageClickFrame: React.FC<{ state: ClickState; offset: number; acce
     </div>
   );
 };
+
+/** Stage mode's click controls (useStageLive().click). */
+export interface StageClickControls {
+  state: ClickState | null;
+  mine: boolean;
+  offset: number;
+  setOn: (on: boolean, opts?: { bpm: number; beats: number; bars?: number | null }) => void;
+}
+
+/**
+ * What the click looks like on this phone for the current song: running,
+ * hidden here, finished (a count-in), and what the button does. Shared by
+ * Stage mode and the floor wedge (Laptop pose).
+ */
+export function useStageClickUi(
+  click: StageClickControls | undefined,
+  song: { id?: string; bpm?: number | null; chart?: { time?: string } | null } | null | undefined,
+) {
+  const state = click?.state ?? null;
+  const running = !!state?.on && !!song && (state.songId == null || state.songId === song.id);
+  const [hidden, setHidden] = React.useState(false);
+  const [done, setDone] = React.useState<number | null>(null);
+  // A new click (or a new song) shows again.
+  React.useEffect(() => setHidden(false), [state?.seq, state?.from]);
+  const show = running && !hidden && done !== state?.seq;
+  const press = () => {
+    haptic.tap();
+    if (!click) return;
+    if (running && !click.mine) return setHidden((h) => !h);
+    if (running) return click.setOn(false);
+    if (song?.bpm) click.setOn(true, { bpm: song.bpm, beats: beatsInBar(song.chart?.time) });
+  };
+  const onDone = () => {
+    if (state) setDone(state.seq);
+  };
+  return { state, running, hidden, show, press, onDone, following: running && !!click && !click.mine };
+}
 
 /**
  * Stage mode's click button, between Prev and Next: the song's BPM; tap to

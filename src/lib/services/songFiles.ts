@@ -10,6 +10,7 @@ import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { supabase } from '../supabase';
 import { t } from '@/lib/i18n';
+import { UserError } from '../userError';
 
 export const SONG_FILES_BUCKET = 'song-files';
 const REF_PREFIX = `sb://${SONG_FILES_BUCKET}/`;
@@ -119,10 +120,10 @@ export const uploadSongFile = async (
   file: File,
 ): Promise<{ ref: string; kind: SongFileKind; error: null } | { ref: null; kind: null; error: Error }> => {
   const problem = validateSongFile(file);
-  if (problem) return { ref: null, kind: null, error: new Error(problem) };
+  if (problem) return { ref: null, kind: null, error: new UserError(problem) };
   const kind = classifySongFile(file)!;
   const contentType = songFileContentType(file);
-  if (!contentType) return { ref: null, kind: null, error: new Error(unsupportedTypeMessage()) };
+  if (!contentType) return { ref: null, kind: null, error: new UserError(unsupportedTypeMessage()) };
   const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
   const path = `${bandId}/${kind}/${id}-${safeName(file.name)}`;
   const { error } = await supabase.storage.from(SONG_FILES_BUCKET).upload(path, file, {
@@ -130,7 +131,8 @@ export const uploadSongFile = async (
     upsert: false,
     cacheControl: '3600',
   });
-  if (error) return { ref: null, kind: null, error: new Error(error.message || t('Upload failed')) };
+  // Storage's own text stays out of the UI (userMessage maps size / type / network).
+  if (error) return { ref: null, kind: null, error: Object.assign(new Error(error.message || 'Upload failed'), { statusCode: (error as { statusCode?: unknown }).statusCode }) };
   return { ref: `${REF_PREFIX}${path}`, kind, error: null };
 };
 

@@ -10,6 +10,7 @@ import { supabase, getSafeUser, signIn, signUp, signOut, resetPassword, signInWi
 import { Capacitor } from '@capacitor/core';
 import { cleanupPresence } from './services/presence';
 import { clearOfflineCache, getOfflineItem, setOfflineItem, getCacheKey } from './offline/storage';
+import { clearStageCache } from './stageBleNative';
 import { unregisterPushToken } from './services/pushNotifications';
 import { syncAppBadge } from './services/appBadge';
 import { realName } from '@/lib/personName';
@@ -375,6 +376,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       setProfile(null);
       setSession(null);
+      clearStageCache();
       clearOfflineCache()
         .then(() => (pendingQueue ? setOfflineItem(pendingQueue.key, pendingQueue.items) : undefined))
         .catch(() => {});

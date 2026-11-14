@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseChordPro, pastedLyrics, readSongFile, textToLyrics } from '../songImport';
+import { parseChordPro, pastedLyrics, readSongFile, songFileTooLarge, textToLyrics } from '../songImport';
 import { isChordToken, parseLyrics, splitChords } from '../lyrics';
 
 // Made-up words only: no real song.
@@ -121,5 +121,12 @@ describe('inline chords', () => {
       { chord: null, text: 'la ' },
       { chord: 'C', text: '' },
     ]);
+  });
+  it('says a file is too large before it is read', () => {
+    expect(songFileTooLarge('score.mxl', 19 * 1024 * 1024)).toBe(false);
+    expect(songFileTooLarge('score.mxl', 21 * 1024 * 1024)).toBe(true);
+    expect(songFileTooLarge('song.cho', 900 * 1024)).toBe(false);
+    expect(songFileTooLarge('song.txt', 2 * 1024 * 1024)).toBe(true);
+    expect(songFileTooLarge('movie.mp4', 500 * 1024 * 1024)).toBe(true);
   });
 });

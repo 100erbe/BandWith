@@ -8,6 +8,7 @@ import {
   indexOf,
   isNewer,
   moveItem,
+  nextSeq,
   parseStageState,
   reorderRows,
   sameOrder,
@@ -90,6 +91,10 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
   const followingRef = useRef(following);
   followingRef.current = following;
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** Order waiting for its save (several moves, one save); flushed on close. */
+  const pendingOrder = useRef<string[] | null>(null);
+  const saveCtx = useRef({ songs, setlistId });
+  saveCtx.current = { songs, setlistId };
 
   // Visual metronome (stageClick.ts): the newest click state, and the leader's clock offset.
   const [click, setClick] = useState<ClickState | null>(null);
@@ -133,7 +138,7 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
 
   const send = useCallback(
     (next: { songId: string | null; order: string[] | null }) => {
-      const seq = (lastRef.current?.seq ?? 0) + 1;
+      const seq = nextSeq(lastRef.current?.seq);
       const state: StageLiveState = { seq, from: clientId, ...next };
       lastRef.current = state;
       ledRef.current = true;
@@ -207,8 +212,11 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
         const best = bestSample(book.samples);
         if (best) setClickOffset(best.offset);
       })
-      .on('presence', { event: 'join' }, (msg: { key?: string }) => {
+      .on('presence', { event: 'join' }, (msg: { key?: string; newPresences?: Array<{ lead?: unknown }> }) => {
         if (msg?.key === clientId) return;
+        // A leader (re)joined, maybe after reopening Stage mode with a new
+        // clock: take its next state whatever seq it carries.
+        if (!isLeader && msg?.newPresences?.some((p) => p?.lead === true)) lastRef.current = null;
         // A running click of ours reaches late arrivals too.
         if (clickRef.current?.from === clientId && clickRef.current.on && isLeader) {
           void channel.send({ type: 'broadcast', event: CLICK_EVENT, payload: clickRef.current });
@@ -217,6 +225,13 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
         if (lastRef.current.from !== clientId) return;
         void channel.send({ type: 'broadcast', event: 'state', payload: lastRef.current });
       })
+      .on('presence', { event: 'leave' }, (msg: { key?: string }) => {
+        // The click's leader left (closed Stage mode or lost the network): stop showing its click.
+        const running = clickRef.current;
+        if (!msg?.key || !running || running.from === clientId || running.from !== msg.key) return;
+        clickRef.current = null;
+        setClick(null);
+      })
       .subscribe((status: string) => {
         setConnected(status === 'SUBSCRIBED');
         if (status === 'SUBSCRIBED') {
@@ -224,15 +239,58 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
         }
       });
     return () => {
+      // Our running click stops on everyone's phone too.
+      const running = clickRef.current;
+      if (isLeader && running?.from === clientId && running.on) {
+        const off: ClickState = { ...running, on: false, seq: nextSeq(running.seq) };
+        clickRef.current = off;
+        void channel.send({ type: 'broadcast', event: CLICK_EVENT, payload: off });
+      }
       channelRef.current = null;
       setConnected(false);
       void supabase.removeChannel(channel);
     };
   }, [live, eventId, clientId, isLeader, receive, receiveClick]);
 
-  // Closing Stage mode forgets the live state; the saved order stands.
+  /**
+   * Save the pending order now. `closing`: Stage mode is closing, so only the
+   * save itself runs (no status, nothing sent).
+   */
+  const flushSave = useCallback(
+    async (closing: boolean) => {
+      clearTimeout(saveTimer.current);
+      const ids = pendingOrder.current;
+      pendingOrder.current = null;
+      const { songs: current, setlistId: list } = saveCtx.current;
+      if (!ids || !list) return;
+      const saved = current.filter((s) => s.id && s.songId).map((s) => ({ id: s.id!, songId: s.songId!, setNumber: s.setNumber }));
+      const byId = new Map(saved.map((s) => [s.id, s]));
+      const inOrder = ids.map((id) => byId.get(id)).filter((s): s is NonNullable<typeof s> => !!s);
+      if (inOrder.length !== saved.length) {
+        if (!closing) setSaveState('error');
+        return;
+      }
+      const { error } = await saveSetlistOrder(reorderRows(list, saved, inOrder));
+      if (closing) return;
+      if (error) {
+        // Back to the saved order, for everyone.
+        setSaveState('error');
+        setOrder(null);
+        send({ songId: lastRef.current?.songId ?? null, order: saved.map((s) => s.id) });
+        return;
+      }
+      setSaveState('saved');
+    },
+    [send],
+  );
+  const flushRef = useRef(flushSave);
+  flushRef.current = flushSave;
+
+  // Closing Stage mode forgets the live state; the saved order stands
+  // (a move still waiting for its save is saved now, not dropped).
   useEffect(() => {
     if (open) return;
+    if (pendingOrder.current) void flushRef.current(true);
     clearTimeout(saveTimer.current);
     setOrder(null);
     setSongId(null);
@@ -251,6 +309,7 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
 
   useEffect(
     () => () => {
+      if (pendingOrder.current) void flushRef.current(true);
       clearTimeout(saveTimer.current);
       pingTimers.current.forEach(clearTimeout);
     },
@@ -265,7 +324,7 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
     (on: boolean, opts?: { bpm: number; beats: number; bars?: number | null }) => {
       const prev = clickRef.current;
       const state: ClickState = {
-        seq: (prev?.seq ?? 0) + 1,
+        seq: nextSeq(prev?.seq),
         from: clientId,
         on,
         bpm: opts?.bpm ?? prev?.bpm ?? 120,
@@ -320,27 +379,11 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
       setOrder(ids);
       send({ songId: songId ?? ordered[index]?.id ?? null, order: ids });
       setSaveState('saving');
+      pendingOrder.current = ids;
       clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(async () => {
-        const saved = songs.filter((s) => s.id && s.songId).map((s) => ({ id: s.id!, songId: s.songId!, setNumber: s.setNumber }));
-        const byId = new Map(saved.map((s) => [s.id, s]));
-        const inOrder = ids.map((id) => byId.get(id)).filter((s): s is NonNullable<typeof s> => !!s);
-        if (inOrder.length !== saved.length) {
-          setSaveState('error');
-          return;
-        }
-        const { error } = await saveSetlistOrder(reorderRows(setlistId, saved, inOrder));
-        if (error) {
-          // Back to the saved order, for everyone.
-          setSaveState('error');
-          setOrder(null);
-          send({ songId: lastRef.current?.songId ?? null, order: saved.map((s) => s.id) });
-          return;
-        }
-        setSaveState('saved');
-      }, SAVE_DELAY_MS);
+      saveTimer.current = setTimeout(() => void flushSave(false), SAVE_DELAY_MS);
     },
-    [isLeader, setlistId, ordered, send, songId, index, songs],
+    [isLeader, setlistId, ordered, send, songId, index, flushSave],
   );
 
   return {

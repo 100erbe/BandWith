@@ -11,6 +11,7 @@ import { useSystemBack } from '@/lib/backStack';
 import { useT } from '@/lib/i18n';
 import { ChordChartView } from '@/app/components/ui/ChordChart';
 import { cn } from '@/app/components/ui/utils';
+import { ErrorBoundary } from './ErrorBoundary';
 
 const SIZES = [18, 21, 24, 28, 33, 40];
 const SIZE_KEY = 'bw-lyrics-size';
@@ -92,7 +93,22 @@ const LyricsLine: React.FC<{ line: string }> = ({ line }) => {
  * Lyrics as sections of lines (Markdown / JSON, see src/lib/lyrics.ts).
  * `muted` is the class for section names and the empty message.
  */
-export const LyricsText: React.FC<{ lyrics?: string | null; size: number; muted?: string; className?: string }> = ({
+type LyricsTextProps = { lyrics?: string | null; size: number; muted?: string; className?: string };
+
+export const LyricsText: React.FC<LyricsTextProps> = (props) => {
+  const tr = useT();
+  // Lyrics that can't be drawn show a line instead of taking the screen down.
+  return (
+    <ErrorBoundary
+      resetKey={props.lyrics}
+      fallback={<p className={`bw-body-lg ${props.muted ?? 'text-muted-foreground'}`}>{tr('These lyrics can’t be shown. Check their format in Edit song.')}</p>}
+    >
+      <LyricsSections {...props} />
+    </ErrorBoundary>
+  );
+};
+
+const LyricsSections: React.FC<LyricsTextProps> = ({
   lyrics,
   size,
   muted = 'text-muted-foreground',

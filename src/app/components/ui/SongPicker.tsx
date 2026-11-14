@@ -8,6 +8,7 @@ import { useBand } from '@/lib/BandContext';
 import { safeHttpsUrl } from '@/lib/services/songFiles';
 import { genresOf, parseGenres, songHasGenre } from '@/lib/songGenres';
 import { useT } from '@/lib/i18n';
+import { userMessage } from '@/lib/userError';
 
 export interface PickedSong {
   id: string;
@@ -91,7 +92,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
       setLoadError(null);
       const { data, error } = await getSongs(selectedBand.id);
       if (cancelled) return;
-      if (error) setLoadError(error.message || t("Couldn't load your song library."));
+      if (error) setLoadError(userMessage(error, t("Couldn't load your song library.")));
       else if (data) setSongs(data);
       setLoading(false);
     };
@@ -175,7 +176,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
     const { data: created, error: createError } = await createSong(songData);
     setSaving(false);
     if (createError || !created) {
-      setSaveError(createError?.message || t("Couldn't save this song."));
+      setSaveError(userMessage(createError, t("Couldn't save this song.")));
       return;
     }
 

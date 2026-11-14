@@ -16,12 +16,17 @@ import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelUuid;
 import android.util.Base64;
+
+import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
@@ -65,6 +70,40 @@ public class StageBlePlugin extends Plugin {
     private volatile byte[] notifyValue = new byte[0];
     private final Set<BluetoothDevice> subscribers = new CopyOnWriteArraySet<>();
     private String state = "unknown";
+    private boolean adapterWatched = false;
+
+    /**
+     * Bluetooth turned on or off while Stage mode is open: start serving then
+     * (iOS does the same on poweredOn), and drop the server when it goes off.
+     */
+    private final BroadcastReceiver adapterReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (!BluetoothAdapter.ACTION_STATE_CHANGED.equals(intent.getAction()) || serviceUuid == null) return;
+            int s = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
+            if (s == BluetoothAdapter.STATE_ON) {
+                bringUp();
+            } else if (s == BluetoothAdapter.STATE_TURNING_OFF || s == BluetoothAdapter.STATE_OFF) {
+                teardown();
+                setState("off");
+            }
+        }
+    };
+
+    private void watchAdapter(boolean on) {
+        if (on == adapterWatched) return;
+        try {
+            if (on) {
+                ContextCompat.registerReceiver(getContext(), adapterReceiver,
+                    new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED);
+            } else {
+                getContext().unregisterReceiver(adapterReceiver);
+            }
+            adapterWatched = on;
+        } catch (Exception ignored) {
+            // Not registered / already gone.
+        }
+    }
 
     @PluginMethod
     public void start(PluginCall call) {
@@ -109,6 +148,16 @@ public class StageBlePlugin extends Plugin {
             call.reject("Bad UUID or base64");
             return;
         }
+        watchAdapter(true);
+        bringUp();
+        JSObject ret = new JSObject();
+        ret.put("state", state);
+        call.resolve(ret);
+    }
+
+    /** Opens the GATT server (advertising follows in onServiceAdded) when Bluetooth allows it. */
+    @SuppressLint("MissingPermission")
+    private void bringUp() {
         manager = (BluetoothManager) getContext().getSystemService(Context.BLUETOOTH_SERVICE);
         BluetoothAdapter adapter = manager != null ? manager.getAdapter() : null;
         if (adapter == null) {
@@ -139,9 +188,6 @@ public class StageBlePlugin extends Plugin {
         } else {
             setState("on");
         }
-        JSObject ret = new JSObject();
-        ret.put("state", state);
-        call.resolve(ret);
     }
 
     @PluginMethod
@@ -160,6 +206,7 @@ public class StageBlePlugin extends Plugin {
 
     @PluginMethod
     public void stop(PluginCall call) {
+        watchAdapter(false);
         teardown();
         serviceUuid = null;
         call.resolve();
@@ -167,6 +214,7 @@ public class StageBlePlugin extends Plugin {
 
     @Override
     protected void handleOnDestroy() {
+        watchAdapter(false);
         teardown();
     }
 

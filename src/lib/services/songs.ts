@@ -2,6 +2,12 @@ import { supabase, getSafeUser } from '../supabase';
 import { removeSongFiles } from './songFiles';
 import type { SongChart } from '../ireal';
 
+/**
+ * RLS refused the write (0 rows): an error the UI maps to a translated
+ * "only admins" message (src/lib/userError.ts); the text is for logs only.
+ */
+const permissionError = (message: string) => Object.assign(new Error(message), { code: '42501' });
+
 // Types
 /** 'suggested': proposed by a member; an admin moves it to learning / ready. */
 export type SongStatus = 'suggested' | 'learning' | 'ready' | 'archived';
@@ -40,6 +46,9 @@ export interface Song {
   created_at: string;
   updated_at: string;
 }
+
+/** A song update where null clears a column. */
+export type SongChanges = { [K in keyof Song]?: Song[K] | null };
 
 export interface Setlist {
   id: string;
@@ -155,7 +164,7 @@ export const createSong = async (songData: Partial<Song>): Promise<{ data: Song 
 
 export const updateSong = async (
   songId: string,
-  updates: Partial<Song>
+  updates: SongChanges
 ): Promise<{ data: Song | null; error: Error | null }> => {
   try {
     const { data, error } = await supabase
@@ -191,7 +200,7 @@ export const deleteSong = async (songId: string): Promise<{ error: Error | null 
 
     if (error) throw error;
     if (!deleted || deleted.length === 0) {
-      throw new Error('Only band admins can delete songs.');
+      throw permissionError('Only band admins can delete songs.');
     }
     // Files in storage go with the song (only once it is really gone).
     await removeSongFiles([existing?.audio_url, existing?.chart_url]);
@@ -199,6 +208,48 @@ export const deleteSong = async (songId: string): Promise<{ error: Error | null 
     return { error: null };
   } catch (error: any) {
     return { error };
+  }
+};
+
+/** Today as "YYYY-MM-DD" on this device. */
+const localToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/** Upcoming gigs that use any of these setlists (for delete confirmations). */
+export const getUpcomingGigsForSetlists = async (
+  setlistIds: string[],
+): Promise<{ data: { title: string; date: string }[] | null; error: Error | null }> => {
+  if (setlistIds.length === 0) return { data: [], error: null };
+  try {
+    const { data, error } = await supabase
+      .from('events')
+      .select('title, event_date')
+      .in('setlist_id', setlistIds)
+      .gte('event_date', localToday())
+      .order('event_date', { ascending: true })
+      .limit(50);
+    if (error) throw error;
+    return { data: (data || []).map((e: { title?: string | null; event_date: string }) => ({ title: e.title || '', date: e.event_date })), error: null };
+  } catch (error: any) {
+    return { data: null, error };
+  }
+};
+
+/** Where a song is used: setlist names and the upcoming gigs playing them. Null when it can't be looked up. */
+export const getSongUsage = async (songId: string): Promise<{ setlists: string[]; gigs: { title: string; date: string }[] } | null> => {
+  try {
+    const { data, error } = await supabase.from('setlist_songs').select('setlist_id, setlist:setlists(name)').eq('song_id', songId);
+    if (error) throw error;
+    const rows = (data || []) as unknown as { setlist_id: string; setlist?: { name?: string | null } | null }[];
+    const ids = [...new Set(rows.map((r) => r.setlist_id))];
+    const names = [...new Set(rows.map((r) => r.setlist?.name || '').filter(Boolean))];
+    const gigs = await getUpcomingGigsForSetlists(ids);
+    if (gigs.error) throw gigs.error;
+    return { setlists: names, gigs: gigs.data || [] };
+  } catch {
+    return null;
   }
 };
 
@@ -452,7 +503,7 @@ export const deleteSetlist = async (setlistId: string): Promise<{ error: Error |
 
     if (error) throw error;
     if (!deleted || deleted.length === 0) {
-      throw new Error('This setlist could not be deleted. You may not have permission.');
+      throw permissionError('This setlist could not be deleted. You may not have permission.');
     }
 
     return { error: null };
@@ -637,7 +688,7 @@ export const saveSetlistOrder = async (
       .select('id');
     if (error) throw error;
     if (!data || data.length !== rows.length) {
-      throw new Error('The new order could not be saved. You may not have permission.');
+      throw permissionError('The new order could not be saved. You may not have permission.');
     }
     return { error: null };
   } catch (error: any) {

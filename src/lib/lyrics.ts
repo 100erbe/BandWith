@@ -24,12 +24,20 @@ const asLines = (v: unknown): string[] => {
   return [];
 };
 
+/** A section name as text: JSON can hold anything there (an object would break the reader). */
+const asName = (v: unknown): string | null => {
+  if (v == null || v === '') return null;
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  return null;
+};
+
 const fromJson = (data: unknown): LyricsSection[] | null => {
   if (Array.isArray(data)) {
     if (data.every((x) => typeof x === 'string')) return [{ name: null, lines: data as string[] }];
     if (data.every((x) => x && typeof x === 'object')) {
       return data.map((s: any) => ({
-        name: s.name ?? s.title ?? s.section ?? null,
+        name: asName(s.name ?? s.title ?? s.section),
         lines: asLines(s.lines ?? s.text ?? s.lyrics),
       }));
     }

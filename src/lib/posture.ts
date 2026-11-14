@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import type { Edge, Rect } from './deviceRegions';
 
 /**
@@ -487,6 +488,23 @@ function nativeKeepAwake(): { postMessage: (v: unknown) => void } | null {
   return handler ?? null;
 }
 
+/**
+ * Android shell: the app's BwKeepAwake plugin sets FLAG_KEEP_SCREEN_ON on the
+ * window (android/app/src/main/java/com/bandwith/app/KeepAwakePlugin.java);
+ * Android's WebView has no Screen Wake Lock API.
+ */
+const AndroidKeepAwake = registerPlugin<{ set(options: { on: boolean }): Promise<void> }>('BwKeepAwake');
+const isAndroidShell = () => {
+  try {
+    return Capacitor.getPlatform() === 'android';
+  } catch {
+    return false;
+  }
+};
+// A reloaded page starts with the screen allowed to sleep, like the iOS shell
+// does on ready; mounted users of useKeepAwake restate it.
+if (typeof window !== 'undefined' && isAndroidShell()) void AndroidKeepAwake.set({ on: false }).catch(() => {});
+
 async function requestWebWakeLock() {
   try {
     const wl = (navigator as unknown as { wakeLock?: { request: (t: 'screen') => Promise<WakeLockSentinelLike> } })
@@ -504,8 +522,9 @@ async function requestWebWakeLock() {
 
 /**
  * Keeps the screen on (or lets it sleep again). Native iOS: the shell's
- * `bwKeepAwake` handler toggles the idle timer. Elsewhere: the Screen Wake
- * Lock API when the WebView has it. Prefer `useKeepAwake`, which counts users.
+ * `bwKeepAwake` handler toggles the idle timer. Android: the BwKeepAwake
+ * plugin keeps the window on. Elsewhere: the Screen Wake Lock API when the
+ * browser has it. Prefer `useKeepAwake`, which counts users.
  */
 export function setKeepAwake(on: boolean): void {
   if (typeof document === 'undefined') return;
@@ -521,6 +540,10 @@ export function setKeepAwake(on: boolean): void {
     } catch {
       /* shell without the handler */
     }
+    return;
+  }
+  if (isAndroidShell()) {
+    void AndroidKeepAwake.set({ on }).catch(() => {});
     return;
   }
   if (on) {
