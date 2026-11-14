@@ -98,23 +98,27 @@
 /* ── Trailing-page dialogs ────────────────────────────────────────────── */
 /* Centered confirmations open next to what they act on (Figma "Open ·
    Settings / Privacy & account | Account / Delete – confirm", "Open · Home /
-   Admin | Admin tour"): the scrim and the card stay on the trailing page. */
-[data-bw-two-pane] .bw-pane-dialog {
+   Admin | Admin tour"): the scrim and the card stay on the trailing page.
+   iPhone Duo only: its two pages are separate displays. A tablet
+   (`data-bw-wide`) is one screen, so there the scrim covers the whole window
+   and the card is centred on it. */
+[data-bw-two-pane]:not([data-bw-wide]) .bw-pane-dialog {
   left: var(--bw-pane-trailing-x) !important;
   right: var(--bw-rail-w) !important;
   width: auto !important;
   padding-right: 0 !important;
 }
-[data-bw-two-pane][data-bw-rail-edge="left"] .bw-pane-dialog {
+[data-bw-two-pane]:not([data-bw-wide])[data-bw-rail-edge="left"] .bw-pane-dialog {
   right: 0 !important;
 }
 /* Floating cards pinned to the top or bottom edge (urgent pop-up, pending
-   invite): centered on the trailing page, keeping their own max width. */
-[data-bw-two-pane] .bw-pane-float {
+   invite): centered on the trailing page, keeping their own max width
+   (iPhone Duo only, like the dialogs above). */
+[data-bw-two-pane]:not([data-bw-wide]) .bw-pane-float {
   left: calc(var(--bw-pane-trailing-x) + 16px) !important;
   right: calc(var(--bw-rail-w) + 16px) !important;
 }
-[data-bw-two-pane][data-bw-rail-edge="left"] .bw-pane-float {
+[data-bw-two-pane]:not([data-bw-wide])[data-bw-rail-edge="left"] .bw-pane-float {
   right: 16px !important;
 }
 /* Inside the auth trailing page (its own containing block) the same layers
