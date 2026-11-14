@@ -5,6 +5,7 @@ import {
   LEGACY_MUTATION_QUEUE_KEY,
 } from './storage';
 import { isOfflineError } from './networkErrors';
+import { extrasOf, mergeExtras, replayEventExtras } from './eventExtras';
 import * as eventsService from '@/lib/services/events';
 import { supabase } from '@/lib/supabase';
 import { t } from '@/lib/i18n';
@@ -348,7 +349,13 @@ const executeMutation = async (mutation: OfflineMutation): Promise<ExecOutcome> 
         normalizedMembers
       );
     }
-    if (!result.error && result.data) return { ok: true, realId: result.data.id || clientId };
+    const extras = isPersonalGig ? null : extrasOf(mutation.payload);
+    if (!result.error && result.data) {
+      const realId = result.data.id || clientId;
+      // Setlist, to-dos, rider & stage saved with the gig offline.
+      if (extras && realId) await replayEventExtras(realId, extras);
+      return { ok: true, realId };
+    }
     if (clientId && isDuplicateKeyError(result.error)) {
       // The first attempt reached the server (e.g. it only timed out on the
       // client) but may have stopped before the lineup: add what is missing.
@@ -369,6 +376,7 @@ const executeMutation = async (mutation: OfflineMutation): Promise<ExecOutcome> 
           .upsert(lineup, { onConflict: 'event_id,user_id', ignoreDuplicates: true });
         if (lineupErr) console.warn('[syncQueue] lineup after duplicate create:', lineupErr);
       }
+      if (extras) await replayEventExtras(clientId, extras);
       return { ok: true, realId: clientId };
     }
     return { ok: false, error: result.error || new Error('Create returned no data') };
@@ -386,7 +394,11 @@ const executeMutation = async (mutation: OfflineMutation): Promise<ExecOutcome> 
     }
     const { _isPendingSync, _tempId, ...cleanUpdates } = updates || {};
     const { error } = await eventsService.updateEvent(target.id, cleanUpdates);
-    return error ? { ok: false, error } : { ok: true };
+    if (error) return { ok: false, error };
+    // Lineup, setlist and to-dos edited offline.
+    const extras = extrasOf(mutation.payload);
+    if (extras) await replayEventExtras(target.id, extras);
+    return { ok: true };
   }
 
   if (mutation.type === 'delete_event') {
@@ -416,6 +428,11 @@ const foldUpdateIntoCreate = (create: OfflineMutation, update: OfflineMutation):
     ...create.payload,
     eventData: { ...(create.payload?.eventData || {}), ...(update.payload?.updates || {}) },
   };
+  const updateExtras = extrasOf(update.payload);
+  const extras = mergeExtras(extrasOf(create.payload), updateExtras);
+  if (extras) payload.extras = extras;
+  // The lineup edited before the create synced becomes the create's lineup.
+  if (updateExtras?.lineup) payload.memberIds = updateExtras.lineup;
   if (create.payload?.personalGigInput && update.payload?.personalGigInput) {
     payload.personalGigInput = { ...create.payload.personalGigInput, ...gigFields };
   }

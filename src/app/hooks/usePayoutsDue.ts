@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getEventMemberMoney } from '@/lib/services/eventMemberMoney';
-import { payoutsDue, PAYOUTS_CHANGED, type GigPayouts } from '@/lib/payoutsDue';
+import { payoutsDue, PAYOUTS_CHANGED, NOT_GIG_TYPES, type GigPayouts } from '@/lib/payoutsDue';
 
 /** Payouts older than this are not chased on Home. */
 const LOOKBACK_DAYS = 365;
@@ -35,7 +35,8 @@ export function usePayoutsDue(
       .from('events')
       .select('id, band_id, title, event_type, status, event_date, start_time, end_time')
       .eq('band_id', bandId)
-      .eq('event_type', 'gig')
+      // Gigs are saved with their kind (club, wedding…), not 'gig'.
+      .or(`event_type.is.null,event_type.not.in.(${NOT_GIG_TYPES.join(',')})`)
       .gte('event_date', ymd(since))
       .lte('event_date', ymd(now))
       .order('event_date', { ascending: false })

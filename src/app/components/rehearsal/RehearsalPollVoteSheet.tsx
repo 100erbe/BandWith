@@ -15,8 +15,10 @@ import { RailSheet } from '@/lib/railActions';
 import {
   getRehearsalPoll,
   togglePollVote,
-  clearUserVotesForPoll,
+  markPollUnavailable,
+  pollAnsweredCount,
   finalizePollIntoRehearsal,
+  POLL_CLOSED,
   deletePoll,
   type RehearsalPoll,
 } from '@/lib/services/rehearsalPolls';
@@ -27,7 +29,7 @@ import { ErrorState } from '@/app/components/ui/ErrorState';
 import { FindADateMode } from '@/app/components/duo';
 import { personName } from '@/lib/personName';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
-import { useT, dateName, intlLocale } from '@/lib/i18n';
+import { useT, dateName, intlLocale, formatList } from '@/lib/i18n';
 
 interface RehearsalPollVoteSheetProps {
   notification?: Notification | null;
@@ -67,9 +69,8 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  // "None work" for this session. There is no per-user response row in the
-  // schema (votes are per option), so this is not persisted: it clears the
-  // user's votes and shows their answer until the sheet closes.
+  // "None work": stored since migration 102 (rehearsal_poll_unavailable);
+  // before it, only the votes are cleared and the answer lasts this session.
   const [declinedAll, setDeclinedAll] = useState(false);
 
   const effectivePollId = useMemo(() => {
@@ -96,6 +97,12 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
   useEffect(() => {
     loadPoll();
   }, [loadPoll]);
+
+  // The stored "None work" answer (102).
+  const storedDeclinedAll = !!poll?.declined_all;
+  useEffect(() => {
+    if (storedDeclinedAll) setDeclinedAll(true);
+  }, [storedDeclinedAll]);
 
   // Handle vote toggle
   const handleToggleVote = async (optionId: string) => {
@@ -140,12 +147,6 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
   const handleNoneWork = async () => {
     if (!poll || isClearing) return;
     haptic.selection();
-    if (!hasUserVotedAny) {
-      // Nothing to clear: record the answer for this session only.
-      setDeclinedAll(true);
-      onShowToast?.(t('Marked unavailable for all dates.'), 'info');
-      return;
-    }
     setIsClearing(true);
 
     setPoll((prev) => {
@@ -158,7 +159,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
       return { ...prev, options: updatedOptions };
     });
 
-    const { error } = await clearUserVotesForPoll(poll.id, currentUserId);
+    const { stored, error } = await markPollUnavailable(poll.id, currentUserId);
     setIsClearing(false);
 
     if (error) {
@@ -166,7 +167,9 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
       loadPoll();
     } else {
       setDeclinedAll(true);
-      onShowToast?.(t('Marked unavailable for all dates.'), 'info');
+      // Before migration 102 the answer is not stored: don't say the admin was told.
+      onShowToast?.(stored ? t('Marked unavailable for all dates.') : t('Your votes were cleared.'), 'info');
+      onPollUpdated?.();
       if (notification?.id) {
         markAsRead(notification.id).catch(() => {});
       }
@@ -191,7 +194,10 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
     setIsFinalizing(false);
 
     if (error) {
-      onShowToast?.(t('Failed to finalize rehearsal. Please try again.'), 'error');
+      // Locked in meanwhile (another admin or device): say so and refresh.
+      const closed = (error as { code?: string }).code === POLL_CLOSED;
+      onShowToast?.(closed ? error.message : t('Failed to finalize rehearsal. Please try again.'), 'error');
+      if (closed) onPollUpdated?.();
     } else {
       onShowToast?.(t('Rehearsal scheduled and confirmed!'), 'success');
       if (notification?.id) {
@@ -236,14 +242,12 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
     return poll.options.some((o) => o.has_voted);
   }, [poll?.options]);
 
-  const uniqueVoterCount = useMemo(() => {
-    if (!poll?.options) return 0;
-    const set = new Set<string>();
-    poll.options.forEach((o) => {
-      o.votes?.forEach((v) => set.add(v.user_id));
-    });
-    return set.size;
-  }, [poll?.options]);
+  // Voted for a date or answered "None work" (102).
+  const answeredCount = useMemo(() => (poll ? pollAnsweredCount(poll) : 0), [poll]);
+  const noneWorkNames = useMemo(
+    () => (poll?.unavailable || []).map((u) => personName(u.profile, t('Band member'))),
+    [poll?.unavailable, t],
+  );
 
   const totalMembers = poll?.total_members_count || 1;
 
@@ -419,7 +423,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                 <Tag variant="accent">{hasUserVotedAny ? t('Voted') : declinedAll ? t('None work') : t('Active')}</Tag>
                 <span className="bw-body-sm text-sheet-foreground/85">
                   {voteByLabel ? `${t('Vote by {date}', { date: voteByLabel })} · ` : ''}
-                  {t('{voted} of {total} voted', { voted: uniqueVoterCount, total: totalMembers })}
+                  {t('{answered} of {total} answered', { answered: answeredCount, total: totalMembers })}
                 </span>
               </div>
 
@@ -463,6 +467,11 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                   <h3 className="bw-label-sm text-sheet-foreground/70">
                     {isAdmin ? t('Responses · Lock in a date') : t('Responses')}
                   </h3>
+                  {isAdmin && noneWorkNames.length > 0 && (
+                    <p className="bw-body-sm text-sheet-foreground/75">
+                      {t('No date works for {names}', { names: formatList(noneWorkNames) })}
+                    </p>
+                  )}
                   {poll.options.map((option) => {
                     const parsedDate = new Date(option.proposed_date + 'T12:00:00');
                     const isWinning = maxVotes > 0 && (option.vote_count || 0) === maxVotes;

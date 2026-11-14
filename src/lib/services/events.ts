@@ -321,6 +321,8 @@ export const createEvent = async (
       client_name: eventData.client_name || null,
       fee: eventData.fee != null ? eventData.fee : 0,
       price: (eventData as any).price != null ? (eventData as any).price : 0,
+      // "Fee TBD" from the wizard; otherwise the column default applies.
+      ...(eventData.payment_status ? { payment_status: eventData.payment_status } : {}),
       description: eventData.description || null,
       notes: eventData.notes || null,
       indoor_outdoor: eventData.indoor_outdoor || null,

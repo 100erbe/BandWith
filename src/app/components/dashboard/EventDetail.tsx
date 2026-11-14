@@ -577,8 +577,9 @@ export const EventDetail: React.FC<EventDetailProps> = ({
 
   // iPhone Duo: the "…" menu (member rehearsal options) joins the rail's Side
   // Actions like every other header action, instead of sitting by the camera.
+  // canRespond false: the member's own answer has not loaded yet.
   const optionsMenuAvailable =
-    isRehearsal && !isAdmin && !isPersonalGig && !isPast && !!onDecline && userResponse !== 'declined';
+    isRehearsal && !isAdmin && !isPersonalGig && !isPast && !!onDecline && userResponse !== 'declined' && canRespond !== false;
   const optionsInRail = useRailAction(
     optionsMenuAvailable
       ? () => {
@@ -922,7 +923,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
       : undefined;
   // Members drop out of a rehearsal from the "…" menu.
   const memberRehearsal = isRehearsal && !isAdmin && !isPersonalGig;
-  const showOptionsMenu = memberRehearsal && !isPast && !!onDecline && userResponse !== 'declined';
+  const showOptionsMenu = memberRehearsal && !isPast && !!onDecline && userResponse !== 'declined' && canRespond !== false;
 
   // ─── Rehearsal studio cost ───
   const roomLabel = shortPlace(event.venueName || event.location) || '';
@@ -1957,7 +1958,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                         variant="outline"
                         size="lg"
                         onClick={() => setShowDeleteConfirm(true)}
-                        disabled={isSubmitting}
+                        // Until the member's own answer has loaded there is nothing to drop out of.
+                        disabled={isSubmitting || canRespond === false}
                       >
                         {isSubmitting ? '...' : t('DROP OUT')}
                       </PillButton>
@@ -2339,7 +2341,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           quoteNumber: `EVT-${String(event.id).slice(0, 6).toUpperCase()}`,
           eventName: event.title,
           eventTitle: event.title,
-          clientName: event.clientName || 'Client',
+          // No name: the message greets the client with "Hi there".
+          clientName: event.clientName || '',
           eventType: (event.eventType as any) || 'wedding',
           eventDate: event.date,
           eventTimeStart: event.time,

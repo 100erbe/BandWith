@@ -42,6 +42,7 @@ const en = {
   decline: 'Decline',
   acceptedTitle: 'Accepted. Thank you!',
   acceptedBody: '{who} accepted this quote on {date} at {time} (version {n}). {band} will be in touch about the next steps.',
+  acceptedBodyBand: 'This quote was accepted on {date} (version {n}). {band} will be in touch about the next steps.',
   acceptedLegal: 'This is a record of your acceptance, not a signature. Any contract is signed separately.',
   declinedTitle: 'You declined this quote.',
   declinedBody: '{band} has been told. Changed your mind? You can still accept it or write to them.',
@@ -60,6 +61,9 @@ const en = {
   invalidBody: 'It may have been replaced by a newer one. Ask the band to send it again.',
   error: 'Something went wrong. Please try again in a moment.',
   loading: 'Loading…',
+  offlineTitle: 'The page didn’t load.',
+  offlineBody: 'Check your connection and try again.',
+  retry: 'Try again',
   preview: 'Preview: what your client sees. Nothing you do here is recorded.',
 };
 
@@ -104,6 +108,7 @@ const it: QuoteStrings = {
   decline: 'Rifiuta',
   acceptedTitle: 'Accettato. Grazie!',
   acceptedBody: '{who} ha accettato questo preventivo il {date} alle {time} (versione {n}). {band} ti contatterà per i prossimi passi.',
+  acceptedBodyBand: 'Questo preventivo è stato accettato il {date} (versione {n}). {band} ti contatterà per i prossimi passi.',
   acceptedLegal: 'È una registrazione della tua accettazione, non una firma. L’eventuale contratto si firma a parte.',
   declinedTitle: 'Hai rifiutato questo preventivo.',
   declinedBody: '{band} è stata avvisata. Hai cambiato idea? Puoi ancora accettarlo o scrivere alla band.',
@@ -122,6 +127,9 @@ const it: QuoteStrings = {
   invalidBody: 'Potrebbe essere stato sostituito da uno nuovo. Chiedi alla band di inviartelo di nuovo.',
   error: 'Qualcosa è andato storto. Riprova tra poco.',
   loading: 'Caricamento…',
+  offlineTitle: 'La pagina non si è caricata.',
+  offlineBody: 'Controlla la connessione e riprova.',
+  retry: 'Riprova',
   preview: 'Anteprima: ciò che vede il cliente. Qui non viene registrato nulla.',
 };
 
@@ -164,6 +172,7 @@ const es: QuoteStrings = {
   decline: 'Rechazar',
   acceptedTitle: 'Aceptado. ¡Gracias!',
   acceptedBody: '{who} aceptó este presupuesto el {date} a las {time} (versión {n}). {band} se pondrá en contacto para los siguientes pasos.',
+  acceptedBodyBand: 'Este presupuesto se aceptó el {date} (versión {n}). {band} se pondrá en contacto para los siguientes pasos.',
   acceptedLegal: 'Es un registro de tu aceptación, no una firma. El contrato, si lo hay, se firma aparte.',
   declinedTitle: 'Has rechazado este presupuesto.',
   declinedBody: '{band} ya lo sabe. ¿Has cambiado de idea? Aún puedes aceptarlo o escribirles.',
@@ -182,6 +191,9 @@ const es: QuoteStrings = {
   invalidBody: 'Puede que lo hayan sustituido por uno nuevo. Pide a la banda que te lo envíe otra vez.',
   error: 'Algo ha ido mal. Inténtalo de nuevo en un momento.',
   loading: 'Cargando…',
+  offlineTitle: 'La página no se ha cargado.',
+  offlineBody: 'Comprueba la conexión e inténtalo de nuevo.',
+  retry: 'Reintentar',
   preview: 'Vista previa: lo que ve tu cliente. Aquí no se registra nada.',
 };
 
@@ -224,6 +236,7 @@ const fr: QuoteStrings = {
   decline: 'Refuser',
   acceptedTitle: 'Accepté. Merci !',
   acceptedBody: '{who} a accepté ce devis le {date} à {time} (version {n}). {band} vous recontactera pour la suite.',
+  acceptedBodyBand: 'Ce devis a été accepté le {date} (version {n}). {band} vous recontactera pour la suite.',
   acceptedLegal: 'Il s’agit d’un enregistrement de votre acceptation, pas d’une signature. Un éventuel contrat se signe séparément.',
   declinedTitle: 'Vous avez refusé ce devis.',
   declinedBody: '{band} a été prévenu. Vous avez changé d’avis ? Vous pouvez encore l’accepter ou leur écrire.',
@@ -242,6 +255,9 @@ const fr: QuoteStrings = {
   invalidBody: 'Il a peut-être été remplacé par un nouveau. Demandez au groupe de vous le renvoyer.',
   error: 'Un problème est survenu. Réessayez dans un instant.',
   loading: 'Chargement…',
+  offlineTitle: 'La page ne s’est pas chargée.',
+  offlineBody: 'Vérifiez votre connexion et réessayez.',
+  retry: 'Réessayer',
   preview: 'Aperçu : ce que voit votre client. Rien n’est enregistré ici.',
 };
 
@@ -284,6 +300,7 @@ const de: QuoteStrings = {
   decline: 'Ablehnen',
   acceptedTitle: 'Angenommen. Danke!',
   acceptedBody: '{who} hat dieses Angebot am {date} um {time} angenommen (Version {n}). {band} meldet sich wegen der nächsten Schritte.',
+  acceptedBodyBand: 'Dieses Angebot wurde am {date} angenommen (Version {n}). {band} meldet sich wegen der nächsten Schritte.',
   acceptedLegal: 'Das ist ein Nachweis deiner Annahme, keine Unterschrift. Ein Vertrag wird gegebenenfalls separat unterschrieben.',
   declinedTitle: 'Du hast dieses Angebot abgelehnt.',
   declinedBody: '{band} weiß Bescheid. Doch anders entschieden? Du kannst es immer noch annehmen oder ihnen schreiben.',
@@ -302,6 +319,9 @@ const de: QuoteStrings = {
   invalidBody: 'Vielleicht wurde er durch einen neuen ersetzt. Bitte die Band, ihn dir noch einmal zu schicken.',
   error: 'Etwas ist schiefgelaufen. Versuch es gleich noch einmal.',
   loading: 'Wird geladen…',
+  offlineTitle: 'Die Seite wurde nicht geladen.',
+  offlineBody: 'Prüf deine Verbindung und versuch es noch einmal.',
+  retry: 'Erneut versuchen',
   preview: 'Vorschau: Das sieht dein Kunde. Hier wird nichts gespeichert.',
 };
 
@@ -344,6 +364,7 @@ const pt: QuoteStrings = {
   decline: 'Recusar',
   acceptedTitle: 'Aceito. Obrigado!',
   acceptedBody: '{who} aceitou este orçamento em {date} às {time} (versão {n}). {band} vai entrar em contato sobre os próximos passos.',
+  acceptedBodyBand: 'Este orçamento foi aceito em {date} (versão {n}). {band} vai entrar em contato sobre os próximos passos.',
   acceptedLegal: 'É um registro da sua aceitação, não uma assinatura. O contrato, se houver, é assinado à parte.',
   declinedTitle: 'Você recusou este orçamento.',
   declinedBody: '{band} já foi avisada. Mudou de ideia? Você ainda pode aceitar ou escrever para eles.',
@@ -362,6 +383,9 @@ const pt: QuoteStrings = {
   invalidBody: 'Ele pode ter sido substituído por um novo. Peça à banda para enviar de novo.',
   error: 'Algo deu errado. Tente de novo daqui a pouco.',
   loading: 'Carregando…',
+  offlineTitle: 'A página não carregou.',
+  offlineBody: 'Verifique a conexão e tente de novo.',
+  retry: 'Tentar de novo',
   preview: 'Pré-visualização: o que seu cliente vê. Nada é registrado aqui.',
 };
 

@@ -1558,7 +1558,7 @@ export const useMessages = (chatId: string | null, options?: { limit?: number })
 // REHEARSAL POLLS HOOKS
 // ============================================
 
-export const useRehearsalPolls = (bandId: string | null, userId?: string | null) => {
+export const useRehearsalPolls = (bandId: string | null, userId?: string | null, viewerIsAdmin = false) => {
   const { isAuthenticated } = useAuth();
   const [polls, setPolls] = useState<rehearsalPollsService.RehearsalPoll[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1572,11 +1572,11 @@ export const useRehearsalPolls = (bandId: string | null, userId?: string | null)
     }
 
     setLoading(true);
-    const { data, error: fetchErr } = await rehearsalPollsService.getRehearsalPolls(bandId, userId);
+    const { data, error: fetchErr } = await rehearsalPollsService.getRehearsalPolls(bandId, userId, viewerIsAdmin);
     setPolls(data || []);
     setError(fetchErr);
     setLoading(false);
-  }, [isAuthenticated, bandId, userId]);
+  }, [isAuthenticated, bandId, userId, viewerIsAdmin]);
 
   useEffect(() => {
     fetchPolls();

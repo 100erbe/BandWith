@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { homeAutoDetail, type HomeAutoDetailInput } from '../homeAutoDetail';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { homeAutoDetail, nextAutoDetailEvent, type HomeAutoDetailInput } from '../homeAutoDetail';
+import { todayLocal } from '../dates';
 
 const base: HomeAutoDetailInput = { twoPane: true, onHome: true, hasSelected: false, loading: false, hasNext: true };
 
@@ -42,5 +43,30 @@ describe('homeAutoDetail', () => {
 
   it('opens when the device unfolds on Home for the first time', () => {
     expect(run([{ twoPane: false }, { twoPane: true }])).toEqual([false, true]);
+  });
+});
+
+describe('nextAutoDetailEvent', () => {
+  afterEach(() => vi.useRealTimers());
+
+  const events = [
+    { date: '2026-11-12', time: '21:00', status: 'CONFIRMED', id: 'yesterday' },
+    { date: '2026-11-14', time: '20:00', status: 'CONFIRMED', id: 'tomorrow' },
+    { date: '2026-11-13', time: '21:00', status: 'CONFIRMED', id: 'tonight' },
+    { date: '2026-11-13', time: '18:00', status: 'QUOTE', id: 'quote' },
+    { date: '2026-11-13', time: '17:00', status: 'DRAFT', id: 'draft' },
+  ];
+
+  it("opens tonight's gig in the evening (local day, not UTC)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 13, 23, 30)); // 23:30 local, already the 14th in UTC west of Greenwich
+    expect(todayLocal()).toBe('2026-11-13');
+    expect(nextAutoDetailEvent(events, todayLocal())?.id).toBe('tonight');
+  });
+
+  it("does not open yesterday's gig just after midnight", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 14, 0, 30));
+    expect(nextAutoDetailEvent(events, todayLocal())?.id).toBe('tomorrow');
   });
 });

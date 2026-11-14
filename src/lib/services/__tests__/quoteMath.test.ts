@@ -10,6 +10,8 @@ import {
   calculateQuoteTotals,
   calculateTotalsFromSubtotal,
   calculateDepositAmount,
+  quoteDepositPercent,
+  DEFAULT_DEPOSIT_RATE,
   formatQuoteMoney,
   roundCents,
 } from '../quoteMath';
@@ -197,5 +199,25 @@ describe('quoteMath', () => {
       expect(formatQuoteMoney(1250.5)).toBe('€1,250.50');
       expect(formatQuoteMoney(702.9, '$')).toBe('$702.90');
     });
+  });
+});
+
+describe('quoteDepositPercent (detail, PDF and client page agree)', () => {
+  it('no deposit or 0% means no deposit, not a 30% fallback', () => {
+    expect(quoteDepositPercent({ depositRequired: false, depositPercentage: 30 })).toBe(0);
+    expect(quoteDepositPercent({ depositPercentage: 0 })).toBe(0);
+    expect(quoteDepositPercent({ depositRequired: true, depositPercentage: 0 }, 30)).toBe(0);
+  });
+
+  it('uses the quote, then the band default, then the shared default', () => {
+    expect(quoteDepositPercent({ depositPercentage: 25 }, 40)).toBe(25);
+    expect(quoteDepositPercent({}, 40)).toBe(40);
+    expect(quoteDepositPercent({})).toBe(DEFAULT_DEPOSIT_RATE);
+    expect(quoteDepositPercent({ depositPercentage: 140 })).toBe(100);
+  });
+
+  it('the deposit amount follows the percentage to the cent', () => {
+    expect(calculateDepositAmount(1234.5, quoteDepositPercent({ depositPercentage: 30 }))).toBe(370.35);
+    expect(calculateDepositAmount(1234.5, quoteDepositPercent({ depositRequired: false }))).toBe(0);
   });
 });

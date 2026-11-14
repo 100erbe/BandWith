@@ -1,11 +1,11 @@
 // User data
 export const USER = {
-  name: "Gianluca",
-  surname: "Boccia",
-  initials: "GB",
+  name: "Leo",
+  surname: "M.",
+  initials: "LM",
   role: "ADMIN",
   subRole: "Musician",
-  email: "gianluca@band.com"
+  email: "demo@example.com"
 };
 
 export type User = typeof USER;

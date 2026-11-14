@@ -29,6 +29,9 @@ const en = {
   print: 'Print or save as PDF',
   empty: 'The band has not added the stage plot and input list yet.',
   loading: 'Loading…',
+  offlineTitle: 'The page didn’t load.',
+  offlineBody: 'Check your connection and try again.',
+  retry: 'Try again',
   invalidTitle: 'This link does not work',
   invalidBody: 'Ask the band for a new link to the rider.',
 };
@@ -61,6 +64,9 @@ const it: RiderStrings = {
   print: 'Stampa o salva in PDF',
   empty: 'La band non ha ancora aggiunto pianta palco e input list.',
   loading: 'Caricamento…',
+  offlineTitle: 'La pagina non si è caricata.',
+  offlineBody: 'Controlla la connessione e riprova.',
+  retry: 'Riprova',
   invalidTitle: 'Questo link non funziona',
   invalidBody: 'Chiedi alla band un nuovo link al rider.',
 };
@@ -91,6 +97,9 @@ const es: RiderStrings = {
   print: 'Imprimir o guardar en PDF',
   empty: 'La banda aún no ha añadido el plano de escenario ni la lista de canales.',
   loading: 'Cargando…',
+  offlineTitle: 'La página no se ha cargado.',
+  offlineBody: 'Comprueba la conexión e inténtalo de nuevo.',
+  retry: 'Reintentar',
   invalidTitle: 'Este enlace no funciona',
   invalidBody: 'Pide a la banda un nuevo enlace al rider.',
 };
@@ -121,6 +130,9 @@ const fr: RiderStrings = {
   print: 'Imprimer ou enregistrer en PDF',
   empty: "Le groupe n'a pas encore ajouté le plan de scène et le patch.",
   loading: 'Chargement…',
+  offlineTitle: 'La page ne s’est pas chargée.',
+  offlineBody: 'Vérifiez votre connexion et réessayez.',
+  retry: 'Réessayer',
   invalidTitle: 'Ce lien ne fonctionne pas',
   invalidBody: 'Demandez au groupe un nouveau lien vers la fiche technique.',
 };
@@ -151,6 +163,9 @@ const de: RiderStrings = {
   print: 'Drucken oder als PDF sichern',
   empty: 'Die Band hat Bühnenplan und Kanalliste noch nicht hinzugefügt.',
   loading: 'Wird geladen…',
+  offlineTitle: 'Die Seite wurde nicht geladen.',
+  offlineBody: 'Prüf deine Verbindung und versuch es noch einmal.',
+  retry: 'Erneut versuchen',
   invalidTitle: 'Dieser Link funktioniert nicht',
   invalidBody: 'Bitte die Band um einen neuen Link zum Rider.',
 };
@@ -181,6 +196,9 @@ const pt: RiderStrings = {
   print: 'Imprimir ou salvar em PDF',
   empty: 'A banda ainda não adicionou o mapa de palco e a lista de canais.',
   loading: 'Carregando…',
+  offlineTitle: 'A página não carregou.',
+  offlineBody: 'Verifique a conexão e tente de novo.',
+  retry: 'Tentar de novo',
   invalidTitle: 'Este link não funciona',
   invalidBody: 'Peça à banda um novo link para o rider.',
 };

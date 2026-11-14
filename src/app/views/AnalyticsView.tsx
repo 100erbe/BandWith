@@ -10,6 +10,7 @@ import { ScreenHeader, Card } from '@/app/components/bw/Screen';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { supabase } from '@/lib/supabase';
 import { getEventPrivate } from '@/lib/services/eventPrivate';
+import { getEventMemberMoney } from '@/lib/services/eventMemberMoney';
 import { toLocalDateString } from '@/lib/dates';
 import { useT, dateName, intlLocale, localDecimal } from '@/lib/i18n';
 import { revenueByType, type GigType, type RevenueEvent } from '@/lib/revenueByType';
@@ -109,9 +110,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
   const dashboardData = sharedData ?? fetchedData;
   const loading = !sharedData && fetching;
 
-  const fmt = (v: number) => (v >= 1000 ? `${sym()}${localDecimal((v / 1000).toFixed(1))}k` : `${sym()}${v}`);
+  // Whole amounts (sums of fees in cents add float noise: 350.29999…).
+  const money = (v: number) => `${sym()}${Math.round(v).toLocaleString(intlLocale('en-US'))}`;
+  const fmt = (v: number) => (v >= 1000 ? `${sym()}${localDecimal((v / 1000).toFixed(1))}k` : money(v));
 
-  const totalRevenue = dashboardData?.eventStats?.totalRevenue || 0;
+  // Members can't read the band's gig fees: they see what they earned.
+  const totalRevenue = (isAdmin ? dashboardData?.eventStats?.totalRevenue : dashboardData?.memberStats?.totalEarned) || 0;
   const totalEvents = dashboardData?.eventStats?.totalEvents || 0;
   const confirmed = dashboardData?.eventStats?.confirmedEvents || 0;
   const upcoming = dashboardData?.eventStats?.upcomingEvents || 0;
@@ -126,6 +130,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
   // This year's booked gigs (admins only: fees come from bw_event_private).
   const [yearGigs, setYearGigs] = useState<RevenueEvent[] | null>(null);
   const bandId = selectedBand?.id;
+  const userId = user?.id;
   useEffect(() => {
     if (!bandId) return;
     let cancelled = false;
@@ -142,11 +147,19 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
       .gte('event_date', toLocalDateString(start < yearStart ? start : yearStart))
       .lte('event_date', toLocalDateString(yearEnd))
       .then(async ({ data: rows, error }) => {
-        // Gig fees from bw_event_private (078): admins only.
+        // Gig fees from bw_event_private (078): admins only. A member's
+        // months show their own fee (bw_event_member_money, 071).
         type Row = { id: string; event_date: string; status: string; event_type: string };
         const list = (rows || []) as Row[];
-        const { data: priv } = error ? { data: [] } : await getEventPrivate(list.map((r) => r.id));
-        const feeOf = new Map(priv.map((p) => [p.event_id, p.private.fee as number | null]));
+        const ids = list.map((r) => r.id);
+        let feeOf = new Map<string, number | null>();
+        if (!error && isAdmin) {
+          const { data: priv } = await getEventPrivate(ids);
+          feeOf = new Map(priv.map((p) => [p.event_id, p.private.fee as number | null]));
+        } else if (!error && userId) {
+          const { data: own } = await getEventMemberMoney(ids);
+          feeOf = new Map(own.filter((m) => m.user_id === userId).map((m) => [m.event_id, m.fee]));
+        }
         const data = list.map((r) => ({ ...r, fee: feeOf.get(r.id) ?? null }));
         if (cancelled) return;
         const sums = Array<number>(MONTH_SPAN).fill(0);
@@ -164,7 +177,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
     return () => {
       cancelled = true;
     };
-  }, [bandId]);
+  }, [bandId, isAdmin, userId]);
 
   // Payouts still due after a show (admins only; Figma "Phone · Next / Analytics").
   const payoutsRaw = usePayoutsDue(isAdmin ? bandId : null, user?.id, isAdmin);
@@ -211,7 +224,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
     gig: t('Gig'),
     other: t('Other'),
   };
-  const money = (v: number) => `${sym()}${v.toLocaleString(intlLocale('en-US'))}`;
   const gigsText = (n: number) => (n === 1 ? t('{count} gig', { count: n }) : t('{count} gigs', { count: n }));
 
   const byTypeCard = isAdmin ? (
@@ -310,7 +322,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
         ) : (
           <>
             <div className="flex gap-2">
-              <StatCard label={t('Total revenue')} value={fmt(totalRevenue)} accent delay={0.05} />
+              <StatCard label={isAdmin ? t('Total revenue') : t('Total earned')} value={fmt(totalRevenue)} accent delay={0.05} />
               <StatCard label={t('Total events')} value={totalEvents} delay={0.1} />
             </div>
             <div className="flex gap-2">
@@ -334,7 +346,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
                 className="flex items-end justify-between"
                 {...(onSelectMonth
                   ? { role: 'group', 'aria-label': t('Monthly revenue, last six months. Choose a month to open it in the calendar.') }
-                  : { role: 'img', 'aria-label': t('Monthly revenue, last six months: {months}', { months: monthly.map((x) => `${x.month} ${sym()}${x.fee}`).join(', ') }) })}
+                  : { role: 'img', 'aria-label': t('Monthly revenue, last six months: {months}', { months: monthly.map((x) => `${x.month} ${money(x.fee)}`).join(', ') }) })}
               >
                 {monthly.map(({ month, yyyyMm, longLabel, fee, lit, current }, i) => {
                   const bar = (
@@ -350,7 +362,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
                     initial: { opacity: 0, y: 6 },
                     animate: { opacity: 1, y: 0 },
                     transition: { delay: 0.25 + i * 0.04 },
-                    title: `${month}: ${sym()}${fee.toLocaleString(intlLocale('en-US'))}`,
+                    title: `${month}: ${money(fee)}`,
                   };
                   return onSelectMonth ? (
                     <motion.button
@@ -358,7 +370,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
                       type="button"
                       {...motionProps}
                       onClick={() => onSelectMonth(yyyyMm)}
-                      aria-label={t('{label}: {amount}. Open in calendar', { label: longLabel, amount: `${sym()}${fee.toLocaleString(intlLocale('en-US'))}` })}
+                      aria-label={t('{label}: {amount}. Open in calendar', { label: longLabel, amount: money(fee) })}
                       className="flex flex-col items-center gap-2 rounded-[12px] p-1 -m-1 cursor-pointer active:scale-[0.97] transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
                     >
                       {bar}
@@ -372,7 +384,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="bw-body-lg text-muted-foreground">{t('Total earnings {year}', { year: now.getFullYear() })}</span>
-                <span className="bw-label-md shrink-0">{sym()}{totalRevenue.toLocaleString(intlLocale('en-US'))}</span>
+                <span className="bw-label-md shrink-0">{money(totalRevenue)}</span>
               </div>
             </Card>
 

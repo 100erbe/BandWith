@@ -308,6 +308,7 @@ const UNIQUE_KEYS: Record<string, string[]> = {
   event_members: ['event_id', 'user_id'],
   band_members: ['band_id', 'user_id'],
   rehearsal_poll_votes: ['option_id', 'user_id'],
+  rehearsal_poll_unavailable: ['poll_id', 'user_id'],
   proposal_votes: ['proposal_id', 'user_id'],
 };
 
@@ -979,7 +980,8 @@ const rpc = (fn: string, args: Row = {}) => {
         links.push(l);
       }
       if (JSON.stringify(l.snapshot) !== JSON.stringify(args.p_snapshot)) {
-        l.version = (l.version || 0) + 1;
+        // A draft (never sent) keeps its version (105).
+        if (!(l.status === 'draft' && l.version >= 1)) l.version = (l.version || 0) + 1;
         l.version_at = now;
         l.pdf_url = null;
         l.pdf_version = null;
@@ -1031,6 +1033,27 @@ const rpc = (fn: string, args: Row = {}) => {
       table('quote_activity').push(row);
       persist();
       data = row.id;
+      break;
+    }
+    case 'bw_quote_link_set_outcome': {
+      const l = table('quote_links').find((x) => x.quote_id === args.p_quote_id);
+      const outcome = args.p_outcome === 'declined' ? 'declined' : 'accepted';
+      if (!l || l.status === 'draft' || l.status === 'accepted' || l.status === outcome) {
+        data = l ? l.status : null;
+        break;
+      }
+      const now = new Date().toISOString();
+      const q = table('quotes').find((x) => x.id === l.quote_id);
+      l.status = outcome;
+      l.responded_at = now;
+      if (outcome === 'accepted') {
+        l.accepted_name = q?.client_name || null;
+        l.accepted_version = l.version;
+        l.decline_reason = null;
+      } else l.decline_reason = args.p_reason ?? null;
+      table('quote_activity').push({ id: uuid(), quote_id: l.quote_id, band_id: l.band_id, kind: outcome, channel: null, version: l.version, body: outcome === 'accepted' ? l.accepted_name : l.decline_reason, created_at: now });
+      persist();
+      data = outcome;
       break;
     }
     case 'bw_quote_link_rotate':

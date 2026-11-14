@@ -31,7 +31,6 @@ import {
   createContract,
   deleteContract,
   effectiveStatus,
-  errorMessage,
   fetchBandName,
   formatContractDate,
   isRider,
@@ -364,7 +363,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId, pr
     setBusy(null);
     setPendingDelete(null);
     if (error) {
-      setActionError(t('Couldn\'t delete "{title}". {message}', { title: contract.title, message: error.message }));
+      setActionError(t('Couldn\'t delete "{title}". {message}', { title: contract.title, message: t('Check your connection and try again.') }));
       return;
     }
     setContracts((prev) => prev.filter((c) => c.id !== contract.id));
@@ -393,7 +392,8 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId, pr
     try {
       const { data: url, error } = await riderShareLink(contract.id);
       if (error || !url) {
-        setActionError(t('Could not create the link.') + (error?.message ? ` ${error.message}` : ''));
+        console.warn('[contracts] rider link:', error);
+        setActionError(`${t('Could not create the link.')} ${t('Check your connection and try again.')}`);
         return;
       }
       const res = await shareLink(url, {
@@ -410,7 +410,8 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId, pr
         if (data) replaceContract(data);
       }
     } catch (err) {
-      setActionError(t('Could not share the link.') + ` ${errorMessage(err)}`);
+      console.warn('[contracts] share link:', err);
+      setActionError(t('Could not share the link.'));
     } finally {
       setBusy(null);
     }
@@ -430,7 +431,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId, pr
     });
     setBusy(null);
     if (error || !data) {
-      setActionError(t('Could not update the document.') + (error?.message ? ` ${error.message}` : ''));
+      setActionError(error?.message || t('Could not update the document.'));
       return;
     }
     replaceContract(data);
@@ -449,7 +450,8 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId, pr
       if (result === 'saved') setNotice(t('PDF saved to {location}', { location: String(location) }));
       else if (result === 'downloaded') setNotice(t('PDF downloaded'));
     } catch (err) {
-      setActionError(t('Couldn\'t export "{title}". {message}', { title: contract.title, message: errorMessage(err) }));
+      console.warn('[contracts] export:', err);
+      setActionError(t('Couldn\'t export "{title}". {message}', { title: contract.title, message: t('Something went wrong. Please try again.') }));
     } finally {
       setBusy(null);
     }
@@ -524,7 +526,8 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId, pr
       setSendVia('mail');
       setSendStep('confirm');
     } catch (err) {
-      setSendError(t('Couldn\'t share the document. {message}', { message: errorMessage(err) }));
+      console.warn('[contracts] share document:', err);
+      setSendError(t('Couldn\'t share the document. {message}', { message: t('Something went wrong. Please try again.') }));
     } finally {
       setSendBusy(false);
     }

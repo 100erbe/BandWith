@@ -14,7 +14,15 @@ import { parseLocalDate } from '@/lib/dates';
 import { builtinText } from '@/lib/i18n/builtins';
 import { intlLocale, translate, LANGUAGES, type Locale, type TranslateVars } from '@/lib/i18n';
 import { formatDistance } from '@/lib/units';
-import { calculateDepositAmount, formatQuoteMoney, totalsForQuote } from '@/lib/services/quoteMath';
+import {
+  calculateDepositAmount,
+  DEFAULT_SET_MINUTES,
+  DEFAULT_SETS,
+  DEFAULT_VAT_RATE,
+  formatQuoteMoney,
+  quoteDepositPercent,
+  totalsForQuote,
+} from '@/lib/services/quoteMath';
 import { currencySymbol } from '@/lib/currency';
 import { getEventTypeLabel, type Quote } from '@/app/data/quotes';
 import type { ClientQuoteItem, ClientQuoteSnapshot, QuoteLinkStatus } from '@/quote/types';
@@ -92,20 +100,14 @@ const clean = (v: unknown, max = 400) => {
 };
 
 /**
- * What the client sees: the rows, totals and deposit of the PDF
- * (src/lib/services/quotePdf.ts), in `lang`. Nothing internal: no
- * musician names or fees, no internal notes.
+ * The rows of the quote as the PDF lists them (band fee, production,
+ * moments, extras, travel, accommodation, meals), in `lang`. `amount: null`
+ * is "Included".
  */
-export function buildClientQuoteSnapshot(quote: Partial<Quote>, lang: Locale, defaults: SnapshotDefaults = {}): ClientQuoteSnapshot {
+export function clientQuoteItems(quote: Partial<Quote>, lang: Locale, defaults: SnapshotDefaults = {}): ClientQuoteItem[] {
   const tr = (s: string, vars?: TranslateVars) => translate(lang, s, vars);
-  const currency = (quote.currency || 'EUR').toUpperCase();
-  const sym = currencySymbol(currency);
-  const money = (v: number) => formatQuoteMoney(v, sym, intlLocale('en-US', lang));
-
   const musicians = quote.musicians || [];
   const count = musicians.length > 0 ? musicians.length : quote.musicianCount || defaults.core_members_count || 6;
-  const numSets = quote.numberOfSets || 0;
-  const setDur = quote.setDuration || 0;
   const mainFee = quote.baseFee && quote.baseFee > 0 ? quote.baseFee : quote.subtotal || 0;
 
   const items: ClientQuoteItem[] = [];
@@ -156,7 +158,29 @@ export function buildClientQuoteSnapshot(quote: Partial<Quote>, lang: Locale, de
     items.push({ label: tr('CATERING / MEALS'), detail: tr('{count} persons', { count }), amount: quote.mealsFee || 0 });
   }
 
-  const vatRate = quote.vatRate ?? defaults.default_vat_rate ?? 22;
+  return items;
+}
+
+/**
+ * What the client sees: the rows, totals and deposit of the PDF
+ * (src/lib/services/quotePdf.ts), in `lang`. Nothing internal: no
+ * musician names or fees, no internal notes.
+ */
+export function buildClientQuoteSnapshot(quote: Partial<Quote>, lang: Locale, defaults: SnapshotDefaults = {}): ClientQuoteSnapshot {
+  const tr = (s: string, vars?: TranslateVars) => translate(lang, s, vars);
+  const currency = (quote.currency || 'EUR').toUpperCase();
+  const sym = currencySymbol(currency);
+  const money = (v: number) => formatQuoteMoney(v, sym, intlLocale('en-US', lang));
+
+  const musicians = quote.musicians || [];
+  const count = musicians.length > 0 ? musicians.length : quote.musicianCount || defaults.core_members_count || 6;
+  // The PDF's defaults when the quote has no sets.
+  const numSets = quote.numberOfSets || DEFAULT_SETS;
+  const setDur = quote.setDuration || DEFAULT_SET_MINUTES;
+  const mainFee = quote.baseFee && quote.baseFee > 0 ? quote.baseFee : quote.subtotal || 0;
+  const items = clientQuoteItems(quote, lang, defaults);
+
+  const vatRate = quote.vatRate ?? defaults.default_vat_rate ?? DEFAULT_VAT_RATE;
   const totals = totalsForQuote(
     {
       subtotal: quote.subtotal,
@@ -176,7 +200,7 @@ export function buildClientQuoteSnapshot(quote: Partial<Quote>, lang: Locale, de
       : totals.subtotal > 0 && totals.discount > 0
         ? Math.round((totals.discount / totals.subtotal) * 100)
         : 0;
-  const depositPct = quote.depositPercentage ?? defaults.default_deposit_rate ?? 20;
+  const depositPct = quoteDepositPercent(quote, defaults.default_deposit_rate);
 
   const options = (quote.includeProposalSummary ? quote.quoteOptions || [] : [])
     .filter((o) => o && Number.isFinite(Number(o.totalWithVat)))
@@ -222,10 +246,7 @@ export function buildClientQuoteSnapshot(quote: Partial<Quote>, lang: Locale, de
     vat: totals.vat,
     total: totals.total,
     totalLabel: money(totals.total),
-    deposit:
-      quote.depositRequired !== false && depositPct > 0
-        ? { percent: depositPct, amount: calculateDepositAmount(totals.total, depositPct) }
-        : null,
+    deposit: depositPct > 0 ? { percent: depositPct, amount: calculateDepositAmount(totals.total, depositPct) } : null,
     validUntil: quote.validUntil || null,
     notes: clean(quote.clientNotes, 1500),
     terms: clean(quote.specialTerms || quote.cancellationTerms, 2000),

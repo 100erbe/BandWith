@@ -41,7 +41,8 @@ import {
 import { republishClientQuote } from '@/lib/services/quoteLinks';
 import type { ContractPrefill } from '@/app/views/ContractsView';
 import { useBand } from '@/lib/BandContext';
-import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
+import { getActiveSymbol as sym, useCurrency, currencySymbol } from '@/lib/currency';
+import { formatQuoteMoney } from '@/lib/services/quoteMath';
 import { useT, intlLocale, localDecimal } from '@/lib/i18n';
 
 interface QuotesExpandedProps {
@@ -126,8 +127,14 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
     [onShowToast]
   );
 
-  const errorText = (err: unknown, fallback: string) =>
-    `${fallback}: ${(err as any)?.message || t('Unknown error')}`;
+  // Translated text only: the server's own message goes to the console.
+  const errorText = (err: unknown, fallback: string) => {
+    console.warn(`[quotes] ${fallback}:`, err);
+    return `${fallback}. ${t('Check your connection and try again.')}`;
+  };
+  // A quote's own currency, cents only when it has them.
+  const quoteMoney = (q: Pick<Quote, 'total' | 'currency'>) =>
+    formatQuoteMoney(q.total || 0, q.currency ? currencySymbol(q.currency) : sym(), intlLocale('en-US'));
   
   // Modal states
   const [isCreating, setIsCreating] = useState(false);
@@ -257,7 +264,14 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
       return;
     }
     setQuotes(prev => prev.map(q => (q.id === quote.id ? { ...q, ...dbQuoteToAppQuote(data), musicians: q.musicians } : q)));
-    notify(outcome === 'ACCEPTED' ? t('Quote accepted. The gig is confirmed.') : t('Quote marked as declined'), 'success');
+    notify(
+      outcome === 'DECLINED'
+        ? t('Quote marked as declined')
+        : data.converted_to_event_id
+          ? t('Quote accepted. The gig is confirmed.')
+          : t('Quote accepted. Open it to create the gig.'),
+      'success',
+    );
     onQuotesChanged?.();
   };
 
@@ -303,7 +317,14 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
       return;
     }
     setQuotes(prev => prev.map(q => (q.id === quote.id ? { ...q, convertedToEventId: data.eventId, eventId: data.eventId } : q)));
-    notify(data.created ? t('Gig created from the quote') : t('Gig confirmed'), 'success');
+    notify(
+      data.lineupError
+        ? t('Gig created, but its lineup was not added. Add the musicians in the gig.')
+        : data.created
+          ? t('Gig created from the quote')
+          : t('Gig confirmed'),
+      data.lineupError ? 'error' : 'success',
+    );
     onQuotesChanged?.();
     setSelectedQuote(null);
     onOpenEvent?.(data.eventId);
@@ -397,7 +418,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         >
           <div className="flex flex-col gap-1">
             <span className="bw-label-sm">{t('Pipeline potential')}</span>
-            <DotText text={`${sym()}${localDecimal((pipelineTotal / 1000).toFixed(1))}k`} size={32} label={t('Pipeline {amount}', { amount: `${sym()}${pipelineTotal.toLocaleString(intlLocale())}` })} />
+            <DotText text={`${sym()}${localDecimal((pipelineTotal / 1000).toFixed(1))}k`} size={32} label={t('Pipeline {amount}', { amount: formatQuoteMoney(pipelineTotal, sym(), intlLocale('en-US')) })} />
           </div>
 
           {/* One dot column per active quote: height = value, colour = likelihood */}
@@ -415,7 +436,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                     type="button"
                     key={quote.id}
                     onClick={() => setActiveChartId(isActive ? null : quote.id)}
-                    aria-label={`${quote.eventTitle || quote.clientName}: ${sym()}${quote.total.toLocaleString(intlLocale())}`}
+                    aria-label={`${quote.eventTitle || quote.clientName}: ${quoteMoney(quote)}`}
                     className="relative flex flex-col gap-1 items-center cursor-pointer group"
                   >
                     <span
@@ -501,7 +522,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                       .filter(Boolean)
                       .join(' · ')}
                   </span>
-                  <span className="bw-num whitespace-nowrap">{sym()}{quote.total.toLocaleString(intlLocale())}</span>
+                  <span className="bw-num whitespace-nowrap">{quoteMoney(quote)}</span>
                 </span>
               </motion.button>
             );
