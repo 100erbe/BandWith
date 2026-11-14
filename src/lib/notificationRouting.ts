@@ -7,7 +7,8 @@ import { t } from '@/lib/i18n';
 export type NotificationTarget =
   | { screen: 'chat'; chatId: string }
   | { screen: 'event'; eventId?: string }
-  | { screen: 'quotes' }
+  // quoteId: the quote a client answered on its page (migration 099).
+  | { screen: 'quotes'; quoteId?: string }
   | { screen: 'finance' }
   | { screen: 'invites' }
   | { screen: 'bandMembers' }
@@ -49,7 +50,10 @@ export function notificationTarget(
     return { screen: 'event', eventId };
   }
   if (kind === 'rehearsal_poll' || kind === 'rehearsal_proposal') return { screen: 'event' };
-  if (kind.startsWith('quote_')) return { screen: 'quotes' };
+  if (kind.startsWith('quote_')) {
+    const quoteId = str(d.quote_id) || str(d.quoteId);
+    return quoteId ? { screen: 'quotes', quoteId } : { screen: 'quotes' };
+  }
   if (kind.startsWith('payment_')) return { screen: 'finance' };
   if (kind === 'invite_received' || kind === 'band_invite') return { screen: 'invites' };
   if (kind === 'song_added') return { screen: 'repertoire' };

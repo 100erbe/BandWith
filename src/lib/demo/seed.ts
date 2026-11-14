@@ -171,7 +171,7 @@ export const buildSeed = (): DemoDB => {
   };
   const quotes: Row[] = [
     q(0, { status: 'draft', client_name: 'Federica Russo', client_email: 'federica@example.com', event_name: 'Russo 40th birthday', event_type: 'private_party', event_date: day(40), venue_name: 'Cascina Cuccagna', venue_city: 'Milano', guest_count: 80, base_fee: 1600, travel_fee: 0, sound_included: true, sound_fee: 300, valid_until: day(20) }),
-    q(1, { status: 'sent', client_name: 'Northwind Conferences', client_email: 'ops@northwind.example', client_company: 'Northwind', event_name: 'Year-end gala', event_type: 'corporate', event_date: day(52), venue_name: 'Palazzo Clerici', venue_city: 'Milano', guest_count: 300, base_fee: 3800, travel_fee: 0, sound_included: true, sound_fee: 900, sent_at: ago(60 * 24 * 3), valid_until: day(14) }),
+    q(1, { status: 'negotiating', client_name: 'Northwind Conferences', client_email: 'ops@northwind.example', client_company: 'Northwind', event_name: 'Year-end gala', event_type: 'corporate', event_date: day(52), venue_name: 'Palazzo Clerici', venue_city: 'Milano', guest_count: 300, base_fee: 3800, travel_fee: 0, sound_included: true, sound_fee: 900, sent_at: ago(60 * 24 * 3), valid_until: day(14) }),
     q(2, { status: 'accepted', client_name: 'Giulia Bianchi', client_email: 'giulia@example.com', event_name: 'Giulia & Marco — Wedding', event_type: 'wedding', event_date: day(5), venue_name: 'Villa Necchi', venue_city: 'Milano', guest_count: 140, base_fee: 3200, travel_fee: 0, sound_fee: 0, sent_at: ago(60 * 24 * 40), responded_at: ago(60 * 24 * 35), response_type: 'accepted', converted_to_event_id: id(602) }),
   ];
 
@@ -360,10 +360,35 @@ export const buildSeed = (): DemoDB => {
     { user_id: IDS.lena, event_date: day(30), start_time: '20:00', end_time: '22:00' },
   ];
 
+  // Quote confirmation link (099): Northwind opened the quote and asked for a change.
+  const quote_links: Row[] = [
+    {
+      id: id(980), quote_id: id(901), band_id: IDS.band, token: 'd'.repeat(64), lang: 'en', version: 1, version_at: ago(60 * 24 * 3),
+      snapshot: { v: 1, ref: 'Q-2026-0013', title: 'Year-end gala' }, pdf_url: null, pdf_version: null, status: 'discussing',
+      sent_at: ago(60 * 24 * 3), first_viewed_at: ago(60 * 24 * 2), responded_at: null, accepted_name: null, accepted_version: null,
+      decline_reason: null, revoked_at: null, created_at: ago(60 * 24 * 3), updated_at: ago(60 * 5),
+    },
+    // The wedding quote was accepted on the page.
+    {
+      id: id(984), quote_id: id(902), band_id: IDS.band, token: 'e'.repeat(64), lang: 'it', version: 1, version_at: ago(60 * 24 * 40),
+      snapshot: { v: 1, ref: 'Q-2026-0014', title: 'Giulia & Marco — Wedding' }, pdf_url: null, pdf_version: null, status: 'accepted',
+      sent_at: ago(60 * 24 * 40), first_viewed_at: ago(60 * 24 * 39), responded_at: ago(60 * 24 * 35), accepted_name: 'Giulia Bianchi', accepted_version: 1,
+      decline_reason: null, revoked_at: null, created_at: ago(60 * 24 * 40), updated_at: ago(60 * 24 * 35),
+    },
+  ];
+  const quote_activity: Row[] = [
+    { id: id(981), quote_id: id(901), band_id: IDS.band, kind: 'sent', channel: 'whatsapp', body: null, version: 1, created_at: ago(60 * 24 * 3) },
+    { id: id(982), quote_id: id(901), band_id: IDS.band, kind: 'viewed', channel: null, body: null, version: 1, created_at: ago(60 * 24 * 2) },
+    { id: id(985), quote_id: id(902), band_id: IDS.band, kind: 'sent', channel: 'email', body: null, version: 1, created_at: ago(60 * 24 * 40) },
+    { id: id(986), quote_id: id(902), band_id: IDS.band, kind: 'viewed', channel: null, body: null, version: 1, created_at: ago(60 * 24 * 39) },
+    { id: id(987), quote_id: id(902), band_id: IDS.band, kind: 'accepted', channel: null, body: 'Giulia Bianchi', version: 1, created_at: ago(60 * 24 * 35) },
+    { id: id(983), quote_id: id(901), band_id: IDS.band, kind: 'client_message', channel: null, body: 'Could you add a DJ set after the band? We would like music until 1 am.', version: 1, created_at: ago(60 * 5) },
+  ];
+
   return {
     band_deputies, event_drafts: [], demo_deputy_gigs, demo_member_busy,
     profiles, bands, band_members, songs, song_folders: [], setlists, setlist_songs, events, event_members,
-    rehearsal_setlist, rehearsal_tasks, song_proposals, proposal_votes: [], quotes, quote_musicians: [],
+    rehearsal_setlist, rehearsal_tasks, song_proposals, proposal_votes: [], quotes, quote_musicians: [], quote_links, quote_activity,
     transactions, chats, chat_participants, messages, notifications, rehearsal_polls, rehearsal_poll_options,
     rehearsal_poll_votes, task_templates, contracts, event_stage, inventory, gear_kits, gear_kit_items, event_gear_kits, onboarding_progress, member_invites: [],
     push_tokens: [], avatars: [],

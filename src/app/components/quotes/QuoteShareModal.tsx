@@ -17,6 +17,8 @@ import {
   Loader2,
   AlertCircle,
   RefreshCw,
+  Smartphone,
+  Link,
 } from '@/app/components/icons';
 import { Quote, getEventTypeLabel } from '@/app/data/quotes';
 import {
@@ -41,6 +43,19 @@ import { OnlineDepositLinks } from '@/app/components/quotes/OnlineDeposit';
 import { useT, translate, intlLocale, type Locale } from '@/lib/i18n';
 import { docLanguageFor, rememberDocLanguage } from '@/lib/i18n/docLanguage';
 import { DocLanguagePicker } from '@/app/components/bw/DocLanguagePicker';
+import {
+  buildClientQuoteSnapshot,
+  clientLinkMessage,
+  getQuoteLinkState,
+  markQuoteLinkSent,
+  publishQuoteLink,
+  quoteLinkUrl,
+  rotateQuoteLink,
+  sendQuoteEmail,
+  type QuoteChannel,
+  type QuoteLinkStatus,
+  type QuoteMessageKind,
+} from '@/lib/services/quoteLinks';
 
 export interface QuoteShareModalProps {
   isOpen: boolean;
@@ -51,7 +66,17 @@ export interface QuoteShareModalProps {
   onOpenBandSettings?: () => void;
   /** Called after a draft quote is marked as sent (a share channel completed). */
   onSent?: (quoteId: string) => void;
+  /**
+   * What the message with the client's link says (migration 099): the
+   * first send, a reminder, or "the quote was updated".
+   */
+  kind?: QuoteMessageKind;
+  /** The client's link changed (sent, reminded, new link). */
+  onLinkChanged?: () => void;
 }
+
+const isIOS = () =>
+  Capacitor.getPlatform() === 'ios' || (typeof navigator !== 'undefined' && /iPhone|iPad|iPod/.test(navigator.userAgent));
 
 export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
   isOpen,
@@ -61,6 +86,8 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
   onClose,
   onOpenBandSettings,
   onSent,
+  kind = 'sent',
+  onLinkChanged,
 }) => {
   const t = useT();
   const [settings, setSettings] = useState<BandPricingSettings>(DEFAULT_BAND_PRICING);
@@ -85,6 +112,12 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     try { return JSON.stringify(quote); } catch { return String(quote.id || ''); }
   }, [quote]);
   const canUpload = isUuid(bandId);
+  // The client's confirmation link: only for a saved quote of a real band.
+  const canLink = canUpload && isUuid(quote.id);
+  const [link, setLink] = useState<{ token: string; status: QuoteLinkStatus; revoked: boolean } | null>(null);
+  const [linkError, setLinkError] = useState(false);
+  const [emailing, setEmailing] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const flash = (text: string, tone: 'ok' | 'error' = 'ok') => {
     setShareFeedback({ text, tone });
@@ -134,6 +167,37 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     }
   }, [isOpen, loadAndGenerate]);
 
+  // The link's token, so every channel can open synchronously inside the tap.
+  // A quote without a link gets one now (still a draft: nothing is sent).
+  useEffect(() => {
+    if (!isOpen || !canLink) return;
+    let cancelled = false;
+    setLinkError(false);
+    (async () => {
+      const { data, error } = await getQuoteLinkState(String(quote.id));
+      if (cancelled) return;
+      if (error) {
+        setLinkError(true);
+        return;
+      }
+      if (data?.link) {
+        setLink({ token: data.link.token, status: data.link.status, revoked: !!data.link.revoked_at });
+        // The page and the emails speak the language the client already got.
+        if (data.link.status !== 'draft') setDocLang(data.link.lang);
+        return;
+      }
+      const lang = docLanguageFor(clientKey);
+      const created = await publishQuoteLink(String(quote.id), buildClientQuoteSnapshot(quoteRef.current, lang, DEFAULT_BAND_PRICING), lang);
+      if (cancelled) return;
+      if (created.data) setLink({ token: created.data.token, status: created.data.status, revoked: created.data.revoked });
+      else setLinkError(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, canLink, quote.id]);
+
   // Upload as soon as the PDF exists, so WhatsApp / copy / email can run
   // synchronously inside the tap (iOS blocks clipboard and popups after an await).
   useEffect(() => {
@@ -149,6 +213,113 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
   useSystemBack(isOpen, onClose);
 
   if (!isOpen) return null;
+
+  /** Publish what the client sees now (summary, language, PDF), then record the send. */
+  const publishAndRecord = async (channel: QuoteChannel) => {
+    const id = String(quote.id);
+    const snapshot = buildClientQuoteSnapshot(quoteRef.current, docLang, settings);
+    const pub = await publishQuoteLink(id, snapshot, docLang, uploadedUrl);
+    if (pub.error || !pub.data) {
+      flash(t('The client page could not be updated. Try again.'), 'error');
+      return false;
+    }
+    const sent = await markQuoteLinkSent(id, kind === 'reminder' ? 'reminded' : 'sent', channel);
+    if (sent.error) {
+      flash(t('The client page could not be updated. Try again.'), 'error');
+      return false;
+    }
+    setLink((l) => (l ? { ...l, status: sent.data || l.status } : l));
+    if (String(quote.status || '').toUpperCase() === 'DRAFT' || !quote.status) onSent?.(id);
+    onLinkChanged?.();
+    return true;
+  };
+
+  const linkMessage = () => {
+    if (!link) return '';
+    const snapshot = buildClientQuoteSnapshot(quoteRef.current, docLang, settings);
+    return clientLinkMessage(quoteRef.current, {
+      bandName,
+      url: quoteLinkUrl(link.token),
+      lang: docLang,
+      kind,
+      total: snapshot.totalLabel,
+      signer: settings.signer_name,
+    });
+  };
+
+  const cleanPhone = () => (quote.clientPhone || '').replace(/[^0-9+]/g, '');
+
+  const sendLinkVia = (channel: 'whatsapp' | 'sms' | 'copy') => {
+    if (!link || link.revoked) return;
+    const text = linkMessage();
+    if (channel === 'copy') {
+      try {
+        navigator.clipboard.writeText(text).then(
+          () => {
+            setCopiedLink(true);
+            setTimeout(() => setCopiedLink(false), 2500);
+            void publishAndRecord('copy');
+          },
+          () => flash(t('Could not copy the link.'), 'error'),
+        );
+      } catch {
+        flash(t('Could not copy the link.'), 'error');
+      }
+      return;
+    }
+    const phone = cleanPhone();
+    const url =
+      channel === 'whatsapp'
+        ? `https://wa.me/${phone.replace(/^\+/, '')}?text=${encodeURIComponent(text)}`
+        : `sms:${phone}${isIOS() ? '&' : '?'}body=${encodeURIComponent(text)}`;
+    void openExternal(url);
+    void publishAndRecord(channel).then((ok) => ok && flash(kind === 'reminder' ? t('Reminder sent') : t('Quote shared')));
+  };
+
+  const emailLink = async () => {
+    if (!link || link.revoked || emailing) return;
+    if (!quote.clientEmail) {
+      flash(t('Add the client’s email to the quote first.'), 'error');
+      return;
+    }
+    setEmailing(true);
+    try {
+      const id = String(quote.id);
+      const pub = await publishQuoteLink(id, buildClientQuoteSnapshot(quoteRef.current, docLang, settings), docLang, uploadedUrl);
+      if (pub.error) {
+        flash(t('The client page could not be updated. Try again.'), 'error');
+        return;
+      }
+      const res = await sendQuoteEmail(id, kind);
+      if (!res.ok && res.code === 'too_soon') {
+        flash(t('An email was just sent. Wait a minute and try again.'), 'error');
+        return;
+      }
+      if (!res.ok) {
+        // The server could not send it (no mail server yet, or offline): hand
+        // the same message to the mail app instead.
+        const subject = tr('{band} — Quote {ref}', { band: bandName, ref: quote.quoteNumber || '' }).trim();
+        void openExternal(`mailto:${encodeURIComponent(quote.clientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(linkMessage())}`);
+      }
+      if (await publishAndRecord('email')) {
+        flash(res.ok ? t('Email sent to {email}', { email: quote.clientEmail }) : t('Your mail app opened with the message and the link.'));
+      }
+    } finally {
+      setEmailing(false);
+    }
+  };
+
+  const newLink = async () => {
+    if (!isUuid(quote.id)) return;
+    const { data, error } = await rotateQuoteLink(quote.id);
+    if (error || !data) {
+      flash(t('Could not create a new link. Try again.'), 'error');
+      return;
+    }
+    setLink((l) => (l ? { ...l, token: data, revoked: false } : l));
+    onLinkChanged?.();
+    flash(t('New link ready. The old one no longer works.'));
+  };
 
   /** A draft becomes SENT only once it actually left through a channel. */
   const markSent = async () => {
@@ -373,6 +544,64 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     },
   ];
 
+  const linkReady = !!link && !link.revoked && !isGenerating && !!pdfResult && !isUploading;
+  const firstName = (quote.clientName || '').trim().split(/\s+/)[0];
+  const linkChannels: typeof shareChannels = [
+    {
+      key: 'link-whatsapp',
+      title: 'WhatsApp',
+      subtitle: t('Message with the quote link'),
+      icon: <MessageCircle />,
+      onClick: () => sendLinkVia('whatsapp'),
+      disabled: !linkReady,
+    },
+    {
+      key: 'link-sms',
+      title: t('Text message'),
+      subtitle: t('Message with the quote link'),
+      icon: <Smartphone />,
+      onClick: () => sendLinkVia('sms'),
+      disabled: !linkReady,
+    },
+    {
+      key: 'link-email',
+      title: t('Email'),
+      subtitle: quote.clientEmail ? t('To {email}, with the PDF', { email: quote.clientEmail }) : t('Add the client’s email to the quote first.'),
+      icon: emailing ? <Loader2 className="animate-spin" /> : <Mail />,
+      onClick: () => void emailLink(),
+      disabled: !linkReady || emailing || !quote.clientEmail,
+    },
+    {
+      key: 'link-copy',
+      title: copiedLink ? t('Copied!') : t('Copy message & link'),
+      subtitle: t('Paste anywhere'),
+      icon: copiedLink ? <Check className="text-success" /> : <Link />,
+      onClick: () => sendLinkVia('copy'),
+      disabled: !linkReady,
+    },
+  ];
+  const pdfChannels = shareChannels.filter((c) => c.key === 'native' || c.key === 'download');
+  const heading = kind === 'reminder' ? t('Remind client') : kind === 'updated' ? t('Send the update') : t('PDF ready');
+
+  const renderChannel = (ch: (typeof shareChannels)[number]) => (
+    <button
+      key={ch.key}
+      type="button"
+      onClick={ch.onClick}
+      disabled={ch.disabled}
+      className="w-full flex items-center gap-3 p-4 rounded-[16px] bg-sheet text-sheet-foreground text-left active:scale-[0.99] transition-transform disabled:opacity-40"
+    >
+      <span className="w-10 h-10 rounded-full bg-foreground/[0.08] flex items-center justify-center shrink-0 [&_svg]:w-5 [&_svg]:h-5">
+        {ch.icon}
+      </span>
+      <span className="flex-1 min-w-0 flex flex-col gap-1">
+        <span className="bw-body-lg truncate">{ch.title}</span>
+        <span className="bw-body-sm text-muted-foreground truncate">{ch.subtitle}</span>
+      </span>
+      <ChevronRight className="w-5 h-5 shrink-0" aria-hidden />
+    </button>
+  );
+
   // Portaled to <body>: some callers render it inside a scrolling pane, where
   // WKWebView clips fixed children (the Done bar could end up untappable).
   return createPortal(
@@ -398,7 +627,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
                 <p className="bw-label-sm text-muted-foreground truncate">
                   {quote.quoteNumber || t('Draft')} · {t('Official quote')}
                 </p>
-                <h1 className="bw-display-lg">{t('PDF ready')}</h1>
+                <h1 className="bw-display-lg">{heading}</h1>
               </div>
               <RailCover pane />
               <HeaderAction pane label={t('Close')} variant="filled" railProminent={false} icon={<X />} onClick={onClose} />
@@ -524,28 +753,40 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
 
           <DocLanguagePicker value={docLang} onChange={changeDocLang} className="pt-2" />
 
-          {/* Share channels */}
-          <section className="flex flex-col gap-2">
-            <h2 className="bw-label-sm text-muted-foreground pt-2">{t('Share quote via')}</h2>
-            {shareChannels.map((ch) => (
-              <button
-                key={ch.key}
-                type="button"
-                onClick={ch.onClick}
-                disabled={ch.disabled}
-                className="w-full flex items-center gap-3 p-4 rounded-[16px] bg-sheet text-sheet-foreground text-left active:scale-[0.99] transition-transform disabled:opacity-40"
-              >
-                <span className="w-10 h-10 rounded-full bg-foreground/[0.08] flex items-center justify-center shrink-0 [&_svg]:w-5 [&_svg]:h-5">
-                  {ch.icon}
-                </span>
-                <span className="flex-1 min-w-0 flex flex-col gap-1">
-                  <span className="bw-body-lg truncate">{ch.title}</span>
-                  <span className="bw-body-sm text-muted-foreground truncate">{ch.subtitle}</span>
-                </span>
-                <ChevronRight className="w-5 h-5 shrink-0" aria-hidden />
-              </button>
-            ))}
-          </section>
+          {canLink ? (
+            <>
+              {/* The client's link (099): accept, decline or discuss on /quote.html */}
+              <section className="flex flex-col gap-2" aria-labelledby="send-to-client">
+                <h2 id="send-to-client" className="bw-label-sm text-muted-foreground pt-2">{t('Send to client')}</h2>
+                <p className="bw-body-sm text-muted-foreground">
+                  {firstName
+                    ? t('A personal link where {name} can accept the quote, decline it or ask you questions. You get a notification for each answer.', { name: firstName })
+                    : t('A personal link where the client can accept the quote, decline it or ask you questions. You get a notification for each answer.')}
+                </p>
+                {link?.revoked ? (
+                  <div className="flex flex-col gap-3 p-4 rounded-[16px] bg-card">
+                    <p className="bw-body-sm">{t('The link of this quote is turned off.')}</p>
+                    <PillButton variant="outline" size="sm" fullWidth={false} icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={() => void newLink()}>
+                      {t('Create a new link')}
+                    </PillButton>
+                  </div>
+                ) : linkError ? (
+                  <p role="alert" className="bw-body-sm text-destructive">{t('The client link could not be prepared. Check your connection and reopen this screen.')}</p>
+                ) : (
+                  linkChannels.map(renderChannel)
+                )}
+              </section>
+              <section className="flex flex-col gap-2">
+                <h2 className="bw-label-sm text-muted-foreground pt-2">{t('PDF only')}</h2>
+                {pdfChannels.map(renderChannel)}
+              </section>
+            </>
+          ) : (
+            <section className="flex flex-col gap-2">
+              <h2 className="bw-label-sm text-muted-foreground pt-2">{t('Share quote via')}</h2>
+              {shareChannels.map(renderChannel)}
+            </section>
+          )}
 
           {shareFeedback && (
             <p

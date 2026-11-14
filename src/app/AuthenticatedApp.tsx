@@ -97,6 +97,7 @@ const SettingsView = React.lazy(() => import("@/app/views/SettingsView").then(m 
 const AnalyticsView = React.lazy(() => import("@/app/views/AnalyticsView").then(m => ({ default: m.AnalyticsView })));
 const InventoryView = React.lazy(() => import("@/app/views/InventoryView").then(m => ({ default: m.InventoryView })));
 const ContractsView = React.lazy(() => import("@/app/views/ContractsView").then(m => ({ default: m.ContractsView })));
+import type { ContractPrefill } from "@/app/views/ContractsView";
 const TaskTemplatesView = React.lazy(() => import("@/app/views/TaskTemplatesView").then(m => ({ default: m.TaskTemplatesView })));
 const CreateEventModal = React.lazy(() => import("@/app/components/dashboard/CreateEventModal").then(m => ({ default: m.CreateEventModal })));
 const RehearsalLiveView = React.lazy(() => import("@/app/components/rehearsal/RehearsalLiveView").then(m => ({ default: m.RehearsalLiveView })));
@@ -1127,7 +1128,10 @@ export default function AuthenticatedApp() {
       } else if (d.screen === "event") {
         setActiveTab("Events");
       } else if (d.screen === "quotes") {
-        if (isAdminRef.current) setExpandedCard("quotes");
+        if (isAdminRef.current) {
+          setQuoteFocus(d.quoteId ?? null);
+          setExpandedCard("quotes");
+        }
         else setActiveTab("Home");
       } else if (d.screen === "finance") {
         if (isAdminRef.current) setExpandedCard("finance");
@@ -1265,6 +1269,10 @@ export default function AuthenticatedApp() {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
   const [showContracts, setShowContracts] = useState(false);
+  // "Prepare contract" on an accepted quote opens Contracts with this filled in.
+  const [contractPrefill, setContractPrefill] = useState<ContractPrefill | null>(null);
+  // A quote notification opens that quote in Quotes.
+  const [quoteFocus, setQuoteFocus] = useState<string | null>(null);
   const [showTaskTemplates, setShowTaskTemplates] = useState(false);
   const [showPastEvents, setShowPastEvents] = useState(false);
   // Requests from other bands to this account as a deputy (086).
@@ -1775,7 +1783,7 @@ export default function AuthenticatedApp() {
     setShowSetlistManager(false);
     setShowAnalytics(false);
     setShowInventory(false);
-    setShowContracts(false);
+    setShowContracts(false); setContractPrefill(null);
     setShowTaskTemplates(false);
     setShowPastEvents(false);
     setShowNewChat(false);
@@ -2200,7 +2208,7 @@ export default function AuthenticatedApp() {
         return;
       }
       if (s.showContracts) {
-        setShowContracts(false);
+        setShowContracts(false); setContractPrefill(null);
         return;
       }
       if (s.showTaskTemplates) {
@@ -3604,7 +3612,7 @@ export default function AuthenticatedApp() {
         <AnimatePresence>
           {expandedCard === "finance" && <FinanceExpanded key="finance-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} financialStats={financeData.financialStats} transactions={financeData.recentTransactions} loading={financeLoading} onTransactionAdded={() => { refetchFinance(); refetchDashboard?.(); }} />}
           {expandedCard === "pending" && <PendingExpanded key="pending-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} eventFilter={eventFilter} setEventFilter={setEventFilter} events={pendingEvents} loading={pendingEventsLoading} />}
-          {isAdmin && expandedCard === "quotes" && <QuotesExpanded key="quotes-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} realQuotes={realQuotes} quoteStats={quotesStats} loading={quotesLoading} onShowToast={(msg, type) => setSaveToast({ message: msg, type })} onQuotesChanged={() => { refetchExpandedQuotes(); refetchDashboard?.(); }} onOpenBandSettings={() => { setPricingModalInitialTab('branding'); setPricingReturnTo(null); setShowPricingModal(true); }} />}
+          {isAdmin && expandedCard === "quotes" && <QuotesExpanded key="quotes-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} realQuotes={realQuotes} quoteStats={quotesStats} loading={quotesLoading} onShowToast={(msg, type) => setSaveToast({ message: msg, type })} onQuotesChanged={() => { refetchExpandedQuotes(); refetchDashboard?.(); }} onOpenBandSettings={() => { setPricingModalInitialTab('branding'); setPricingReturnTo(null); setShowPricingModal(true); }} onOpenEvent={(eventId) => { setExpandedCard(null); navigateToEvent(eventId); }} onPrepareContract={(prefill) => { if (!realBand || !isAdminOfBand(realBand.id)) return; setExpandedCard(null); setContractPrefill(prefill); setShowContracts(true); }} focusQuoteId={quoteFocus} onFocusConsumed={() => setQuoteFocus(null)} />}
           {expandedCard === "confirmed" && <ConfirmedExpanded key="confirmed-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} events={myConfirmedEvents} loading={confirmedEventsLoading} />}
           {expandedCard === "rehearsal" && currentRehearsal ? (
             <RehearsalExpanded key="rehearsal-expanded" upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} rehearsalIndex={rehearsalIndex} setRehearsalIndex={setRehearsalIndex} rehearsalViewMode={rehearsalViewMode} setRehearsalViewMode={setRehearsalViewMode} isLive={isLive} onClose={() => setExpandedCard(null)} onDecline={handleRehearsalDecline} />
@@ -3707,7 +3715,7 @@ export default function AuthenticatedApp() {
               }}
             />
           )}
-          {showContracts && realBand && isAdminOfBand(realBand.id) && <ContractsView key="contracts" onBack={() => setShowContracts(false)} bandId={realBand.id} />}
+          {showContracts && realBand && isAdminOfBand(realBand.id) && <ContractsView key="contracts" onBack={() => { setShowContracts(false); setContractPrefill(null); }} bandId={realBand.id} prefill={contractPrefill} />}
           {showTaskTemplates && realBand && <TaskTemplatesView key="task-templates" onBack={() => setShowTaskTemplates(false)} bandId={realBand.id} userId={user?.id} canEdit={isAdminOfBand(realBand.id)} events={isAdminOfBand(realBand.id) ? templateTargetEvents : []} onNotify={(message) => setSaveToast({ message, type: 'success' })} onUseTemplate={(template, kind) => {
             setShowTaskTemplates(false);
             setCreateEventInitialTasks((template.tasks || []).map((t) => ({ title: t.title, templateId: template.id, dueOffset: t.dueOffset })));
