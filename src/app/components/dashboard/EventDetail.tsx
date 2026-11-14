@@ -721,7 +721,10 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     event.venueCity ||
     '';
   const hasValidLocation = venueName !== 'TBD' && venueName !== '';
-  const fullLocationQuery = [venueName !== 'TBD' ? venueName : '', venueAddress].filter(Boolean).join(', ');
+  // The city goes last even when a street address is set: the forecast and
+  // the maps link need it to find the place.
+  const venueCityPart = event.venueCity && !venueAddress.toLowerCase().includes(event.venueCity.toLowerCase()) ? event.venueCity : '';
+  const fullLocationQuery = [venueName !== 'TBD' ? venueName : '', venueAddress, venueCityPart].filter(Boolean).join(', ');
   const venueShown = venueName === 'TBD' ? t('TBD') : venueName;
 
   const handleOpenMaps = () => {
