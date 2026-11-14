@@ -14,6 +14,7 @@ import { useRailLayout } from '@/lib/deviceRegions';
 import { useStageBarHidden, useStageFullScreen } from '@/lib/stageChrome';
 import '@/styles/stage.css';
 import { useT } from '@/lib/i18n';
+import { useSystemBack } from '@/lib/backStack';
 import { timelineDates } from '@/lib/gigTiming';
 import { cn } from '@/app/components/ui/utils';
 import { TransposeControl, TransposeProvider, useSongTranspose } from '@/app/components/ui/Transpose';
@@ -167,13 +168,8 @@ export const StageMode: React.FC<StageModeProps> = ({
     return () => window.clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  // Android Back and Escape leave Stage mode first, not the gig beneath.
+  useSystemBack(true, onClose);
 
   // Steps in order on the gig day; an end after midnight lands on the next day.
   const stepDates = useMemo(() => timelineDates(date, steps.map((s) => s.time)), [date, steps]);

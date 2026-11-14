@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, Trash2 } from '@/app/components/icons';
 import { RailCover } from '@/lib/railActions';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 import { useT } from '@/lib/i18n';
+import { useSystemBack } from '@/lib/backStack';
 
 /**
  * Bottom-sheet confirmation for removing a chat from the list. Lives at the
@@ -25,12 +26,8 @@ export const DeleteChatSheet: React.FC<{
 }> = ({ open, chatName, deleting, onCancel, onConfirm, title, body, confirmLabel, error }) => {
   const t = useT();
   const drag = useSheetDrag(onCancel);
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onCancel]);
+  // Android Back and Escape cancel, not close the chat beneath.
+  useSystemBack(open, onCancel);
 
   if (typeof document === 'undefined') return null;
   return createPortal(

@@ -343,7 +343,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      // Not when a sheet above already took it (lib/backStack).
+      if (e.key === 'Escape' && !e.defaultPrevented) {
         handleBack();
       }
     };

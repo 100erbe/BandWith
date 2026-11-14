@@ -44,6 +44,7 @@ import { formatHoursMinutes, genresOf, parseGenres, songHasGenre } from '@/lib/s
 import { playTrack } from '@/lib/audioPlayer';
 import { t, useT } from '@/lib/i18n';
 import { userMessage } from '@/lib/userError';
+import { useSystemBack } from '@/lib/backStack';
 
 /** Readiness dots: 16 per row, one dot per song (scaled down past 48 songs). */
 const READINESS_COLS = 16;
@@ -510,6 +511,8 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     setSetlistEditorSearch(false);
     setEditorError(null);
   };
+  // Android Back and Escape leave the editor for the library, not the library itself.
+  useSystemBack(!!editingSetlistId, closeSetlistEditor);
 
   const handleSaveSetlist = useCallback(async () => {
     if (!editingSetlistId || !editingSetlistName.trim() || setlistEditorSaving || editorLoadFailed) return;

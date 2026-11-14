@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useSyncExternalStore } from 'react';
+import React, { useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/app/components/ui/utils';
@@ -6,6 +6,7 @@ import { ArrowUpRight, Copy, MapPin, Navigation } from '@/app/components/icons';
 import { RailCover } from '@/lib/railActions';
 import { haptic } from '@/lib/haptics';
 import { useT } from '@/lib/i18n';
+import { useSystemBack } from '@/lib/backStack';
 
 /**
  * Tappable addresses → "Open in Maps" chooser (Apple Maps / Google Maps / Waze / Copy).
@@ -69,11 +70,8 @@ const ChooserSheet: React.FC<{ query: string }> = ({ query }) => {
     }
   };
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeMaps();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  // Android Back and Escape close the chooser, not the screen beneath.
+  useSystemBack(true, closeMaps);
 
   const options = [
     ...(isAppleDevice() ? [{ id: 'apple', label: 'Apple Maps', url: urls.apple }] : []),

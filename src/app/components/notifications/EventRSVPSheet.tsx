@@ -22,6 +22,7 @@ import { cn } from '@/app/components/ui/utils';
 import { formatDayShort, formatTime12 } from '@/app/components/event/format';
 import { inviteFeeToShow } from '@/lib/inviteFee';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
+import { useSystemBack } from '@/lib/backStack';
 import { useT, intlLocale } from '@/lib/i18n';
 import { useLineupSoFar } from '@/app/hooks/useLineupSoFar';
 import { LineupSoFar } from '@/app/components/event/LineupSoFar';
@@ -65,6 +66,8 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
 }) => {
   const t = useT();
   const drag = useSheetDrag(onClose);
+  // Android Back and Escape close this sheet, not the screen beneath.
+  useSystemBack(true, onClose);
   useCurrency(); // re-render money labels when the band currency changes
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [choice, setChoice] = useState<RsvpStatus | null>(initialStatus ?? null);

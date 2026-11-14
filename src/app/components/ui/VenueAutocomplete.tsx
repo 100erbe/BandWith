@@ -124,7 +124,8 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen || suggestions.length === 0) {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && isOpen) {
+        e.preventDefault();
         setIsOpen(false);
       }
       return;
