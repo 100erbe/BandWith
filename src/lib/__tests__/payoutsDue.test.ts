@@ -65,12 +65,19 @@ describe('payoutsDue', () => {
     expect(payoutsDue({ ...base, gigs: late, now: new Date(2026, 11, 14, 2, 0) })).toHaveLength(1);
   });
 
+  it('counts gigs saved with their kind (club, wedding…) as gigs', () => {
+    for (const event_type of ['club', 'Wedding', 'pub', 'corporate', null]) {
+      expect(payoutsDue({ ...base, gigs: [gig('g1', '2026-12-12', { event_type })] })).toHaveLength(1);
+    }
+  });
+
   it('skips cancelled gigs, quotes, rehearsals and personal gigs', () => {
     for (const extra of [
       { status: 'cancelled' },
       { status: 'tentative' },
       { status: 'draft' },
       { event_type: 'rehearsal' },
+      { event_type: 'quote' },
       { band_id: null },
     ]) {
       expect(payoutsDue({ ...base, gigs: [gig('g1', '2026-12-12', extra)] })).toEqual([]);

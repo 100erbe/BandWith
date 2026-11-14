@@ -3777,6 +3777,18 @@ const dict: Dictionary = {
   "Sending the quote to {email}…": "Invio del preventivo a {email}…",
   "Preparing the quote…": "Preparazione del preventivo…",
   "The quote could not be sent automatically. Pick a channel below.": "Non è stato possibile inviare il preventivo in automatico. Scegli un canale qui sotto.",
+  "Could not load your answer. Check your connection.": "Impossibile caricare la tua risposta. Controlla la connessione.",
+  "Couldn't save your answer. Try again.": "Impossibile salvare la tua risposta. Riprova.",
+  "This band has no other admin to notify.": "Questa band non ha altri admin da avvisare.",
+  "Only band admins can delete this event.": "Solo gli admin della band possono eliminare questo evento.",
+  "No connection. Try again when you are online.": "Nessuna connessione. Riprova quando sei online.",
+  "{title} setlist": "Scaletta {title}",
+  "Event setlist": "Scaletta dell'evento",
+  "This poll was already locked in or closed.": "Questo sondaggio è già stato confermato o chiuso.",
+  "{answered} of {total} answered": "{answered} di {total} hanno risposto",
+  "Your votes were cleared.": "I tuoi voti sono stati cancellati.",
+  "No date works for {names}": "Nessuna data va bene per {names}",
+  "Quote updated, but the event was not: {error}": "Preventivo aggiornato, ma l'evento no: {error}",
 };
 
 export default dict;

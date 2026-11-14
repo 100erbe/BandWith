@@ -143,8 +143,9 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
     return out;
   }, [filteredEvents, t]);
 
+  // userFeeMap only holds the viewer's fee on gigs of bands they don't manage.
   const feeFor = (event: EventData) =>
-    !isAdmin && event.eventId && userFeeMap[event.eventId] != null ? userFeeMap[event.eventId] : parseFee(event.price);
+    event.eventId && userFeeMap[event.eventId] != null ? userFeeMap[event.eventId] : parseFee(event.price);
 
   return (
     <motion.div

@@ -308,6 +308,7 @@ const UNIQUE_KEYS: Record<string, string[]> = {
   event_members: ['event_id', 'user_id'],
   band_members: ['band_id', 'user_id'],
   rehearsal_poll_votes: ['option_id', 'user_id'],
+  rehearsal_poll_unavailable: ['poll_id', 'user_id'],
   proposal_votes: ['proposal_id', 'user_id'],
 };
 

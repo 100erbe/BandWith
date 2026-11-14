@@ -266,16 +266,20 @@ export const EventsView: React.FC<EventsViewProps> = ({
 }) => {
   const t = useT();
   useCurrency(); // re-render money labels when the band currency changes
+  /** The viewer's own fee, on gigs of a band they don't manage (role per event's band). */
+  const ownFeeOf = (event: EventData): number | null => {
+    if (!event.eventId || userFeeMap[event.eventId] == null) return null;
+    const manages = event.band_id ? (isAdminOfBand ? isAdminOfBand(event.band_id) : isAdmin) : true;
+    return manages ? null : userFeeMap[event.eventId];
+  };
   const getDisplayFee = (event: EventData): string => {
-    if (!isAdmin && event.eventId && userFeeMap[event.eventId] != null) {
-      return formatBandTotal(String(userFeeMap[event.eventId]));
-    }
-    return formatBandTotal(event.price);
+    const own = ownFeeOf(event);
+    return own != null ? formatBandTotal(String(own)) : formatBandTotal(event.price);
   };
-  const getFeeLabel = (event: EventData): string => {
-    if (!isAdmin && event.eventId && userFeeMap[event.eventId] != null) return 'YOUR FEE';
-    return 'BAND TOTAL';
-  };
+  const getFeeLabel = (event: EventData): string => (ownFeeOf(event) != null ? 'YOUR FEE' : 'BAND TOTAL');
+  /** Fee shown on a card: the member's own fee, else the band fee (0 when private). */
+  const feeNumOf = (event: EventData): number =>
+    ownFeeOf(event) ?? (parseFloat(String(event.price || '').replace(/[^0-9.]/g, '')) || 0);
 
   const activePolls = useMemo(() => {
     if (!rehearsalPolls) return [];
@@ -815,7 +819,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
     const chipBg = `color-mix(in srgb, ${cardFg} 12%, transparent)`;
     const statusChip = isPast ? t('PAST') : draftOf ? (draftOf === 'quote' ? t('DRAFT · NOT SHARED') : t('DRAFT · ONLY YOU')) : (secondaryTags[0] ? tagLabel(secondaryTags[0]) : '') || (isGig ? t('CONFIRMED') : isDraft ? t('DRAFT') : '');
     const issues = [...warnings, ...(isAdmin ? suggestions : [])];
-    const venue = event.location?.split(',')[0] || event.clientName || t('TBD');
+    const venue = (event.location !== 'TBD' && event.location?.split(',')[0]) || event.clientName || t('TBD');
     const address = event.venueAddress || event.location?.split(',').slice(1).join(',').trim();
     const dateLabel = [event.date ? formatEventDate(event.date) : t('TBD'), event.time ? formatEventTime(event.time) : null].filter(Boolean).join(' · ');
 
@@ -827,7 +831,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
       if (diff <= 0) diff += 24 * 60;
       return Math.round((diff / 60) * 10) / 10;
     })();
-    const feeNum = parseFloat(String(event.price || '').replace(/[^0-9.]/g, '')) || 0;
+    const feeNum = feeNumOf(event);
 
     const left = { label: isRehearsal ? t('GOING') : isQuote || isGig ? t('LINEUP') : t('TEAM'), value: String(memberCount), fill: memberCount / 16 };
     const right = isRehearsal
@@ -1215,7 +1219,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                   <span className="flex-1 min-w-0 flex flex-col gap-0.5">
                                     <span className="bw-h3 truncate">{ev.title}</span>
                                     <span className="bw-body-sm text-sheet-foreground/70 truncate">
-                                      {ev.time ? formatEventTime(ev.time) : t('Time TBD')}{ev.location ? ` · ${ev.location}` : ''}
+                                      {ev.time ? formatEventTime(ev.time) : t('Time TBD')}{ev.location && ev.location !== 'TBD' ? ` · ${ev.location}` : ''}
                                     </span>
                                   </span>
                                   <ArrowRight className="w-4 h-4 shrink-0" />
@@ -1491,7 +1495,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                           const sub = badge === 'QUOTE' ? ev.quoteStatus : evPast && badge === 'GIG' ? ev.paymentStatus : undefined;
                           const over = [evPast ? t('Past') : typeWord, sub ? String(sub).charAt(0).toUpperCase() + String(sub).slice(1) : null].filter(Boolean).join(' · ');
                           const meta = [ev.location?.split(',')[0] || ev.clientName, ev.time ? formatEventTime(ev.time) : null].filter(Boolean).join(' · ');
-                          const feeNum = parseFloat(String(ev.price || '').replace(/[^0-9.]/g, '')) || 0;
+                          const feeNum = feeNumOf(ev);
                           const value = badge !== 'REHEARSAL' && feeNum > 0 ? getDisplayFee(ev) : null;
                           return (
                             <li key={String(ev.id || ev.eventId)}>

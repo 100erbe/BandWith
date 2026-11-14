@@ -24,3 +24,17 @@ export function homeAutoDetail(done: boolean, input: HomeAutoDetailInput): { don
   if (done || !input.twoPane || input.hasSelected || input.loading || !input.hasNext) return { done, open: false };
   return { done: true, open: true };
 }
+
+/**
+ * The upcoming event Home opens on its own: the first one from `today`
+ * (the local YYYY-MM-DD, see todayLocal; a UTC date skips today's gig in the
+ * evening in the Americas), not a draft or a quote.
+ */
+export function nextAutoDetailEvent<E extends { date: string; time?: string; status?: string }>(
+  events: readonly E[],
+  today: string,
+): E | undefined {
+  return [...events]
+    .filter((e) => e.date >= today && e.status !== 'DRAFT' && e.status !== 'QUOTE')
+    .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')))[0];
+}

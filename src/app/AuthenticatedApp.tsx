@@ -70,7 +70,7 @@ import { Header } from "@/app/components/layout/Header";
 import BottomNavigation from "@/app/components/layout/BottomNavigation";
 import { useRailLayout } from "@/lib/deviceRegions";
 import { syncOpenEvent } from '@/lib/openEventSync';
-import { homeAutoDetail } from "@/lib/homeAutoDetail";
+import { homeAutoDetail, nextAutoDetailEvent } from "@/lib/homeAutoDetail";
 import { HeaderAction, NavBackButton } from "@/app/components/bw/Screen";
 import { IdentityHub } from "@/app/components/layout/IdentityHub";
 import { PendingInvitesPrompt } from "@/app/components/notifications/PendingInvitesPrompt";
@@ -86,6 +86,7 @@ import { listMyDeputyGigs } from "@/lib/services/deputies";
 import { OfflineBanner } from "@/app/components/ui/OfflineBanner";
 import { useNetworkStatus, isOfflineError, reportNetworkStatus } from "@/lib/offline/useNetworkStatus";
 import { enqueueMutation, getPendingMutations } from "@/lib/offline/syncQueue";
+import type { QueuedEventExtras } from "@/lib/offline/eventExtras";
 import { getOfflineItem, setOfflineItem, getCacheKey } from "@/lib/offline/storage";
 import { todayLocal } from '../lib/dates';
 import { effectiveStatus, type Contract } from '@/lib/services/contracts';
@@ -122,7 +123,9 @@ import {
 
 import { AdminGuidedTourModal } from "@/app/components/onboarding/AdminGuidedTourModal";
 import { Quote } from "@/app/data/quotes";
-import { createQuote as createQuoteDB, appQuoteToDbRecord, appMusiciansToDb } from "@/lib/services/quotes";
+import { createQuote as createQuoteDB, updateQuote as updateQuoteDB, appQuoteToDbRecord, appMusiciansToDb, dbQuoteToAppQuote } from "@/lib/services/quotes";
+import { republishClientQuote } from "@/lib/services/quoteLinks";
+import type { Quote as AppQuote } from "@/app/data/quotes";
 import { quoteMusicianFee } from "@/lib/services/quoteMath";
 
 import { ChatDetailModal, NewChatModal } from "@/app/components/chat";
@@ -362,6 +365,8 @@ export default function AuthenticatedApp() {
   const [selectedEventMembership, setSelectedEventMembership] = useState<EventMember | null>(null);
   // A quote from the wizard is being saved (no second save meanwhile).
   const quoteSaveRunningRef = useRef(false);
+  /** EDIT QUOTE on a quote event: the quote itself, in the quote wizard. */
+  const [editingLinkedQuote, setEditingLinkedQuote] = useState<{ quote: AppQuote; eventId: string; bandId: string } | null>(null);
   // RSVP answers arrive late: they only apply if their event is still open.
   const eventKeyOf = (e: EventData) => e.eventId || e.id?.toString() || null;
   const { isCurrent: isOpenEvent, markCurrent: markOpenEvent } = useCurrentKey(
@@ -384,7 +389,7 @@ export default function AuthenticatedApp() {
   } | null>(null);
 
   // Rehearsal Polls & Proposals
-  const { polls: rehearsalPolls, refetch: refetchRehearsalPolls } = useRehearsalPolls(realBand?.id || null, user?.id || null);
+  const { polls: rehearsalPolls, refetch: refetchRehearsalPolls } = useRehearsalPolls(realBand?.id || null, user?.id || null, isAdminOfBand(realBand?.id));
   const [showProposeRehearsalModal, setShowProposeRehearsalModal] = useState(false);
   const [showNoBandRehearsalModal, setShowNoBandRehearsalModal] = useState(false);
   const [showChooseBandProposalModal, setShowChooseBandProposalModal] = useState(false);
@@ -893,15 +898,18 @@ export default function AuthenticatedApp() {
   const [previewDraftId, setPreviewDraftId] = useState<string | null>(null);
   const previewDraft = previewDraftId ? myEventDrafts.find((d) => d.id === previewDraftId) || null : null;
 
+  // The viewer's own fee on gigs of bands they don't manage (per event's
+  // band: someone can be admin of one band and a member of another).
   const userFeeMap = useMemo(() => {
-    if (isAdmin || !user?.id) return {};
+    if (!user?.id) return {};
     const map: Record<string, number> = {};
-    Object.entries(eventMembersMap).forEach(([eventId, members]) => {
-      const me = members.find(m => m.userId === user.id);
-      if (me?.fee) map[eventId] = me.fee;
-    });
+    for (const e of events) {
+      if (!e.eventId || !e.band_id || isAdminOfBand(e.band_id)) continue;
+      const me = (eventMembersMap[e.eventId] || []).find(m => m.userId === user.id);
+      if (me?.fee) map[e.eventId] = me.fee;
+    }
     return map;
-  }, [eventMembersMap, user?.id, isAdmin]);
+  }, [events, eventMembersMap, user?.id, isAdminOfBand]);
 
   const eventsRef = useRef(events);
   eventsRef.current = events;
@@ -2287,6 +2295,30 @@ export default function AuthenticatedApp() {
     else if (s === 'QUOTED' || s === 'QUOTE') evType = 'quote';
     else evType = 'gig';
 
+    // A quote event: edit the quote itself (fee, items, client), as the
+    // Quotes screen does, so the detail, the PDF and SHARE QUOTE show the
+    // new version. Without a linked quote, the event is edited as before.
+    if (evType === 'quote' && selectedEvent.eventId) {
+      const base = supabase.from('quotes').select('*, musicians:quote_musicians(*)');
+      const { data: rows, error: quoteErr } = await (selectedEvent.quoteId
+        ? base.eq('id', selectedEvent.quoteId).limit(1)
+        : base.eq('converted_to_event_id', selectedEvent.eventId).order('created_at', { ascending: false }).limit(1));
+      if (quoteErr) {
+        setSaveToast({ message: isOfflineError(quoteErr) ? t('No connection. Try again when you are online.') : t('Could not load the quote: {error}', { error: quoteErr.message }), type: 'error' });
+        return;
+      }
+      if (rows?.[0]) {
+        setEditingLinkedQuote({
+          quote: dbQuoteToAppQuote(rows[0] as any) as unknown as AppQuote,
+          eventId: selectedEvent.eventId,
+          bandId: String(selectedEvent.band_id),
+        });
+        setSelectedEvent(null);
+        setSelectedEventMembership(null);
+        return;
+      }
+    }
+
     let memberUserIds: string[] = [];
     let memberFeeMap: Record<string, string> = {};
     if (selectedEvent.eventId) {
@@ -2319,6 +2351,52 @@ export default function AuthenticatedApp() {
     setIsCreateEventOpen(true);
   };
 
+  /** Saves the quote edited from its event, and keeps the event in step. */
+  const handleLinkedQuoteSave = async (q: Partial<AppQuote>, opts?: { share?: boolean }) => {
+    const editing = editingLinkedQuote;
+    if (!editing || quoteSaveRunningRef.current) return;
+    quoteSaveRunningRef.current = true;
+    try {
+      const { band_id: _bandId, ...updates } = appQuoteToDbRecord(q, editing.bandId);
+      const { data, error } = await updateQuoteDB(editing.quote.id, updates);
+      if (error || !data) {
+        // The wizard stays open with what was typed.
+        setSaveToast({ message: t('Quote not saved: {error}', { error: error?.message || t('unknown error') }), type: 'error' });
+        return;
+      }
+      // The event shows the quote's date, time, place, client and fee.
+      const { error: eventErr } = await updateEvent(editing.eventId, {
+        title: q.eventName || q.clientName || t('Quote Event'),
+        event_date: q.eventDate,
+        start_time: q.eventTimeStart || '20:00',
+        end_time: q.eventTimeEnd || null,
+        venue_name: q.venueName || null,
+        venue: q.venueName || null,
+        venue_city: q.venueCity || null,
+        venue_address: q.venueAddress || null,
+        indoor_outdoor: q.indoorOutdoor || null,
+        fee: q.total || 0,
+        client_name: q.clientName || null,
+      } as any);
+      const saved = { ...q, ...dbQuoteToAppQuote(data as any), musicians: q.musicians || editing.quote.musicians } as AppQuote;
+      setEditingLinkedQuote(null);
+      setSaveToast(eventErr
+        ? { message: t('Quote updated, but the event was not: {error}', { error: eventErr.message }), type: 'error' }
+        : { message: t('Quote updated'), type: 'success' });
+      if (opts?.share) setSharingQuote(saved);
+      // Already sent with the client link: the page shows the new version.
+      republishClientQuote(saved as any, editing.bandId, realBand?.name || 'Band').then(({ data: version, error: pubError }) => {
+        if (pubError) setSaveToast({ message: t('The client page could not be updated. Try again.'), type: 'error' });
+        else if (version && version > 1) setSaveToast({ message: t('The client’s page now shows version {n}.', { n: version }), type: 'success' });
+      });
+      refetchExpandedQuotes();
+      refetchEvents().catch(() => {});
+      if (refetchDashboard) refetchDashboard().catch(() => {});
+    } finally {
+      quoteSaveRunningRef.current = false;
+    }
+  };
+
   const handleEventDelete = async () => {
     if (!selectedEvent?.eventId) return;
     haptic.delete();
@@ -2333,7 +2411,7 @@ export default function AuthenticatedApp() {
           .eq('id', selectedEvent.eventId)
           .select('id');
         if (error) throw error;
-        if (!deleted?.length) throw new Error('Only band admins can delete this event.');
+        if (!deleted?.length) throw new Error(t('Only band admins can delete this event.'));
         // The quote that holds this date: deleting a quote deletes it too (no
         // orphan draft left in Quotes); deleting a gig keeps the quote as a
         // record but drops its link to the gone event.
@@ -2346,13 +2424,30 @@ export default function AuthenticatedApp() {
         } else {
           await supabase.from('quotes').update({ converted_to_event_id: null }).eq('converted_to_event_id', selectedEvent.eventId);
         }
+        // Every gig and rehearsal gets its own setlist when it is saved: drop
+        // it with the event (unless another event still uses it), so it does
+        // not linger in the band's setlists and the wizard's saved setlists.
+        const setlistId = selectedEvent.setlistId;
+        if (setlistId) {
+          try {
+            const { data: others } = await supabase.from('events').select('id').eq('setlist_id', setlistId).limit(1);
+            if (others && others.length === 0) await deleteSetlist(setlistId);
+          } catch (setlistErr) {
+            console.warn('[handleEventDelete] Setlist cleanup failed:', setlistErr);
+          }
+        }
       }
       setSaveToast({ message: t('Event deleted'), type: 'success' });
       refetchEvents();
       refetchDashboard?.();
     } catch (err: any) {
       console.error('Delete error:', err);
-      setSaveToast({ message: t('Could not delete the event: {error}', { error: err?.message || t('unknown error') }), type: 'error' });
+      setSaveToast({
+        message: isOfflineError(err)
+          ? t('No connection. Try again when you are online.')
+          : t('Could not delete the event: {error}', { error: err?.message || t('unknown error') }),
+        type: 'error',
+      });
       return; // keep the detail open
     }
     setSelectedEvent(null);
@@ -2535,8 +2630,8 @@ export default function AuthenticatedApp() {
       setPreviewDraftId(event.draftId);
       return;
     }
-    // If not admin, verify user is added to this event before opening
-    if (!isAdmin && user?.id && event.eventId) {
+    // If not admin of the event's band, verify user is added to this event before opening
+    if (!isAdminOfBand(event.band_id) && user?.id && event.eventId) {
       const cached = eventMembersMap[event.eventId] || [];
       const isMember = cached.some(m => m.userId === user.id && m.status !== 'declined');
       if (cached.length > 0 && !isMember) {
@@ -2566,10 +2661,7 @@ export default function AuthenticatedApp() {
   // homeAutoDetail), so a closed detail stays closed.
   const homeAutoDetailRef = useRef(false);
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const next = [...visuallyFilteredEvents]
-      .filter((e) => e.date >= today && e.status !== 'DRAFT' && e.status !== 'QUOTE')
-      .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')))[0];
+    const next = nextAutoDetailEvent(visuallyFilteredEvents, todayLocal());
     const { done, open } = homeAutoDetail(homeAutoDetailRef.current, {
       twoPane,
       // A hub (members, settings…) covers Home: don't open a gig behind it.
@@ -2584,8 +2676,19 @@ export default function AuthenticatedApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [twoPane, activeTab, hubOpen, eventsLoading, visuallyFilteredEvents, selectedEvent]);
 
+  /**
+   * The member's own lineup row is still loading (weak signal) or could not
+   * be read: say so and keep the event open instead of closing as if saved.
+   */
+  const rsvpNotLoaded = (): never => {
+    const message = t('Could not load your answer. Check your connection.');
+    setSaveToast({ message, type: 'error' });
+    throw new Error(message);
+  };
+
   const handleEventAccept = async () => {
-    if (!selectedEventMembership?.id || !selectedEvent) return;
+    if (!selectedEvent) return;
+    if (!selectedEventMembership?.id) return rsvpNotLoaded();
 
     const eventId = selectedEvent.eventId || selectedEvent.id?.toString();
 
@@ -2628,7 +2731,8 @@ export default function AuthenticatedApp() {
         if (creator?.user_id && user?.id) {
           const memberName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Member");
           const eventType = selectedEvent.status === "REHEARSAL" ? "rehearsal" : selectedEvent.status === "QUOTE" || selectedEvent.status === "QUOTED" ? "quote" : "gig";
-          await notifyEventResponse([creator.user_id], realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "confirmed");
+          // The event's own band: the active one may be another band.
+          await notifyEventResponse([creator.user_id], selectedEvent.band_id || realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "confirmed");
         }
       }
     } catch (pushErr) {
@@ -2648,11 +2752,12 @@ export default function AuthenticatedApp() {
   };
 
   const handleEventMaybe = async () => {
-    if (!selectedEventMembership?.id || !selectedEvent) return;
+    if (!selectedEvent) return;
+    if (!selectedEventMembership?.id) return rsvpNotLoaded();
     const eventId = selectedEvent.eventId || selectedEvent.id?.toString();
     const { data: updated, error } = await respondToEventInvite(selectedEventMembership.id, "maybe");
     if (error || !updated) {
-      throw new Error(error?.message || "Couldn't save your answer. Try again.");
+      throw new Error(t("Couldn't save your answer. Try again."));
     }
     if (isOpenEvent(eventId)) setSelectedEventMembership((prev: any) => (prev ? { ...prev, status: "maybe" } : prev));
     if (eventId && user?.id) {
@@ -2674,7 +2779,7 @@ export default function AuthenticatedApp() {
       .eq('is_active', true);
     if (error) throw new Error(error.message);
     const ids = (admins || []).map((a: any) => a.user_id).filter((id: string) => id && id !== user?.id);
-    if (!ids.length) throw new Error('This band has no other admin to notify.');
+    if (!ids.length) throw new Error(t('This band has no other admin to notify.'));
     const bandEvent = events.find((e) => e.eventId === eventId);
     const who = personFirstName(profile, 'A member');
     const when = bandEvent ? `${bandEvent.date}${bandEvent.time ? `, ${bandEvent.time}` : ''}` : '';
@@ -2690,7 +2795,8 @@ export default function AuthenticatedApp() {
   };
 
   const handleEventDecline = async () => {
-    if (!selectedEventMembership?.id || !selectedEvent) return;
+    if (!selectedEvent) return;
+    if (!selectedEventMembership?.id) return rsvpNotLoaded();
     haptic.delete();
 
     // ═══════════════════════════════════════════════════════════════
@@ -2732,8 +2838,9 @@ export default function AuthenticatedApp() {
       const realEventId = selectedEvent.eventId;
       if (realEventId && user?.id) {
         const memberName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Member");
+        // The event's own band's admins, not the active band's.
         await notifyMemberDroppedOut(
-          realBand?.id || "",
+          selectedEvent.band_id || realBand?.id || "",
           realEventId,
           selectedEvent.title,
           selectedEvent.date,
@@ -2800,11 +2907,13 @@ export default function AuthenticatedApp() {
       const street = addressWithoutCity(venueAddress, venueCity);
       const sameAsCity = !!venueCity && street.toLocaleLowerCase() === String(venueCity).trim().toLocaleLowerCase();
       const fullAddress = [sameAsCity ? '' : street, venueCity].filter(Boolean).join(', ') || null;
-      const venueFinal = location || "TBD";
+      // No venue yet: stored empty (the app shows a translated "TBD"), so
+      // calendar feeds and other languages never get the English word.
+      const venueFinal = location || null;
       const timeFinal = time || "20:00";
       const eventData: Record<string, any> = {
         band_id: realBand.id,
-        title: title || "Untitled Event",
+        title: title || t('Untitled Event'),
         event_type: eventType,
         status: isRehearsalWizard ? (data.status === 'draft' ? 'confirmed' : (data.status || 'confirmed')) : (data.status || 'confirmed'),
         event_date: date,
@@ -2842,10 +2951,10 @@ export default function AuthenticatedApp() {
 
       // Event to-dos (create modal, template or rehearsal wizard). Ids count
       // as saved only when the form loaded them from this event.
-      const persistTasks = async (eventId: string): Promise<boolean> => {
-        const originalTaskIds: string[] = Array.isArray(data._originalTaskIds) ? data._originalTaskIds : [];
+      const originalTaskIds: string[] = Array.isArray(data._originalTaskIds) ? data._originalTaskIds : [];
+      const taskDrafts = (): EventTaskDraft[] => {
         const knownUserIds = new Set((realBand?.members || []).map((m: any) => m.user_id).filter(Boolean));
-        const drafts: EventTaskDraft[] = (Array.isArray(data.tasks) ? data.tasks : []).map((t: any) => {
+        return (Array.isArray(data.tasks) ? data.tasks : []).map((t: any) => {
           const assignees: string[] = Array.isArray(t.assignedTo) ? t.assignedTo : [];
           const single = assignees.length === 1 && knownUserIds.has(assignees[0]) ? assignees[0] : null;
           return {
@@ -2856,6 +2965,9 @@ export default function AuthenticatedApp() {
             notes: typeof t.notes === 'string' ? t.notes : null,
           };
         });
+      };
+      const persistTasks = async (eventId: string): Promise<boolean> => {
+        const drafts = taskDrafts();
         if (drafts.length === 0 && originalTaskIds.length === 0) return true;
         try {
           const { error } = await syncEventTasks(eventId, drafts, date, originalTaskIds);
@@ -2924,7 +3036,7 @@ export default function AuthenticatedApp() {
 
       // Persist setlist: one setlist per event. Editing reuses the event's
       // setlist (no orphan copies, one "setlist updated" notification).
-      const persistSetlist = async (): Promise<string | null> => {
+      const setlistSongs = (): { song_id: string; position: number; set_number: number }[] => {
         let songs: { song_id: string; position: number; set_number: number }[] = [];
         if (isRehearsalWizard) {
           const fromSnapshot = (data.setlistSnapshotFinal?.songs || [])
@@ -2946,11 +3058,21 @@ export default function AuthenticatedApp() {
             }
           });
         }
+        return songs;
+      };
+      const setlistName = title
+        ? t('{title} setlist', { title })
+        : isRehearsalWizard ? t('Rehearsal setlist') : t('Event setlist');
+      // Set once the setlist is saved online: an offline fallback after that
+      // must not queue it again.
+      let setlistSaved = false;
+      const persistSetlist = async (): Promise<string | null> => {
+        const songs = setlistSongs();
         // No songs: leave the setlist as it is, unless the user removed every
         // song of the gig's saved setlist while editing.
         if (songs.length === 0 && !(data._setlistCleared && data._editing)) return null;
 
-        const name = `${title || (isRehearsalWizard ? 'Rehearsal' : 'Event')} setlist`;
+        const name = setlistName;
         if (data._editing && data._editingEventId) {
           const { data: ev } = await supabase
             .from('events')
@@ -3000,12 +3122,36 @@ export default function AuthenticatedApp() {
         status: m.id === user?.id ? 'confirmed' : 'pending',
       }));
 
+      // What the online save writes after the event row (setlist, to-dos,
+      // lineup changes, rider & stage): queued with it, replayed on sync.
+      const offlineExtras = (isEdit: boolean): QueuedEventExtras | undefined => {
+        const extras: QueuedEventExtras = {};
+        if (!setlistSaved && !eventData.setlist_id) {
+          const songs = setlistSongs();
+          const cleared = !!(isEdit && data._setlistCleared);
+          if (songs.length > 0 || cleared) extras.setlist = { bandId: realBand.id, name: setlistName, songs, cleared };
+        }
+        const drafts = taskDrafts();
+        if (drafts.length > 0 || originalTaskIds.length > 0) {
+          extras.tasks = { drafts, originalIds: originalTaskIds, eventDate: date || null };
+        }
+        if (isEdit && queuedMembers.length > 0) {
+          extras.lineup = queuedMembers.map((m: any) => ({ user_id: m.id, role: m.role, fee: m.fee, status: m.status }));
+        }
+        const composerStage = isEdit ? null : composerStageOf(data);
+        if (composerStage) {
+          extras.stage = { bandId: realBand.id, payload: composerStage, gig: { title: title || 'Gig', date, venue: location } };
+        }
+        return Object.keys(extras).length > 0 ? extras : undefined;
+      };
+
       saveEventOffline = async (isEdit: boolean, editingId?: string) => {
         reportNetworkStatus(false);
         if (isEdit && editingId) {
           await enqueueMutation('update_event', {
             eventId: editingId,
             updates: { ...eventData, _isPendingSync: true },
+            extras: offlineExtras(true),
           });
           if (optimisticMembers.length > 0) {
             setEventMembersMap(prev => {
@@ -3026,7 +3172,7 @@ export default function AuthenticatedApp() {
             _isPendingSync: true,
             _tempId: tempId,
           };
-          await enqueueMutation('create_event', { eventData: offlineEv, memberIds: queuedMembers, clientId: newEventId }, tempId);
+          await enqueueMutation('create_event', { eventData: offlineEv, memberIds: queuedMembers, clientId: newEventId, extras: offlineExtras(false) }, tempId);
           if (optimisticMembers.length > 0) {
             setEventMembersMap(prev => {
               const next = { ...prev, [tempId]: optimisticMembers };
@@ -3061,6 +3207,7 @@ export default function AuthenticatedApp() {
         setlistFailed = true;
         return null;
       });
+      if (!setlistFailed) setlistSaved = true;
       if (setlistId) {
         eventData.setlist_id = setlistId;
       }
@@ -4084,6 +4231,18 @@ export default function AuthenticatedApp() {
               quoteSaveRunningRef.current = false;
             }
           }} />}</AnimatePresence>
+
+          <AnimatePresence key="nested-presence-edit-quote">
+            {editingLinkedQuote && (
+              <QuoteCreationWizard
+                bandMembers={memoizedBandMembers}
+                initialData={editingLinkedQuote.quote}
+                initialClientName={editingLinkedQuote.quote.clientName}
+                onClose={() => setEditingLinkedQuote(null)}
+                onCreate={handleLinkedQuoteSave}
+              />
+            )}
+          </AnimatePresence>
 
           <AnimatePresence key="nested-presence-3">
             {sharingQuote && (

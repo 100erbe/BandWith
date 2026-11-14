@@ -12,8 +12,10 @@ import {
 import { cn } from '@/app/components/ui/utils';
 import {
   togglePollVote,
-  clearUserVotesForPoll,
+  markPollUnavailable,
+  pollAnsweredCount,
   finalizePollIntoRehearsal,
+  POLL_CLOSED,
   dismissPoll,
   deletePoll,
   type RehearsalPoll,
@@ -68,15 +70,8 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
     return poll.options.some((o) => o.has_voted);
   }, [poll.options]);
 
-  // Unique voters in this poll
-  const uniqueVoterCount = useMemo(() => {
-    if (!poll.options) return 0;
-    const voterSet = new Set<string>();
-    poll.options.forEach((o) => {
-      o.votes?.forEach((v) => voterSet.add(v.user_id));
-    });
-    return voterSet.size;
-  }, [poll.options]);
+  // Members who answered: a vote, or "None work" (102)
+  const answeredCount = useMemo(() => pollAnsweredCount(poll), [poll]);
 
   const totalMembers = poll.total_members_count || 1;
 
@@ -156,7 +151,8 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
   const handleNoneWork = async () => {
     if (!hasUserVotedAny) return;
     startAutoClose();
-    const { error } = await clearUserVotesForPoll(poll.id, currentUserId);
+    // Clears the votes and stores the answer (102) so the admin sees it.
+    const { error } = await markPollUnavailable(poll.id, currentUserId);
     if (!error) {
       onShowToast?.(t('Cleared your availability for this poll.'), 'info');
       onPollUpdated?.();
@@ -181,6 +177,8 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
 
     if (error) {
       onShowToast?.(error.message || t('Failed to create rehearsal.'), 'error');
+      // Locked in meanwhile (another admin or device): show the poll as it is now.
+      if ((error as { code?: string }).code === POLL_CLOSED) onPollUpdated?.();
     } else {
       onShowToast?.(t('Rehearsal scheduled and added to the calendar!'), 'success');
       onPollUpdated?.();
@@ -301,7 +299,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
               hasUserVotedAny ? 'bg-white/15 text-white' : 'bg-accent text-accent-foreground'
             )}
           >
-            {hasUserVotedAny ? t('Voted') : t('Vote now')}
+            {hasUserVotedAny ? t('Voted') : poll.declined_all ? t('None work') : t('Vote now')}
           </span>
         </div>
 
@@ -309,7 +307,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
           <h4 className="bw-h2 text-white">{poll.title}</h4>
           <p className="bw-body-sm text-white/75">
             {poll.notes ? `${poll.notes} — ` : t('Select your available options — ')}
-            {t('{voted} of {total} voted', { voted: uniqueVoterCount, total: totalMembers })}
+            {t('{answered} of {total} answered', { answered: answeredCount, total: totalMembers })}
           </p>
           <PollDetails poll={{ ...poll, total_members_count: totalMembers }} className="text-white/85" />
         </div>
