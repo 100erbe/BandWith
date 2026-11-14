@@ -17,6 +17,11 @@
 [data-bw-wide][data-bw-two-pane] body:has(.bw-pane-dialog) .bw-nav-bar {
   z-index: 60 !important;
 }
+/* Stage mode (in the detail pane) is modal: the nav, centred across both
+   panes, would show cut in half at its edge, so it steps away until Exit. */
+[data-bw-wide][data-bw-two-pane] body:has(.bw-stage) .bw-nav-bar {
+  display: none !important;
+}
 /* Detail content ends above the nav (bar 64 px + 24 px from the bottom). */
 [data-bw-wide][data-bw-two-pane][data-bw-tab-nav] .bw-pane-detail {
   padding-bottom: calc(var(--safe-bottom, 0px) + 104px) !important;
@@ -91,4 +96,12 @@
   width: 340px !important;
   padding-right: 0 !important;
   padding-left: 0 !important;
+}
+
+/* Sign-in, onboarding and lock screens: a readable column on tablets
+   instead of fields stretched across the whole window. */
+[data-bw-wide] .bw-auth-screen > * {
+  width: 100%;
+  max-width: 560px;
+  margin-inline: auto;
 }

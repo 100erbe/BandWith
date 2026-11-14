@@ -341,6 +341,10 @@ export default function AuthenticatedApp() {
 
   // Navigation
   const [activeTab, setActiveTab] = useState<TabName>("Home");
+  const activeTabRef = useRef<TabName>("Home");
+  activeTabRef.current = activeTab;
+  /** Where a gig opened from another tab returns on close (see navigateToEvent). */
+  const eventReturnTabRef = useRef<TabName | null>(null);
   // iPhone Duo rail (Figma "Duo"): the switch-band sheet keeps the tabs, the inbox hides them.
   const { twoPane, rail: railLayout, wide: wideLayout } = useRailLayout();
   useEffect(() => {
@@ -1033,6 +1037,10 @@ export default function AuthenticatedApp() {
     handleEventCardClickRef.current(item);
   }, []);
   const navigateToEvent = useCallback(async (eventDbId: string) => {
+    // One pane: closing the gig goes back to the tab it was opened from
+    // (Home's "Review payouts", a notification) instead of the calendar.
+    const from = activeTabRef.current;
+    eventReturnTabRef.current = !twoPaneRef.current && from !== "Events" ? from : null;
     setActiveTab("Events");
     setEventLoadError(null);
     setTimeout(async () => {
@@ -1057,6 +1065,19 @@ export default function AuthenticatedApp() {
       }
     }, 200);
   }, [refetchEvents, explainMissingEvent]);
+
+  // A gig that couldn't open leaves nothing to return from.
+  useEffect(() => {
+    if (eventLoadError) eventReturnTabRef.current = null;
+  }, [eventLoadError]);
+  const closeSelectedEventRef = useRef(() => {});
+  closeSelectedEventRef.current = () => {
+    setSelectedEvent(null);
+    setSelectedEventMembership(null);
+    const back = eventReturnTabRef.current;
+    eventReturnTabRef.current = null;
+    if (back) setActiveTab(back);
+  };
 
   // "Go live" (Home's next gig): open the gig straight in Stage mode.
   const [stageOnOpen, setStageOnOpen] = useState<string | null>(null);
@@ -2173,7 +2194,7 @@ export default function AuthenticatedApp() {
 
       // 1. Transient Notifications & Popups
       // The urgent popup only shows when no RSVP or poll sheet covers it.
-      if (s.urgentNotification && !s.rsvpNotification && !s.pollNotification) {
+      if (s.urgentNotification && !s.rsvpNotification && !s.pollNotification && !s.showAdminTour) {
         setUrgentNotification(null);
         return true;
       }
@@ -2268,8 +2289,7 @@ export default function AuthenticatedApp() {
         return true;
       }
       if (s.selectedEvent) {
-        setSelectedEvent(null);
-        setSelectedEventMembership(null);
+        closeSelectedEventRef.current();
         return true;
       }
       if (s.expandedCard) {
@@ -4529,7 +4549,7 @@ export default function AuthenticatedApp() {
             startInStage={!!stageOnOpen && stageOnOpen === selectedEvent.eventId}
             startOnFee={!!feeOnOpen && feeOnOpen === selectedEvent.eventId}
             currentUserId={user?.id}
-            onClose={() => { setSelectedEvent(null); setSelectedEventMembership(null); }}
+            onClose={() => closeSelectedEventRef.current()}
             onOpenBandSettings={isAdmin ? () => { setPricingModalInitialTab('branding'); setPricingReturnTo(null); setShowPricingModal(true); } : undefined}
             userResponse={selectedEventMembership?.status === "confirmed" ? "accepted" : selectedEventMembership?.status === "declined" ? "declined" : selectedEventMembership?.status === "maybe" ? "maybe" : selectedEventMembership?.status === "pending" ? "pending" : "accepted"}
             onAccept={handleEventAccept}
@@ -4698,7 +4718,8 @@ export default function AuthenticatedApp() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {urgentNotification && !rsvpNotification && !pollNotification && (
+        {/* Waits for the welcome tour: one layer at a time on first launch. */}
+        {urgentNotification && !rsvpNotification && !pollNotification && !showAdminTour && (
           <UrgentNotificationPopup
             key={urgentNotification.id}
             notification={urgentNotification}
