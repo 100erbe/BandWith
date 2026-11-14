@@ -45,8 +45,10 @@ export function useEventStage({ eventId, bandId, eventTitle, eventDate, venueNam
     (async () => {
       const [s, r] = await Promise.all([getEventStage(eventId), getEventRider(eventId)]);
       if (cancelled) return;
-      if (s.error) setError(s.error.message);
-      else setError(null);
+      if (s.error) {
+        console.warn('[rider] load:', s.error);
+        setError(t('Could not load the rider & stage.'));
+      } else setError(null);
       setAvailable(s.data !== null || !!s.error);
       setStage(s.data?.data ?? null);
       setSaved(!!s.data?.saved);
@@ -54,7 +56,8 @@ export function useEventStage({ eventId, bandId, eventTitle, eventDate, venueNam
       setLoading(false);
     })().catch((e) => {
       if (cancelled) return;
-      setError(e?.message || t('Could not load the rider & stage.'));
+      console.warn('[rider] load:', e);
+      setError(t('Could not load the rider & stage.'));
       setLoading(false);
     });
     return () => {
@@ -83,7 +86,8 @@ export function useEventStage({ eventId, bandId, eventTitle, eventDate, venueNam
       if (err) {
         setStage(prev.stage);
         setSaved(prev.saved);
-        setError(err.message);
+        console.warn('[rider] save:', err);
+        setError(`${t('Could not save the changes.')} ${t('Check your connection and try again.')}`);
         return false;
       }
       return true;
@@ -123,7 +127,8 @@ export function useEventStage({ eventId, bandId, eventTitle, eventDate, venueNam
     setError(null);
     const { data: url, error: err } = await riderShareLink(rider.id);
     if (err || !url) {
-      setError(err?.message || t('Could not create the link.'));
+      console.warn('[rider] link:', err);
+      setError(t('Could not create the link.'));
       return 'failed';
     }
     try {
@@ -139,7 +144,8 @@ export function useEventStage({ eventId, bandId, eventTitle, eventDate, venueNam
       }
       return res;
     } catch (e: any) {
-      setError(e?.message || t('Could not share the link.'));
+      console.warn('[rider] share link:', e);
+      setError(t('Could not share the link.'));
       return 'failed';
     }
   }, [rider, eventTitle, t]);
@@ -164,7 +170,8 @@ export function useEventStage({ eventId, bandId, eventTitle, eventDate, venueNam
       const blob = buildContractPdf(doc, { bandName, lang: getLocale(), stage: shown });
       await shareFile(blob, contractFileName(doc), { title: doc.title, dialogTitle: t('Share rider PDF') });
     } catch (e: any) {
-      setError(e?.message || t('Could not create the PDF.'));
+      console.warn('[rider] PDF:', e);
+      setError(t('Could not create the PDF.'));
     }
   }, [bandId, eventId, eventTitle, eventDate, rider, shown, t]);
 

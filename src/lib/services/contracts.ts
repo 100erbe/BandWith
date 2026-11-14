@@ -70,7 +70,12 @@ export const errorMessage = (err: unknown, fallback = t('Something went wrong. P
   return e.message || e.details || fallback;
 };
 
-const asError = (err: unknown, fallback?: string) => new Error(errorMessage(err, fallback));
+// The translated fallback only: the server's own text (English, sometimes
+// technical) goes to the console, never to the screen.
+const asError = (err: unknown, fallback?: string) => {
+  console.warn('[contracts]', err);
+  return new Error(fallback ?? t('Something went wrong. Please try again.'));
+};
 
 const blankToNull = (v?: string | null) => {
   const trimmed = (v ?? '').trim();
